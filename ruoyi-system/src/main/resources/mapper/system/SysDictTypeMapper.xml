@@ -50,6 +50,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		where dict_id = #{dictId}
 	</select>
 	
+	<select id="selectDictTypeByIds" parameterType="Long" resultMap="SysDictTypeResult">
+		<include refid="selectDictTypeVo"/>
+		where dict_id in
+		<foreach collection="array" item="dictId" open="(" separator="," close=")">
+			#{dictId}
+		</foreach>
+	</select>
+	
 	<select id="selectDictTypeByType" parameterType="String" resultMap="SysDictTypeResult">
 		<include refid="selectDictTypeVo"/>
 		where dict_type = #{dictType}

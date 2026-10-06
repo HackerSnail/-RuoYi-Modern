@@ -507,6 +507,8 @@ public class SysUserServiceImpl implements ISysUserService
         int failureNum = 0;
         StringBuilder successMsg = new StringBuilder();
         StringBuilder failureMsg = new StringBuilder();
+        // 初始密码仅从配置读一次，避免在逐行导入时每次都重复查询配置
+        String initPassword = configService.selectConfigByKey("sys.user.initPassword");
         for (SysUser user : userList)
         {
             try
@@ -517,8 +519,7 @@ public class SysUserServiceImpl implements ISysUserService
                 {
                     BeanValidators.validateWithException(validator, user);
                     deptService.checkDeptDataScope(user.getDeptId());
-                    String password = configService.selectConfigByKey("sys.user.initPassword");
-                    user.setPassword(SecurityUtils.encryptPassword(password));
+                    user.setPassword(SecurityUtils.encryptPassword(initPassword));
                     user.setCreateBy(operName);
                     userMapper.insertUser(user);
                     successNum++;

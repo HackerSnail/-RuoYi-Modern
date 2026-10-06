@@ -156,6 +156,20 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		update sys_dept set order_num = #{orderNum} where dept_id = #{deptId}
 	</update>
 	
+	<update id="updateDeptSortBatch" parameterType="java.util.List">
+		update sys_dept
+		set order_num = case dept_id
+		<foreach collection="list" item="item">
+			when #{item.deptId} then #{item.orderNum}
+		</foreach>
+		else order_num
+		end
+		where dept_id in
+		<foreach collection="list" item="item" open="(" separator="," close=")">
+			#{item.deptId}
+		</foreach>
+	</update>
+	
 	<delete id="deleteDeptById" parameterType="Long">
 		update sys_dept set del_flag = '2' where dept_id = #{deptId}
 	</delete>

@@ -38,7 +38,6 @@ public class FileUtils
      */
     public static void writeBytes(String filePath, OutputStream os) throws IOException
     {
-        FileInputStream fis = null;
         try
         {
             File file = new File(filePath);
@@ -46,22 +45,20 @@ public class FileUtils
             {
                 throw new FileNotFoundException(filePath);
             }
-            fis = new FileInputStream(file);
-            byte[] b = new byte[1024];
-            int length;
-            while ((length = fis.read(b)) > 0)
+            try (FileInputStream fis = new FileInputStream(file))
             {
-                os.write(b, 0, length);
+                byte[] b = new byte[1024];
+                int length;
+                while ((length = fis.read(b)) > 0)
+                {
+                    os.write(b, 0, length);
+                }
             }
-        }
-        catch (IOException e)
-        {
-            throw e;
         }
         finally
         {
+            // os 由调用方传入，维持原“关闭输出流”语义
             IOUtils.close(os);
-            IOUtils.close(fis);
         }
     }
 
@@ -87,19 +84,12 @@ public class FileUtils
      */
     public static String writeBytes(byte[] data, String uploadDir) throws IOException
     {
-        FileOutputStream fos = null;
-        String pathName = "";
-        try
+        String extension = getFileExtendName(data);
+        String pathName = DateUtils.datePath() + "/" + IdUtils.fastUUID() + "." + extension;
+        File file = FileUploadUtils.getAbsoluteFile(uploadDir, pathName);
+        try (FileOutputStream fos = new FileOutputStream(file))
         {
-            String extension = getFileExtendName(data);
-            pathName = DateUtils.datePath() + "/" + IdUtils.fastUUID() + "." + extension;
-            File file = FileUploadUtils.getAbsoluteFile(uploadDir, pathName);
-            fos = new FileOutputStream(file);
             fos.write(data);
-        }
-        finally
-        {
-            IOUtils.close(fos);
         }
         return FileUploadUtils.getPathFileName(uploadDir, pathName);
     }

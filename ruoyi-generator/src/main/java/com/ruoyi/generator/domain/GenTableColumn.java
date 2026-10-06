@@ -1,6 +1,7 @@
 package com.ruoyi.generator.domain;
 
 import jakarta.validation.constraints.NotBlank;
+import com.ruoyi.common.constant.GenConstants;
 import com.ruoyi.common.core.domain.BaseEntity;
 import com.ruoyi.common.utils.StringUtils;
 
@@ -160,7 +161,7 @@ public class GenTableColumn extends BaseEntity
 
     public boolean isPk(String isPk)
     {
-        return isPk != null && StringUtils.equals("1", isPk);
+        return isPk != null && StringUtils.equals(GenConstants.COLUMN_FLAG_YES, isPk);
     }
 
     public String getIsIncrement()
@@ -180,7 +181,7 @@ public class GenTableColumn extends BaseEntity
 
     public boolean isIncrement(String isIncrement)
     {
-        return isIncrement != null && StringUtils.equals("1", isIncrement);
+        return isIncrement != null && StringUtils.equals(GenConstants.COLUMN_FLAG_YES, isIncrement);
     }
 
     public void setIsRequired(String isRequired)
@@ -200,7 +201,7 @@ public class GenTableColumn extends BaseEntity
 
     public boolean isRequired(String isRequired)
     {
-        return isRequired != null && StringUtils.equals("1", isRequired);
+        return isRequired != null && StringUtils.equals(GenConstants.COLUMN_FLAG_YES, isRequired);
     }
 
     public void setIsInsert(String isInsert)
@@ -220,7 +221,7 @@ public class GenTableColumn extends BaseEntity
 
     public boolean isInsert(String isInsert)
     {
-        return isInsert != null && StringUtils.equals("1", isInsert);
+        return isInsert != null && StringUtils.equals(GenConstants.COLUMN_FLAG_YES, isInsert);
     }
 
     public void setIsEdit(String isEdit)
@@ -240,7 +241,7 @@ public class GenTableColumn extends BaseEntity
 
     public boolean isEdit(String isEdit)
     {
-        return isEdit != null && StringUtils.equals("1", isEdit);
+        return isEdit != null && StringUtils.equals(GenConstants.COLUMN_FLAG_YES, isEdit);
     }
 
     public void setIsList(String isList)
@@ -260,7 +261,7 @@ public class GenTableColumn extends BaseEntity
 
     public boolean isList(String isList)
     {
-        return isList != null && StringUtils.equals("1", isList);
+        return isList != null && StringUtils.equals(GenConstants.COLUMN_FLAG_YES, isList);
     }
 
     public void setIsQuery(String isQuery)
@@ -280,7 +281,7 @@ public class GenTableColumn extends BaseEntity
 
     public boolean isQuery(String isQuery)
     {
-        return isQuery != null && StringUtils.equals("1", isQuery);
+        return isQuery != null && StringUtils.equals(GenConstants.COLUMN_FLAG_YES, isQuery);
     }
 
     public void setQueryType(String queryType)

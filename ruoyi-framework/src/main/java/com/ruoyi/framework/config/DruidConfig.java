@@ -4,6 +4,9 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import javax.sql.DataSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -32,6 +35,8 @@ import jakarta.servlet.ServletResponse;
 @Configuration
 public class DruidConfig
 {
+    private static final Logger log = LoggerFactory.getLogger(DruidConfig.class);
+
     @Bean
     @ConfigurationProperties("spring.datasource.druid.master")
     public DataSource masterDataSource(DruidProperties druidProperties)
@@ -73,8 +78,15 @@ public class DruidConfig
             DataSource dataSource = SpringUtils.getBean(beanName);
             targetDataSources.put(sourceName, dataSource);
         }
+        catch (NoSuchBeanDefinitionException e)
+        {
+            // 数据源未启用（如从库 enabled=false）时对应 bean 不存在，属预期情况，静默跳过
+            log.debug("数据源 [{}] 未配置，跳过注册", sourceName);
+        }
         catch (Exception e)
         {
+            // 其他异常说明数据源配置有误，记录以便排障，不再静默吞掉
+            log.error("注册数据源 [{}] 失败，请检查其配置", sourceName, e);
         }
     }
 

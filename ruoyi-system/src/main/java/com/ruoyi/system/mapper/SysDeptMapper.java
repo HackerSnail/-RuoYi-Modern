@@ -116,6 +116,13 @@ public interface SysDeptMapper
     public void updateDeptSort(SysDept dept);
 
     /**
+     * 批量保存部门排序（单条 CASE 批量 UPDATE，替代逐行 updateDeptSort）
+     *
+     * @param deptList 部门排序信息集合
+     */
+    public void updateDeptSortBatch(@Param("list") List<SysDept> deptList);
+
+    /**
      * 删除部门管理信息
      * 
      * @param deptId 部门ID

@@ -53,6 +53,14 @@ public interface SysDictDataMapper
     public int countDictDataByType(String dictType);
 
     /**
+     * 批量查询在给定类型中已存在字典数据（已分配）的类型
+     * 
+     * @param dictTypes 待检查的字典类型集合
+     * @return 已分配（拥有至少一条数据）的字典类型
+     */
+    public List<String> selectAssignedDictTypes(@Param("dictTypes") List<String> dictTypes);
+
+    /**
      * 通过字典ID删除字典数据信息
      * 
      * @param dictCode 字典数据ID

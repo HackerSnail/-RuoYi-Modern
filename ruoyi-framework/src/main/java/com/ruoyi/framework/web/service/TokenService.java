@@ -1,5 +1,6 @@
 package com.ruoyi.framework.web.service;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -21,8 +22,9 @@ import com.ruoyi.common.utils.ip.IpUtils;
 import com.ruoyi.common.utils.uuid.IdUtils;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.HttpServletRequest;
+import javax.crypto.SecretKey;
 
 /**
  * token验证处理
@@ -54,6 +56,27 @@ public class TokenService
 
     @Autowired
     private RedisCache redisCache;
+
+    // 缓存的 HMAC 签名密钥（首次使用时构建）
+    private volatile SecretKey secretKey;
+
+    /**
+     * 构建并缓存 JWT 签名密钥，HS512 要求密钥不少于 64 字节
+     */
+    private SecretKey getSecretKey()
+    {
+        if (secretKey == null)
+        {
+            synchronized (this)
+            {
+                if (secretKey == null)
+                {
+                    secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+                }
+            }
+        }
+        return secretKey;
+    }
 
     /**
      * 获取用户身份信息
@@ -178,10 +201,10 @@ public class TokenService
      */
     private String createToken(Map<String, Object> claims)
     {
-        String token = Jwts.builder()
-                .setClaims(claims)
-                .signWith(SignatureAlgorithm.HS512, secret).compact();
-        return token;
+        return Jwts.builder()
+                .claims(claims)
+                .signWith(getSecretKey(), Jwts.SIG.HS512)
+                .compact();
     }
 
     /**
@@ -193,9 +216,10 @@ public class TokenService
     private Claims parseToken(String token)
     {
         return Jwts.parser()
-                .setSigningKey(secret)
-                .parseClaimsJws(token)
-                .getBody();
+                .verifyWith(getSecretKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
     /**

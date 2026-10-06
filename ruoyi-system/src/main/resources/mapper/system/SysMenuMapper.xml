@@ -208,6 +208,20 @@
 	    update sys_menu set order_num = #{orderNum} where menu_id = #{menuId}
 	</update>
 
+	<update id="updateMenuSortBatch" parameterType="java.util.List">
+	    update sys_menu
+	    set order_num = case menu_id
+	    <foreach collection="list" item="item">
+	        when #{item.menuId} then #{item.orderNum}
+	    </foreach>
+	    else order_num
+	    end
+	    where menu_id in
+	    <foreach collection="list" item="item" open="(" separator="," close=")">
+	        #{item.menuId}
+	    </foreach>
+	</update>
+
 	<delete id="deleteMenuById" parameterType="Long">
 	    delete from sys_menu where menu_id = #{menuId}
 	</delete>

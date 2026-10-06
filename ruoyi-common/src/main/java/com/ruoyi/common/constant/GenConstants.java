@@ -117,4 +117,7 @@ public class GenConstants
 
     /** 需要 */
     public static final String REQUIRE = "1";
+
+    /** 列属性标志：是（gen_table_column 各 is_xxx 字段取值） */
+    public static final String COLUMN_FLAG_YES = "1";
 }

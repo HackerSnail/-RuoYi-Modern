@@ -114,6 +114,13 @@ public interface SysMenuMapper
     public void updateMenuSort(SysMenu menu);
 
     /**
+     * 批量保存菜单排序（单条 CASE 更新，替代逐行 updateMenuSort 的 N 次往返）
+     * 
+     * @param menuList 待排序菜单列表（需含 menuId 与 orderNum）
+     */
+    public void updateMenuSortBatch(@Param("list") List<SysMenu> menuList);
+
+    /**
      * 删除菜单管理信息
      *
      * @param menuId 菜单ID

@@ -34,7 +34,7 @@ public class ScheduleUtils
      */
     private static Class<? extends Job> getQuartzJobClass(SysJob sysJob)
     {
-        boolean isConcurrent = "0".equals(sysJob.getConcurrent());
+        boolean isConcurrent = ScheduleConstants.CONCURRENT_ALLOW.equals(sysJob.getConcurrent());
         return isConcurrent ? QuartzJobExecution.class : QuartzDisallowConcurrentExecution.class;
     }
 

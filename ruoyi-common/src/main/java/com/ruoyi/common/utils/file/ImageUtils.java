@@ -24,8 +24,7 @@ public class ImageUtils
 
     public static byte[] getImage(String imagePath)
     {
-        InputStream is = getFile(imagePath);
-        try
+        try (InputStream is = getFile(imagePath))
         {
             return IOUtils.toByteArray(is);
         }
@@ -33,10 +32,6 @@ public class ImageUtils
         {
             log.error("图片加载异常 {}", e);
             return null;
-        }
-        finally
-        {
-            IOUtils.closeQuietly(is);
         }
     }
 
@@ -63,7 +58,6 @@ public class ImageUtils
      */
     public static byte[] readFile(String url)
     {
-        InputStream in = null;
         try
         {
             if (url.startsWith("http"))
@@ -74,25 +68,26 @@ public class ImageUtils
                 urlConnection.setConnectTimeout(30 * 1000);
                 urlConnection.setReadTimeout(60 * 1000);
                 urlConnection.setDoInput(true);
-                in = urlConnection.getInputStream();
+                try (InputStream in = urlConnection.getInputStream())
+                {
+                    return IOUtils.toByteArray(in);
+                }
             }
             else
             {
                 // 本机地址
                 String localPath = RuoYiConfig.getProfile();
                 String downloadPath = localPath + StringUtils.substringAfter(url, Constants.RESOURCE_PREFIX);
-                in = new FileInputStream(downloadPath);
+                try (InputStream in = new FileInputStream(downloadPath))
+                {
+                    return IOUtils.toByteArray(in);
+                }
             }
-            return IOUtils.toByteArray(in);
         }
         catch (Exception e)
         {
             log.error("获取文件路径异常 {}", e);
             return null;
-        }
-        finally
-        {
-            IOUtils.closeQuietly(in);
         }
     }
 }

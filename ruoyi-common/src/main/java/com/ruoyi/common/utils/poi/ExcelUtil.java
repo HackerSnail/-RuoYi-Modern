@@ -117,6 +117,11 @@ public class ExcelUtil<T>
     public static final int sheetSize = 65536;
 
     /**
+     * 流式写入时内存中保留的行窗口大小
+     */
+    public static final int DEFAULT_STREAMING_WINDOW_SIZE = 500;
+
+    /**
      * 工作表名称
      */
     private String sheetName;
@@ -658,7 +663,7 @@ public class ExcelUtil<T>
     @SuppressWarnings({ "rawtypes", "unchecked" })
     private static SXSSFWorkbook buildWorkbook(List<ExcelSheet<?>> sheets)
     {
-        SXSSFWorkbook wb = new SXSSFWorkbook(500);
+        SXSSFWorkbook wb = new SXSSFWorkbook(DEFAULT_STREAMING_WINDOW_SIZE);
         for (ExcelSheet<?> excelSheet : sheets)
         {
             ExcelUtil util = new ExcelUtil(excelSheet.getClazz());
@@ -1802,7 +1807,7 @@ public class ExcelUtil<T>
      */
     public void createWorkbook()
     {
-        this.wb = new SXSSFWorkbook(500);
+        this.wb = new SXSSFWorkbook(DEFAULT_STREAMING_WINDOW_SIZE);
         this.sheet = wb.createSheet();
         wb.setSheetName(0, sheetName);
         this.styles = createStyles(wb);

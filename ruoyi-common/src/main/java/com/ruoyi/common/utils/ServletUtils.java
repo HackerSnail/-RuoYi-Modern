@@ -11,10 +11,14 @@ import jakarta.servlet.ServletRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.MediaType;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import com.ruoyi.common.constant.Constants;
+import com.ruoyi.common.constant.HttpStatus;
 import com.ruoyi.common.core.text.Convert;
 
 /**
@@ -24,6 +28,8 @@ import com.ruoyi.common.core.text.Convert;
  */
 public class ServletUtils
 {
+    private static final Logger log = LoggerFactory.getLogger(ServletUtils.class);
+
     /**
      * 获取String参数
      */
@@ -140,14 +146,14 @@ public class ServletUtils
     {
         try
         {
-            response.setStatus(200);
-            response.setContentType("application/json");
-            response.setCharacterEncoding("utf-8");
+            response.setStatus(HttpStatus.SUCCESS);
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.setCharacterEncoding(Constants.UTF8);
             response.getWriter().print(string);
         }
         catch (IOException e)
         {
-            e.printStackTrace();
+            log.error("将字符串渲染到客户端失败", e);
         }
     }
 

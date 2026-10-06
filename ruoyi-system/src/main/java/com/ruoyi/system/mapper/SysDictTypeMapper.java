@@ -34,6 +34,14 @@ public interface SysDictTypeMapper
     public SysDictType selectDictTypeById(Long dictId);
 
     /**
+     * 根据字典ID数组批量查询字典类型
+     * 
+     * @param dictIds 字典ID数组
+     * @return 字典类型集合
+     */
+    public List<SysDictType> selectDictTypeByIds(Long[] dictIds);
+
+    /**
      * 根据字典类型查询信息
      * 
      * @param dictType 字典类型

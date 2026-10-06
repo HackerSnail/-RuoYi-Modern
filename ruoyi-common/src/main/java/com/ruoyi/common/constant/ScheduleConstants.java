@@ -12,6 +12,12 @@ public class ScheduleConstants
     /** 执行目标key */
     public static final String TASK_PROPERTIES = "TASK_PROPERTIES";
 
+    /** 允许并发执行 */
+    public static final String CONCURRENT_ALLOW = "0";
+
+    /** 禁止并发执行 */
+    public static final String CONCURRENT_DENY = "1";
+
     /** 默认 */
     public static final String MISFIRE_DEFAULT = "0";
 

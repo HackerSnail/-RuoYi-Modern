@@ -1,5 +1,5 @@
 ######################################################################
-# Build Tools
+# Build Tools (Maven / Gradle)
 
 .gradle
 /build/
@@ -7,6 +7,15 @@
 
 target/
 !.mvn/wrapper/maven-wrapper.jar
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
 
 ######################################################################
 # IDE
@@ -24,6 +33,10 @@ target/
 *.iws
 *.iml
 *.ipr
+out/
+
+### VS Code ###
+.vscode/
 
 ### JRebel ###
 rebel.xml
@@ -37,10 +50,46 @@ nbdist/
 .nb-gradle/
 
 ######################################################################
-# Others
+# OS
+
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+
+######################################################################
+# Logs & Runtime
+
 *.log
-*.xml.versionsBackup
+/logs/
+/home/
+
+######################################################################
+# Temp / Scaffold artifacts
+
+*.tmp
+*.bak
 *.swp
+*~
+temp/
+tmp/
+cache/
+
+######################################################################
+# Node (if frontend assets are added later)
+
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+######################################################################
+# Local overrides (keep real config tracked)
+
+application-local.yml
+application-local.properties
+*.env
+.env
 
 !*/build/*.java
 !*/build/*.html

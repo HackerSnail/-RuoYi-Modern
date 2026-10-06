@@ -60,6 +60,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	    select count(1) from sys_dict_data where dict_type=#{dictType}  
 	</select>
 	
+	<select id="selectAssignedDictTypes" resultType="String">
+	    select distinct dict_type from sys_dict_data where dict_type in
+	    <foreach collection="dictTypes" item="dictType" open="(" separator="," close=")">
+	        #{dictType}
+	    </foreach>
+	</select>
+	
 	<delete id="deleteDictDataById" parameterType="Long">
  		delete from sys_dict_data where dict_code = #{dictCode}
  	</delete>

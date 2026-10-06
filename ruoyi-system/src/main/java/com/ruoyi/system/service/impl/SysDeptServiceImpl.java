@@ -241,7 +241,7 @@ public class SysDeptServiceImpl implements ISysDeptService
         }
         int result = deptMapper.updateDept(dept);
         if (UserConstants.DEPT_NORMAL.equals(dept.getStatus()) && StringUtils.isNotEmpty(dept.getAncestors())
-                && !StringUtils.equals("0", dept.getAncestors()))
+                && !StringUtils.equals(UserConstants.ROOT_ANCESTORS, dept.getAncestors()))
         {
             // 如果该部门是启用状态，则启用该部门的所有上级部门
             updateParentDeptStatusNormal(dept);
@@ -293,12 +293,17 @@ public class SysDeptServiceImpl implements ISysDeptService
     {
         try
         {
+            List<SysDept> deptList = new ArrayList<>();
             for (int i = 0; i < deptIds.length; i++)
             {
                 SysDept dept = new SysDept();
                 dept.setDeptId(Convert.toLong(deptIds[i]));
                 dept.setOrderNum(Convert.toInt(orderNums[i]));
-                deptMapper.updateDeptSort(dept);
+                deptList.add(dept);
+            }
+            if (!deptList.isEmpty())
+            {
+                deptMapper.updateDeptSortBatch(deptList);
             }
         }
         catch (Exception e)

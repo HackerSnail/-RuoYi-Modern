@@ -1,5 +1,6 @@
 package com.ruoyi.system.service.impl;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -117,16 +118,28 @@ public class SysDictTypeServiceImpl implements ISysDictTypeService
      * @param dictIds 需要删除的字典ID
      */
     @Override
+    @Transactional
     public void deleteDictTypeByIds(Long[] dictIds)
     {
-        for (Long dictId : dictIds)
+        if (dictIds == null || dictIds.length == 0)
         {
-            SysDictType dictType = selectDictTypeById(dictId);
-            if (dictDataMapper.countDictDataByType(dictType.getDictType()) > 0)
+            return;
+        }
+        // 批量加载待删类型（1 次查询），再批量判断哪些类型已分配字典数据（1 次查询），
+        // 整体校验通过后一次性批量删除，避免逐行 select+count+delete 的 N+1
+        List<SysDictType> dictTypes = dictTypeMapper.selectDictTypeByIds(dictIds);
+        List<String> types = dictTypes.stream().map(SysDictType::getDictType).collect(Collectors.toList());
+        List<String> assigned = types.isEmpty() ? new ArrayList<>() : dictDataMapper.selectAssignedDictTypes(types);
+        for (SysDictType dictType : dictTypes)
+        {
+            if (assigned.contains(dictType.getDictType()))
             {
                 throw new ServiceException(String.format("%1$s已分配,不能删除", dictType.getDictName()));
             }
-            dictTypeMapper.deleteDictTypeById(dictId);
+        }
+        dictTypeMapper.deleteDictTypeByIds(dictIds);
+        for (SysDictType dictType : dictTypes)
+        {
             DictUtils.removeDictCache(dictType.getDictType());
         }
     }
@@ -138,7 +151,7 @@ public class SysDictTypeServiceImpl implements ISysDictTypeService
     public void loadingDictCache()
     {
         SysDictData dictData = new SysDictData();
-        dictData.setStatus("0");
+        dictData.setStatus(UserConstants.DICT_NORMAL);
         Map<String, List<SysDictData>> dictDataMap = dictDataMapper.selectDictDataList(dictData).stream().collect(Collectors.groupingBy(SysDictData::getDictType));
         for (Map.Entry<String, List<SysDictData>> entry : dictDataMap.entrySet())
         {

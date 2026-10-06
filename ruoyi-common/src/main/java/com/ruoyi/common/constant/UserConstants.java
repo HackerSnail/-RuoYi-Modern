@@ -45,6 +45,18 @@ public class UserConstants
     /** 是否菜单外链（否） */
     public static final String NO_FRAME = "1";
 
+    /** 菜单显示 */
+    public static final String MENU_SHOW = "0";
+
+    /** 菜单隐藏 */
+    public static final String MENU_HIDE = "1";
+
+    /** 菜单不缓存（is_cache=1） */
+    public static final String MENU_CACHE_NO = "1";
+
+    /** 顶级节点的祖级列表值 */
+    public static final String ROOT_ANCESTORS = "0";
+
     /** 菜单类型（目录） */
     public static final String TYPE_DIR = "M";
 

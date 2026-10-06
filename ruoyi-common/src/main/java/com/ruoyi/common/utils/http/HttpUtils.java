@@ -10,13 +10,7 @@ import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
-import java.security.cert.X509Certificate;
-import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.ruoyi.common.constant.Constants;
@@ -31,6 +25,33 @@ import org.springframework.http.MediaType;
 public class HttpUtils
 {
     private static final Logger log = LoggerFactory.getLogger(HttpUtils.class);
+
+    /** HTTP 请求头：Accept */
+    private static final String HEADER_ACCEPT = "accept";
+
+    /** Accept 通配取值 */
+    private static final String ACCEPT_ANY = "*/*";
+
+    /** HTTP 请求头：Connection */
+    private static final String HEADER_CONNECTION = "connection";
+
+    /** Connection 取值：长连接 */
+    private static final String CONNECTION_KEEP_ALIVE = "Keep-Alive";
+
+    /** HTTP 请求头：User-Agent */
+    private static final String HEADER_USER_AGENT = "user-agent";
+
+    /** 默认 User-Agent */
+    private static final String DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)";
+
+    /** HTTP 请求头：Accept-Charset */
+    private static final String HEADER_ACCEPT_CHARSET = "Accept-Charset";
+
+    /** Accept-Charset 取值 */
+    private static final String CHARSET_UTF8 = "utf-8";
+
+    /** HTTP 请求头：Content-Type */
+    private static final String HEADER_CONTENT_TYPE = "Content-Type";
 
     /**
      * 向指定 URL 发送GET方法的请求
@@ -66,22 +87,23 @@ public class HttpUtils
     public static String sendGet(String url, String param, String contentType)
     {
         StringBuilder result = new StringBuilder();
-        BufferedReader in = null;
         try
         {
             String urlNameString = StringUtils.isNotBlank(param) ? url + "?" + param : url;
             log.info("sendGet - {}", urlNameString);
             URL realUrl = new URL(urlNameString);
             URLConnection connection = realUrl.openConnection();
-            connection.setRequestProperty("accept", "*/*");
-            connection.setRequestProperty("connection", "Keep-Alive");
-            connection.setRequestProperty("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+            connection.setRequestProperty(HEADER_ACCEPT, ACCEPT_ANY);
+            connection.setRequestProperty(HEADER_CONNECTION, CONNECTION_KEEP_ALIVE);
+            connection.setRequestProperty(HEADER_USER_AGENT, DEFAULT_USER_AGENT);
             connection.connect();
-            in = new BufferedReader(new InputStreamReader(connection.getInputStream(), contentType));
-            String line;
-            while ((line = in.readLine()) != null)
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream(), contentType)))
             {
-                result.append(line);
+                String line;
+                while ((line = in.readLine()) != null)
+                {
+                    result.append(line);
+                }
             }
             log.info("recv - {}", result);
         }
@@ -100,20 +122,6 @@ public class HttpUtils
         catch (Exception e)
         {
             log.error("调用HttpsUtil.sendGet Exception, url=" + url + ",param=" + param, e);
-        }
-        finally
-        {
-            try
-            {
-                if (in != null)
-                {
-                    in.close();
-                }
-            }
-            catch (Exception ex)
-            {
-                log.error("调用in.close Exception, url=" + url + ",param=" + param, ex);
-            }
         }
         return result.toString();
     }
@@ -140,29 +148,31 @@ public class HttpUtils
      */
     public static String sendPost(String url, String param, String contentType)
     {
-        PrintWriter out = null;
-        BufferedReader in = null;
         StringBuilder result = new StringBuilder();
         try
         {
             log.info("sendPost - {}", url);
             URL realUrl = new URL(url);
             URLConnection conn = realUrl.openConnection();
-            conn.setRequestProperty("accept", "*/*");
-            conn.setRequestProperty("connection", "Keep-Alive");
-            conn.setRequestProperty("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
-            conn.setRequestProperty("Accept-Charset", "utf-8");
-            conn.setRequestProperty("Content-Type", contentType);
+            conn.setRequestProperty(HEADER_ACCEPT, ACCEPT_ANY);
+            conn.setRequestProperty(HEADER_CONNECTION, CONNECTION_KEEP_ALIVE);
+            conn.setRequestProperty(HEADER_USER_AGENT, DEFAULT_USER_AGENT);
+            conn.setRequestProperty(HEADER_ACCEPT_CHARSET, CHARSET_UTF8);
+            conn.setRequestProperty(HEADER_CONTENT_TYPE, contentType);
             conn.setDoOutput(true);
             conn.setDoInput(true);
-            out = new PrintWriter(conn.getOutputStream());
-            out.print(param);
-            out.flush();
-            in = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
-            String line;
-            while ((line = in.readLine()) != null)
+            try (PrintWriter out = new PrintWriter(conn.getOutputStream()))
             {
-                result.append(line);
+                out.print(param);
+                out.flush();
+            }
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8)))
+            {
+                String line;
+                while ((line = in.readLine()) != null)
+                {
+                    result.append(line);
+                }
             }
             log.info("recv - {}", result);
         }
@@ -182,24 +192,6 @@ public class HttpUtils
         {
             log.error("调用HttpsUtil.sendPost Exception, url=" + url + ",param=" + param, e);
         }
-        finally
-        {
-            try
-            {
-                if (out != null)
-                {
-                    out.close();
-                }
-                if (in != null)
-                {
-                    in.close();
-                }
-            }
-            catch (IOException ex)
-            {
-                log.error("调用in.close Exception, url=" + url + ",param=" + param, ex);
-            }
-        }
         return result.toString();
     }
 
@@ -215,34 +207,32 @@ public class HttpUtils
         try
         {
             log.info("sendSSLPost - {}", urlNameString);
-            SSLContext sc = SSLContext.getInstance("SSL");
-            sc.init(null, new TrustManager[] { new TrustAnyTrustManager() }, new java.security.SecureRandom());
             URL console = new URL(urlNameString);
+            // 使用 JVM 默认信任库与主机名校验，避免信任所有证书带来的中间人攻击风险
             HttpsURLConnection conn = (HttpsURLConnection) console.openConnection();
-            conn.setRequestProperty("accept", "*/*");
-            conn.setRequestProperty("connection", "Keep-Alive");
-            conn.setRequestProperty("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
-            conn.setRequestProperty("Accept-Charset", "utf-8");
-            conn.setRequestProperty("Content-Type", contentType);
+            conn.setRequestProperty(HEADER_ACCEPT, ACCEPT_ANY);
+            conn.setRequestProperty(HEADER_CONNECTION, CONNECTION_KEEP_ALIVE);
+            conn.setRequestProperty(HEADER_USER_AGENT, DEFAULT_USER_AGENT);
+            conn.setRequestProperty(HEADER_ACCEPT_CHARSET, CHARSET_UTF8);
+            conn.setRequestProperty(HEADER_CONTENT_TYPE, contentType);
             conn.setDoOutput(true);
             conn.setDoInput(true);
 
-            conn.setSSLSocketFactory(sc.getSocketFactory());
-            conn.setHostnameVerifier(new TrustAnyHostnameVerifier());
             conn.connect();
-            InputStream is = conn.getInputStream();
-            BufferedReader br = new BufferedReader(new InputStreamReader(is));
-            String ret = "";
-            while ((ret = br.readLine()) != null)
+            try (InputStream is = conn.getInputStream();
+                    BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8)))
             {
-                if (ret != null && !"".equals(ret.trim()))
+                String ret;
+                while ((ret = br.readLine()) != null)
                 {
-                    result.append(new String(ret.getBytes(StandardCharsets.ISO_8859_1), StandardCharsets.UTF_8));
+                    if (!ret.trim().isEmpty())
+                    {
+                        result.append(ret);
+                    }
                 }
             }
             log.info("recv - {}", result);
             conn.disconnect();
-            br.close();
         }
         catch (ConnectException e)
         {
@@ -261,33 +251,5 @@ public class HttpUtils
             log.error("调用HttpsUtil.sendSSLPost Exception, url=" + url + ",param=" + param, e);
         }
         return result.toString();
-    }
-
-    private static class TrustAnyTrustManager implements X509TrustManager
-    {
-        @Override
-        public void checkClientTrusted(X509Certificate[] chain, String authType)
-        {
-        }
-
-        @Override
-        public void checkServerTrusted(X509Certificate[] chain, String authType)
-        {
-        }
-
-        @Override
-        public X509Certificate[] getAcceptedIssuers()
-        {
-            return new X509Certificate[] {};
-        }
-    }
-
-    private static class TrustAnyHostnameVerifier implements HostnameVerifier
-    {
-        @Override
-        public boolean verify(String hostname, SSLSession session)
-        {
-            return true;
-        }
     }
 }

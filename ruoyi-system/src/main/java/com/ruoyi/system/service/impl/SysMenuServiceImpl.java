@@ -176,12 +176,12 @@ public class SysMenuServiceImpl implements ISysMenuService
         for (SysMenu menu : menus)
         {
             RouterVo router = new RouterVo();
-            router.setHidden("1".equals(menu.getVisible()));
+            router.setHidden(UserConstants.MENU_HIDE.equals(menu.getVisible()));
             router.setName(getRouteName(menu));
             router.setPath(getRouterPath(menu));
             router.setComponent(getComponent(menu));
             router.setQuery(menu.getQuery());
-            router.setMeta(new MetaVo(menu.getMenuName(), menu.getIcon(), StringUtils.equals("1", menu.getIsCache()), menu.getPath()));
+            router.setMeta(new MetaVo(menu.getMenuName(), menu.getIcon(), StringUtils.equals(UserConstants.MENU_CACHE_NO, menu.getIsCache()), menu.getPath()));
             List<SysMenu> cMenus = menu.getChildren();
             if (StringUtils.isNotEmpty(cMenus) && UserConstants.TYPE_DIR.equals(menu.getMenuType()))
             {
@@ -197,7 +197,7 @@ public class SysMenuServiceImpl implements ISysMenuService
                 children.setPath(menu.getPath());
                 children.setComponent(menu.getComponent());
                 children.setName(getRouteName(menu.getRouteName(), menu.getPath()));
-                children.setMeta(new MetaVo(menu.getMenuName(), menu.getIcon(), StringUtils.equals("1", menu.getIsCache()), menu.getPath()));
+                children.setMeta(new MetaVo(menu.getMenuName(), menu.getIcon(), StringUtils.equals(UserConstants.MENU_CACHE_NO, menu.getIsCache()), menu.getPath()));
                 children.setQuery(menu.getQuery());
                 childrenList.add(children);
                 router.setChildren(childrenList);
@@ -336,12 +336,17 @@ public class SysMenuServiceImpl implements ISysMenuService
     {
         try
         {
+            List<SysMenu> menuList = new ArrayList<>();
             for (int i = 0; i < menuIds.length; i++)
             {
                 SysMenu menu = new SysMenu();
                 menu.setMenuId(Convert.toLong(menuIds[i]));
                 menu.setOrderNum(Convert.toInt(orderNums[i]));
-                menuMapper.updateMenuSort(menu);
+                menuList.add(menu);
+            }
+            if (!menuList.isEmpty())
+            {
+                menuMapper.updateMenuSortBatch(menuList);
             }
         }
         catch (Exception e)

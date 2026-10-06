@@ -33,6 +33,7 @@
 		from sys_menu
     </sql>
     
+	<!-- 菜单列表查询：支持名称模糊/是否显示/状态过滤，按父ID+排序号排列（后台菜单管理页用） -->
     <select id="selectMenuList" parameterType="SysMenu" resultMap="SysMenuResult">
 		<include refid="selectMenuVo"/>
 		<where>
@@ -49,12 +50,14 @@
 		order by parent_id, order_num
 	</select>
 	
+	<!-- 查询所有目录(M)+菜单(C)类型且状态正常的记录（管理员角色直接返回全量树） -->
 	<select id="selectMenuTreeAll" resultMap="SysMenuResult">
 		select distinct m.menu_id, m.parent_id, m.menu_name, m.path, m.component, m.`query`, m.route_name, m.visible, m.status, ifnull(m.perms,'') as perms, m.is_frame, m.is_cache, m.menu_type, m.icon, m.order_num, m.create_time
 		from sys_menu m where m.menu_type in ('M', 'C') and m.status = 0
 		order by m.parent_id, m.order_num
 	</select>
 	
+	<!-- 按用户ID查询其角色关联的菜单列表（多表 JOIN: menu→role_menu→user_role→role）支持条件过滤 -->
 	<select id="selectMenuListByUserId" parameterType="SysMenu" resultMap="SysMenuResult">
 		select distinct m.menu_id, m.parent_id, m.menu_name, m.path, m.component, m.`query`, m.route_name, m.visible, m.status, ifnull(m.perms,'') as perms, m.is_frame, m.is_cache, m.menu_type, m.icon, m.order_num, m.create_time
 		from sys_menu m
@@ -74,6 +77,7 @@
 		order by m.parent_id, m.order_num
 	</select>
     
+	<!-- 按用户ID查询路由树（前端动态菜单核心查询：只取目录+菜单类型且用户角色正常的记录） -->
     <select id="selectMenuTreeByUserId" parameterType="Long" resultMap="SysMenuResult">
 		select distinct m.menu_id, m.parent_id, m.menu_name, m.path, m.component, m.`query`, m.route_name, m.visible, m.status, ifnull(m.perms,'') as perms, m.is_frame, m.is_cache, m.menu_type, m.icon, m.order_num, m.create_time
 		from sys_menu m
@@ -85,6 +89,7 @@
 		order by m.parent_id, m.order_num
 	</select>
 	
+	<!-- 按角色ID查询已分配的菜单ID列表；menuCheckStrictly=true 时排除父节点（父子不关联） -->
 	<select id="selectMenuListByRoleId" resultType="Long">
 		select m.menu_id
 		from sys_menu m
@@ -96,6 +101,7 @@
 		order by m.parent_id, m.order_num
 	</select>
 	
+	<!-- 查询所有非空的权限标识（全局去重，用于权限缓存初始化） -->
 	<select id="selectMenuPerms" resultType="String">
 		select distinct m.perms
 		from sys_menu m
@@ -103,6 +109,7 @@
 			 left join sys_user_role ur on rm.role_id = ur.role_id
 	</select>
 
+	<!-- 按用户ID查询其拥有的权限标识集合（登录时构建 LoginUser 的 permissions 字段） -->
 	<select id="selectMenuPermsByUserId" parameterType="Long" resultType="String">
 		select distinct m.perms
 		from sys_menu m
@@ -112,6 +119,7 @@
 		where m.status = '0' and r.status = '0' and ur.user_id = #{userId}
 	</select>
 	
+	<!-- 按角色ID查询该角色的权限标识集合（角色编辑/预览用） -->
 	<select id="selectMenuPermsByRoleId" parameterType="Long" resultType="String">
 		select distinct m.perms
 		from sys_menu m
@@ -119,25 +127,30 @@
 		where m.status = '0' and rm.role_id = #{roleId}
 	</select>
 	
+	<!-- 按主键查询单条菜单 -->
 	<select id="selectMenuById" parameterType="Long" resultMap="SysMenuResult">
 		<include refid="selectMenuVo"/>
 		where menu_id = #{menuId}
 	</select>
 	
+	<!-- 检查是否有子菜单（删除前调用，有子节点不允许删除） -->
 	<select id="hasChildByMenuId" resultType="Integer">
 	    select count(1) from sys_menu where parent_id = #{menuId}  
 	</select>
 	
+	<!-- 同一父菜单下菜单名唯一性校验（新增/修改时检查，limit 1 短路） -->
 	<select id="checkMenuNameUnique" parameterType="SysMenu" resultMap="SysMenuResult">
 		<include refid="selectMenuVo"/>
 		where menu_name= #{menuName} and parent_id = #{parentId} limit 1
 	</select>
 	
+	<!-- 按路由路径或路由名查询菜单（用于新增时检查路由冲突） -->
 	<select id="selectMenusByPathOrRouteName" parameterType="SysMenu" resultMap="SysMenuResult">
 		<include refid="selectMenuVo"/>
 		where menu_type in ('M', 'C') and (path = #{path} or path = #{routeName} or route_name = #{path} or route_name = #{routeName})
 	</select>
 	
+	<!-- 修改菜单：动态 SET，覆盖路由/权限/显示状态等全部可编辑字段 -->
 	<update id="updateMenu" parameterType="SysMenu">
 		update sys_menu
 		<set>
@@ -162,6 +175,7 @@
 		where menu_id = #{menuId}
 	</update>
 
+	<!-- 新增菜单：动态列拼接，menuId 可由调用方指定或自增，create_time 用 sysdate() -->
 	<insert id="insertMenu" parameterType="SysMenu">
 		insert into sys_menu(
 		<if test="menuId != null and menuId != 0">menu_id,</if>
@@ -204,6 +218,7 @@
 		)
 	</insert>
 
+	<!-- 单条菜单排序更新（保留用于单个拖动场景；批量用 updateMenuSortBatch） -->
 	<update id="updateMenuSort" parameterType="SysMenu">
 	    update sys_menu set order_num = #{orderNum} where menu_id = #{menuId}
 	</update>
@@ -224,6 +239,7 @@
 	    </foreach>
 	</update>
 
+	<!-- 物理删除单条菜单（前端删除前会检查无子菜单且无角色关联） -->
 	<delete id="deleteMenuById" parameterType="Long">
 	    delete from sys_menu where menu_id = #{menuId}
 	</delete>

@@ -27,6 +27,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         from sys_dept d
     </sql>
     
+	<!-- 查询部门列表（带条件动态过滤：ID/父ID/名称模糊/状态）+ 数据权限范围拼接 + 按父ID和排序号排列 -->
 	<select id="selectDeptList" parameterType="SysDept" resultMap="SysDeptResult">
         <include refid="selectDeptVo"/>
         where d.del_flag = '0'
@@ -47,6 +48,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		order by d.parent_id, d.order_num
     </select>
     
+	<!-- 根据角色ID查询已分配的部门ID列表；deptCheckStrictly为true时排除父节点（父子关联选择不互串） -->
     <select id="selectDeptListByRoleId" resultType="Long">
 		select d.dept_id
 		from sys_dept d
@@ -58,6 +60,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		order by d.parent_id, d.order_num
 	</select>
     
+	<!-- 按部门ID查询单条，并通过子查询附带父部门名称（parent_name）便于前端回显 -->
     <select id="selectDeptById" parameterType="Long" resultMap="SysDeptResult">
 		select d.dept_id, d.parent_id, d.ancestors, d.dept_name, d.order_num, d.leader, d.phone, d.email, d.status,
 			(select dept_name from sys_dept where dept_id = d.parent_id) parent_name
@@ -65,28 +68,34 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		where d.dept_id = #{deptId}
 	</select>
     
+    <!-- 检查该部门下是否存在未删除用户（删除部门前调用，返回 0 表示无用户可安全删除） -->
     <select id="checkDeptExistUser" parameterType="Long" resultType="int">
 		select count(1) from sys_user where dept_id = #{deptId} and del_flag = '0'
 	</select>
 	
+	<!-- 检查是否有未删除的子部门（limit 1 短路查询，返回 >0 表示有子节点不可删除） -->
 	<select id="hasChildByDeptId" parameterType="Long" resultType="int">
 		select count(1) from sys_dept
 		where del_flag = '0' and parent_id = #{deptId} limit 1
 	</select>
 	
+	<!-- 通过 ancestors 字段 find_in_set 递归查询所有子孙部门（不只直系子级） -->
 	<select id="selectChildrenDeptById" parameterType="Long" resultMap="SysDeptResult">
 		select * from sys_dept where find_in_set(#{deptId}, ancestors)
 	</select>
 	
+	<!-- 统计所有正常状态(status=0)且未删除的子孙部门数量（用于停用前判断是否有活跃下级） -->
 	<select id="selectNormalChildrenDeptById" parameterType="Long" resultType="int">
 		select count(*) from sys_dept where status = 0 and del_flag = '0' and find_in_set(#{deptId}, ancestors)
 	</select>
 	
+	<!-- 校验同一父部门下部门名称是否已存在（用于新增/修改时的唯一性检查，排除软删记录） -->
 	<select id="checkDeptNameUnique" resultMap="SysDeptResult">
 	    <include refid="selectDeptVo"/>
 		where dept_name=#{deptName} and parent_id = #{parentId} and del_flag = '0' limit 1
 	</select>
     
+	<!-- 新增部门：动态列拼接，仅插入非空字段；create_time 用 sysdate() 填充；deptId 可由调用方指定或自增 -->
     <insert id="insertDept" parameterType="SysDept">
  		insert into sys_dept(
  			<if test="deptId != null and deptId != 0">dept_id,</if>
@@ -115,6 +124,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
  		)
 	</insert>
 	
+	<!-- 修改部门信息：动态 SET，只更新传入的非空字段；update_time 始终刷新 -->
 	<update id="updateDept" parameterType="SysDept">
  		update sys_dept
  		<set>
@@ -132,6 +142,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
  		where dept_id = #{deptId}
 	</update>
 	
+	<!-- 批量修改子孙部门的 ancestors 字段（CASE WHEN 模式）：部门移动时重新计算祖级路径 -->
 	<update id="updateDeptChildren" parameterType="java.util.List">
 	    update sys_dept set ancestors =
 	    <foreach collection="depts" item="item" index="index"
@@ -145,6 +156,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	    </foreach>
 	</update>
 	 
+	<!-- 批量将部门状态设为正常(0)：用于上级部门恢复时联动下级 -->
 	<update id="updateDeptStatusNormal" parameterType="Long">
  	    update sys_dept set status = '0' where dept_id in 
  	    <foreach collection="array" item="deptId" open="(" separator="," close=")">
@@ -152,6 +164,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </foreach>
 	</update>
 	
+	<!-- 单条排序更新（保留用于单个部门拖动场景；批量场景用 updateDeptSortBatch） -->
 	<update id="updateDeptSort" parameterType="SysDept">
 		update sys_dept set order_num = #{orderNum} where dept_id = #{deptId}
 	</update>
@@ -172,6 +185,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		</foreach>
 	</update>
 	
+	<!-- 逻辑删除（软删除）：将 del_flag 置为 '2'，不物理删除数据 -->
 	<delete id="deleteDeptById" parameterType="Long">
 		update sys_dept set del_flag = '2' where dept_id = #{deptId}
 	</delete>

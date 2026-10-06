@@ -20,6 +20,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		from sys_dict_type
     </sql>
 
+	<!-- 分页查询字典类型列表：支持名称模糊/类型模糊/状态/创建时间范围等动态条件 -->
 	<select id="selectDictTypeList" parameterType="SysDictType" resultMap="SysDictTypeResult">
 	    <include refid="selectDictTypeVo"/>
 		<where>
@@ -41,10 +42,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	    </where>
 	</select>
 	
+	<!-- 查询所有字典类型（无过滤，用于启动时加载字典缓存到 Redis） -->
 	<select id="selectDictTypeAll" resultMap="SysDictTypeResult">
 		<include refid="selectDictTypeVo"/>
 	</select>
 	
+	<!-- 按单个 dict_id 查询字典类型 -->
 	<select id="selectDictTypeById" parameterType="Long" resultMap="SysDictTypeResult">
 		<include refid="selectDictTypeVo"/>
 		where dict_id = #{dictId}
@@ -59,20 +62,24 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		</foreach>
 	</select>
 	
+	<!-- 按类型字符串查询单条（用于缓存加载、下拉联动等场景） -->
 	<select id="selectDictTypeByType" parameterType="String" resultMap="SysDictTypeResult">
 		<include refid="selectDictTypeVo"/>
 		where dict_type = #{dictType}
 	</select>
 	
+	<!-- 校验 dict_type 全局唯一（新增时检查，存在则拒绝；limit 1 短路） -->
 	<select id="checkDictTypeUnique" parameterType="String" resultMap="SysDictTypeResult">
 		<include refid="selectDictTypeVo"/>
 		where dict_type = #{dictType} limit 1
 	</select>
 	
+	<!-- 物理删除单条字典类型 -->
 	<delete id="deleteDictTypeById" parameterType="Long">
  		delete from sys_dict_type where dict_id = #{dictId}
  	</delete>
  	
+ 	<!-- 物理批量删除字典类型（配合 @Transactional 原子删除流程） -->
  	<delete id="deleteDictTypeByIds" parameterType="Long">
  		delete from sys_dict_type where dict_id in
  		<foreach collection="array" item="dictId" open="(" separator="," close=")">
@@ -80,6 +87,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </foreach> 
  	</delete>
 
+ 	<!-- 修改字典类型：动态 SET，仅更新传入的非空字段 -->
  	<update id="updateDictType" parameterType="SysDictType">
  		update sys_dict_type
  		<set>
@@ -93,6 +101,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
  		where dict_id = #{dictId}
 	</update>
  	
+ 	<!-- 新增字典类型：动态列拼接，dict_type 全局唯一由前置校验保证 -->
  	<insert id="insertDictType" parameterType="SysDictType">
  		insert into sys_dict_type(
  			<if test="dictName != null and dictName != ''">dict_name,</if>

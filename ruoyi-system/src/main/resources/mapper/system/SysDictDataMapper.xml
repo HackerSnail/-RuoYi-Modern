@@ -25,6 +25,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		from sys_dict_data
     </sql>
 
+	<!-- 分页查询字典数据列表：支持按类型/标签模糊/状态过滤，按 dict_sort 升序 -->
 	<select id="selectDictDataList" parameterType="SysDictData" resultMap="SysDictDataResult">
 	    <include refid="selectDictDataVo"/>
 		<where>
@@ -41,21 +42,25 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		order by dict_sort asc
 	</select>
 	
+	<!-- 按字典类型查询所有正常状态数据（用于前端下拉框、缓存加载等场景） -->
 	<select id="selectDictDataByType" parameterType="String" resultMap="SysDictDataResult">
 		<include refid="selectDictDataVo"/>
 		where status = '0' and dict_type = #{dictType} order by dict_sort asc
 	</select>
 	
+	<!-- 按类型+键值精确查询字典标签（用于表格列显示时的值→标签转换） -->
 	<select id="selectDictLabel" resultType="String">
 		select dict_label from sys_dict_data
 		where dict_type = #{dictType} and dict_value = #{dictValue}
 	</select>
 	
+	<!-- 按主键查询单条字典数据 -->
 	<select id="selectDictDataById" parameterType="Long" resultMap="SysDictDataResult">
 		<include refid="selectDictDataVo"/>
 		where dict_code = #{dictCode}
 	</select>
 	
+	<!-- 统计指定类型下的字典数据数量（返回 >0 表示已分配，删除类型前检查用） -->
 	<select id="countDictDataByType" resultType="Integer">
 	    select count(1) from sys_dict_data where dict_type=#{dictType}  
 	</select>
@@ -68,10 +73,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	    </foreach>
 	</select>
 	
+	<!-- 物理删除单条字典数据 -->
 	<delete id="deleteDictDataById" parameterType="Long">
  		delete from sys_dict_data where dict_code = #{dictCode}
  	</delete>
  	
+ 	<!-- 物理批量删除字典数据 -->
  	<delete id="deleteDictDataByIds" parameterType="Long">
  		delete from sys_dict_data where dict_code in
  		<foreach collection="array" item="dictCode" open="(" separator="," close=")">
@@ -79,6 +86,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </foreach> 
  	</delete>
 	
+	<!-- 修改字典数据：动态 SET，仅更新传入的非空字段 -->
 	<update id="updateDictData" parameterType="SysDictData">
  		update sys_dict_data
  		<set>
@@ -97,10 +105,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
  		where dict_code = #{dictCode}
 	</update>
 	
+	<!-- 同步修改字典类型名：当 sys_dict_type.dict_type 变更时联动更新其下所有数据 -->
 	<update id="updateDictDataType" parameterType="String">
  		update sys_dict_data set dict_type = #{newDictType} where dict_type = #{oldDictType}
 	</update>
  	
+ 	<!-- 新增字典数据：动态列拼接，dict_type 关联到已存在的字典类型 -->
  	<insert id="insertDictData" parameterType="SysDictData">
  		insert into sys_dict_data(
  			<if test="dictSort != null">dict_sort,</if>

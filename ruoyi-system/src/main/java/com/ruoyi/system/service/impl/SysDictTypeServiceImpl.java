@@ -113,9 +113,13 @@ public class SysDictTypeServiceImpl implements ISysDictTypeService
     }
 
     /**
-     * 批量删除字典类型信息
-     * 
-     * @param dictIds 需要删除的字典ID
+     * 批量删除字典类型信息（原子优化）
+     *
+     * <p>将原“逐行 select+check+delete”（3N 次 DB）合并为三次批量查询，并加 @Transactional。
+     * 行为变更：只要待删类型中有任一个已被字典数据占用，则整体不删除并抛出异常，
+     * 消除了原代码“部分删除后才报错”的隐患。</p>
+     *
+     * @param dictIds 需要删除的字典类型ID数组
      */
     @Override
     @Transactional

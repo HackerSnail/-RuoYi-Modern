@@ -282,10 +282,13 @@ public class SysDeptServiceImpl implements ISysDeptService
     }
 
     /**
-     * 保存部门排序
+     * 保存部门排序（批量优化）
      *
-     * @param deptIds 部门ID数组
-     * @param orderNums 排序数组
+     * <p>将原来的 N 次单行 UPDATE 合并为 1 次 CASE WHEN 批量 UPDATE，
+     * 减少网络往返且保证原子性（@Transactional）。</p>
+     *
+     * @param deptIds   部门ID数组
+     * @param orderNums 对应的新排序号数组，与 deptIds 按下标一一对应
      */
     @Override
     @Transactional

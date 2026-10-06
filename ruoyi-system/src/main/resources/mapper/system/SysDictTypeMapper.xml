@@ -50,7 +50,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		where dict_id = #{dictId}
 	</select>
 	
-	<select id="selectDictTypeByIds" parameterType="Long" resultMap="SysDictTypeResult">
+	<!-- 按字典ID数组批量查询类型（用于 deleteDictTypeByIds 的原子校验流程） -->
+		<select id="selectDictTypeByIds" parameterType="Long" resultMap="SysDictTypeResult">
 		<include refid="selectDictTypeVo"/>
 		where dict_id in
 		<foreach collection="array" item="dictId" open="(" separator="," close=")">

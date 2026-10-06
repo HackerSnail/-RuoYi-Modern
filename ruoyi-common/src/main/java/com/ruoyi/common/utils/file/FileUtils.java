@@ -30,11 +30,14 @@ public class FileUtils
     public static String FILENAME_PATTERN = "[a-zA-Z0-9_\\-\\|\\.\\u4e00-\\u9fa5]+";
 
     /**
-     * 输出指定文件的byte数组
-     * 
+     * 输出指定文件的 byte 数组到给定的输出流
+     *
+     * <p>输入流（本地文件）使用 try-with-resources 自动关闭；输出流 {@code os} 由调用方传入，
+     * 在 finally 中关闭（保持原有“调用方负责关流”的语义）。</p>
+     *
      * @param filePath 文件路径
-     * @param os 输出流
-     * @return
+     * @param os       输出流（本方法不负责打开，但会关闭它）
+     * @throws IOException 文件不存在或读写异常
      */
     public static void writeBytes(String filePath, OutputStream os) throws IOException
     {

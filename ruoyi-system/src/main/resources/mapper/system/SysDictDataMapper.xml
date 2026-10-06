@@ -60,7 +60,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	    select count(1) from sys_dict_data where dict_type=#{dictType}  
 	</select>
 	
-	<select id="selectAssignedDictTypes" resultType="String">
+		<!-- 批量筛出已被 sys_dict_data 占用（即“已分配”）的字典类型，用于删除前的原子校验 -->
+		<select id="selectAssignedDictTypes" resultType="String">
 	    select distinct dict_type from sys_dict_data where dict_type in
 	    <foreach collection="dictTypes" item="dictType" open="(" separator="," close=")">
 	        #{dictType}

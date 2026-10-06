@@ -161,6 +161,7 @@ public class HttpUtils
             conn.setRequestProperty(HEADER_CONTENT_TYPE, contentType);
             conn.setDoOutput(true);
             conn.setDoInput(true);
+            // 写请求体与读响应必须分属独立 TWR 块：先关 out 触发 body-end，再开 in 读响应（保持原 finally 语义）
             try (PrintWriter out = new PrintWriter(conn.getOutputStream()))
             {
                 out.print(param);

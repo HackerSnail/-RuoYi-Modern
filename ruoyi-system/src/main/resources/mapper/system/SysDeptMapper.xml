@@ -156,7 +156,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		update sys_dept set order_num = #{orderNum} where dept_id = #{deptId}
 	</update>
 	
-	<update id="updateDeptSortBatch" parameterType="java.util.List">
+	<!-- 批量更新部门排序（CASE WHEN 模式）：将 N 次单行 UPDATE 合并为 1 次网络往返，
+	         set order_num = case dept_id when id1 then val1 ... else order_num end where dept_id in (...) -->
+		<update id="updateDeptSortBatch" parameterType="java.util.List">
 		update sys_dept
 		set order_num = case dept_id
 		<foreach collection="list" item="item">

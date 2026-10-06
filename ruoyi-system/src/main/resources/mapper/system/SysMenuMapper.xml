@@ -208,7 +208,9 @@
 	    update sys_menu set order_num = #{orderNum} where menu_id = #{menuId}
 	</update>
 
-	<update id="updateMenuSortBatch" parameterType="java.util.List">
+	<!-- 批量更新菜单排序（CASE WHEN 模式）：将 N 次单行 UPDATE 合并为 1 次网络往返，
+	         set order_num = case menu_id when id1 then val1 ... else order_num end where menu_id in (...) -->
+		<update id="updateMenuSortBatch" parameterType="java.util.List">
 	    update sys_menu
 	    set order_num = case menu_id
 	    <foreach collection="list" item="item">

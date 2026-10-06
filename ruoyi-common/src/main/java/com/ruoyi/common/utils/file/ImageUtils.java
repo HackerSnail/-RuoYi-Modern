@@ -22,6 +22,14 @@ public class ImageUtils
 {
     private static final Logger log = LoggerFactory.getLogger(ImageUtils.class);
 
+    /**
+     * 读取图片文件为字节数组
+     *
+     * <p>内部使用 try-with-resources 管理输入流，异常时返回 null 并记录日志。</p>
+     *
+     * @param imagePath 图片路径（支持 http/local 两种形式）
+     * @return 图片字节数组，失败返回 null
+     */
     public static byte[] getImage(String imagePath)
     {
         try (InputStream is = getFile(imagePath))
@@ -35,6 +43,12 @@ public class ImageUtils
         }
     }
 
+    /**
+     * 获取图片的 InputStream（内部委托 readFile 读取后包装为 ByteArrayInputStream）
+     *
+     * @param imagePath 图片路径
+     * @return 输入流，失败返回 null
+     */
     public static InputStream getFile(String imagePath)
     {
         try
@@ -52,9 +66,11 @@ public class ImageUtils
 
     /**
      * 读取文件为字节数据
-     * 
-     * @param url 地址
-     * @return 字节数据
+     *
+     * <p>支持 http(s) 网络地址与本地文件路径两种分支，各自用独立 TWR 块管理 InputStream。</p>
+     *
+     * @param url 地址（以 "http" 开头则为网络地址，否则为本机路径）
+     * @return 字节数据，失败返回 null
      */
     public static byte[] readFile(String url)
     {

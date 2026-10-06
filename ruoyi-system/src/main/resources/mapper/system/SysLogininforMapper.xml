@@ -16,11 +16,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		<result property="loginTime"     column="login_time"        />
 	</resultMap>
 
+	<!-- 记录登录日志（登录成功/失败、验证码过期等事件异步写入） -->
 	<insert id="insertLogininfor" parameterType="SysLogininfor">
 		insert into sys_logininfor (user_name, status, ipaddr, login_location, browser, os, msg, login_time)
 		values (#{userName}, #{status}, #{ipaddr}, #{loginLocation}, #{browser}, #{os}, #{msg}, sysdate())
 	</insert>
 	
+	<!-- 分页查询登录日志：支持IP模糊/状态/用户名模糊/时间范围，按ID倒序 -->
 	<select id="selectLogininforList" parameterType="SysLogininfor" resultMap="SysLogininforResult">
 		select info_id, user_name, ipaddr, login_location, browser, os, status, msg, login_time from sys_logininfor
 		<where>
@@ -43,6 +45,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		order by info_id desc
 	</select>
 	
+	<!-- 批量删除指定登录日志 -->
 	<delete id="deleteLogininforByIds" parameterType="Long">
  		delete from sys_logininfor where info_id in
  		<foreach collection="array" item="infoId" open="(" separator="," close=")">
@@ -50,6 +53,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </foreach> 
  	</delete>
     
+	<!-- 清空所有登录日志（truncate，重置自增ID，系统监控页“清空”按钮用） -->
     <update id="cleanLogininfor">
         truncate table sys_logininfor
     </update>

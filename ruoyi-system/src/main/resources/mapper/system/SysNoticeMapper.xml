@@ -17,16 +17,19 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="remark"         column="remark"          />
     </resultMap>
     
+    <!-- 公告表通用查询列：notice_content 用 cast(... as char) 将 BLOB/TEXT 转为字符串便于 resultMap 映射 -->
     <sql id="selectNoticeVo">
         select notice_id, notice_title, notice_type, cast(notice_content as char) as notice_content, status, create_by, create_time, update_by, update_time, remark 
 		from sys_notice
     </sql>
     
+    <!-- 按公告ID查询单条公告（详情页/编辑回显用） -->
     <select id="selectNoticeById" parameterType="Long" resultMap="SysNoticeResult">
         <include refid="selectNoticeVo"/>
         where notice_id = #{noticeId}
     </select>
     
+    <!-- 分页查询公告列表：支持标题模糊/类型精确/创建人模糊，按ID倒序（后台公告管理页用） -->
     <select id="selectNoticeList" parameterType="SysNotice" resultMap="SysNoticeResult">
         <include refid="selectNoticeVo"/>
         <where>
@@ -43,6 +46,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		order by notice_id desc
     </select>
     
+    <!-- 新增公告：动态列插入，仅写入非空字段，create_time 由 sysdate() 填充 -->
     <insert id="insertNotice" parameterType="SysNotice">
         insert into sys_notice (
 			<if test="noticeTitle != null and noticeTitle != '' ">notice_title, </if>
@@ -63,6 +67,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		)
     </insert>
 	 
+    <!-- 修改公告：动态 SET 仅更新非空字段（notice_content 允许清空故只判 null 不判空串），update_time 强制刷新 -->
     <update id="updateNotice" parameterType="SysNotice">
         update sys_notice 
         <set>
@@ -76,10 +81,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where notice_id = #{noticeId}
     </update>
 	
+    <!-- 按ID删除单条公告 -->
     <delete id="deleteNoticeById" parameterType="Long">
         delete from sys_notice where notice_id = #{noticeId}
     </delete>
     
+    <!-- 批量删除公告（公告管理页勾选多行删除） -->
     <delete id="deleteNoticeByIds" parameterType="Long">
         delete from sys_notice where notice_id in 
         <foreach item="noticeId" collection="array" open="(" separator="," close=")">

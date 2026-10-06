@@ -20,11 +20,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		<result property="remark"         column="remark"          />
 	</resultMap>
 	
+	<!-- 定时任务通用查询列 -->
 	<sql id="selectJobVo">
         select job_id, job_name, job_group, invoke_target, cron_expression, misfire_policy, concurrent, status, create_by, create_time, update_by, update_time, remark  
 		from sys_job
     </sql>
 	
+	<!-- 分页查询定时任务列表：支持任务名模糊/组精确/状态/调用目标模糊 -->
 	<select id="selectJobList" parameterType="SysJob" resultMap="SysJobResult">
 		<include refid="selectJobVo"/>
 		<where>
@@ -43,19 +45,23 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		</where>
 	</select>
 	
+	<!-- 查询全部定时任务（启动时加载到 Quartz 调度器） -->
 	<select id="selectJobAll" resultMap="SysJobResult">
 		<include refid="selectJobVo"/>
 	</select>
 	
+	<!-- 按ID查询单个定时任务 -->
 	<select id="selectJobById" parameterType="Long" resultMap="SysJobResult">
 		<include refid="selectJobVo"/>
 		where job_id = #{jobId}
 	</select>
 	
+	<!-- 删除单个定时任务（物理删除，调度器侧同步移除） -->
 	<delete id="deleteJobById" parameterType="Long">
  		delete from sys_job where job_id = #{jobId}
  	</delete>
  	
+ 	<!-- 批量删除定时任务 -->
  	<delete id="deleteJobByIds" parameterType="Long">
  		delete from sys_job where job_id in
  		<foreach collection="array" item="jobId" open="(" separator="," close=")">
@@ -63,6 +69,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </foreach> 
  	</delete>
  	
+ 	<!-- 修改定时任务：动态 SET 仅更新非空字段（status 判 null 以保留 0），update_time 强制刷新 -->
  	<update id="updateJob" parameterType="SysJob">
  		update sys_job
  		<set>
@@ -80,6 +87,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
  		where job_id = #{jobId}
 	</update>
  	
+ 	<!-- 新增定时任务：useGeneratedKeys 回写自增主键到 jobId，动态列仅插非空字段 -->
  	<insert id="insertJob" parameterType="SysJob" useGeneratedKeys="true" keyProperty="jobId">
  		insert into sys_job(
  			<if test="jobId != null and jobId != 0">job_id,</if>

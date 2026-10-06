@@ -17,11 +17,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		<result property="createTime"     column="create_time"     />
 	</resultMap>
 	
+	<!-- 定时任务日志通用查询列 -->
 	<sql id="selectJobLogVo">
         select job_log_id, job_name, job_group, invoke_target, job_message, status, exception_info, start_time, end_time, create_time 
 		from sys_job_log
     </sql>
 	
+	<!-- 分页查询调度日志：支持任务名模糊/组精确/状态/调用目标模糊 + 创建时间范围，按时间倒序 -->
 	<select id="selectJobLogList" parameterType="SysJobLog" resultMap="SysJobLogResult">
 		<include refid="selectJobLogVo"/>
 		<where>
@@ -47,19 +49,23 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		order by create_time desc
 	</select>
 	
+	<!-- 查询全部调度日志（无过滤） -->
 	<select id="selectJobLogAll" resultMap="SysJobLogResult">
 		<include refid="selectJobLogVo"/>
 	</select>
 	
+	<!-- 按ID查询单条调度日志（详情弹窗用） -->
 	<select id="selectJobLogById" parameterType="Long" resultMap="SysJobLogResult">
 		<include refid="selectJobLogVo"/>
 		where job_log_id = #{jobLogId}
 	</select>
 	
+	<!-- 删除单条调度日志 -->
 	<delete id="deleteJobLogById" parameterType="Long">
  		delete from sys_job_log where job_log_id = #{jobLogId}
  	</delete>
  	
+ 	<!-- 批量删除指定调度日志 -->
  	<delete id="deleteJobLogByIds" parameterType="Long">
  		delete from sys_job_log where job_log_id in
  		<foreach collection="array" item="jobLogId" open="(" separator="," close=")">
@@ -67,10 +73,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </foreach> 
  	</delete>
  	
+ 	<!-- 清空所有调度日志（truncate，重置自增ID，调度日志页“清空”按钮用） -->
  	<update id="cleanJobLog">
         truncate table sys_job_log
     </update>
  	
+ 	<!-- 新增调度日志（任务执行后异步写入，记录调用目标/结果/异常/起止时间） -->
  	<insert id="insertJobLog" parameterType="SysJobLog">
  		insert into sys_job_log(
  			<if test="jobLogId != null and jobLogId != 0">job_log_id,</if>

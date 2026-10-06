@@ -4,6 +4,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.ruoyi.system.mapper.SysUserMapper">
 
+    <!-- 用户主结果集：association 内嵌部门对象，collection 内嵌角色列表（一次 JOIN 查询装配一用户多角色） -->
     <resultMap type="SysUser" id="SysUserResult">
         <id     property="userId"        column="user_id"         />
         <result property="deptId"        column="dept_id"         />
@@ -28,6 +29,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <collection  property="roles"    javaType="java.util.List"  resultMap="RoleResult" />
     </resultMap>
 	
+    <!-- 部门内嵌结果集（dept_status 别名列避免与用户 status 冲突） -->
     <resultMap id="deptResult" type="SysDept">
         <id     property="deptId"    column="dept_id"     />
         <result property="parentId"  column="parent_id"   />
@@ -38,6 +40,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="status"    column="dept_status" />
     </resultMap>
 	
+    <!-- 角色内嵌结果集（role_status 别名列避免与用户 status 冲突） -->
     <resultMap id="RoleResult" type="SysRole">
         <id     property="roleId"       column="role_id"        />
         <result property="roleName"     column="role_name"      />
@@ -47,6 +50,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="status"       column="role_status"    />
     </resultMap>
 	
+	<!-- 用户完整查询视图：LEFT JOIN 部门+用户角色关联+角色，一次性带出 dept 与 roles 集合（登录/详情用） -->
 	<sql id="selectUserVo">
         select u.user_id, u.dept_id, u.user_name, u.nick_name, u.email, u.avatar, u.phonenumber, u.password, u.sex, u.status, u.del_flag, u.login_ip, u.login_date, u.pwd_update_date, u.create_by, u.create_time, u.update_by, u.update_time, u.remark, 
         d.dept_id, d.parent_id, d.ancestors, d.dept_name, d.order_num, d.leader, d.status as dept_status,
@@ -57,6 +61,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		    left join sys_role r on r.role_id = ur.role_id
     </sql>
     
+    <!-- 分页查询用户列表：仅取列表所需列+JOIN部门，过滤未删除，支持ID/登录名模糊/状态/手机号模糊/时间范围/部门（含find_in_set子部门递归）+数据范围 -->
     <select id="selectUserList" parameterType="SysUser" resultMap="SysUserResult">
 		select u.user_id, u.dept_id, u.nick_name, u.user_name, u.email, u.avatar, u.phonenumber, u.sex, u.status, u.del_flag, u.login_ip, u.login_date, u.create_by, u.create_time, u.remark, d.dept_name, d.leader from sys_user u
 		left join sys_dept d on u.dept_id = d.dept_id
@@ -86,6 +91,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		${params.dataScope}
 	</select>
 	
+	<!-- 角色已分配用户列表：JOIN user_role/role 取 role_id=当前角色的用户，distinct 去重，支持登录名/手机号模糊+数据范围 -->
 	<select id="selectAllocatedList" parameterType="SysUser" resultMap="SysUserResult">
 	    select distinct u.user_id, u.dept_id, u.user_name, u.nick_name, u.email, u.phonenumber, u.status, u.create_time
 	    from sys_user u
@@ -103,6 +109,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		${params.dataScope}
 	</select>
 	
+	<!-- 角色未分配用户列表：取 role_id 不等于/不存在当前角色且不在已分配子查询中的用户，支持登录名/手机号模糊+数据范围 -->
 	<select id="selectUnallocatedList" parameterType="SysUser" resultMap="SysUserResult">
 	    select distinct u.user_id, u.dept_id, u.user_name, u.nick_name, u.email, u.phonenumber, u.status, u.create_time
 	    from sys_user u
@@ -121,28 +128,34 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		${params.dataScope}
 	</select>
 	
+	<!-- 按登录名查询用户（含部门+角色）：登录认证核心查询，过滤未删除 -->
 	<select id="selectUserByUserName" parameterType="String" resultMap="SysUserResult">
 	    <include refid="selectUserVo"/>
 		where u.user_name = #{userName} and u.del_flag = '0'
 	</select>
 	
+	<!-- 按主键ID查询用户（含部门+角色） -->
 	<select id="selectUserById" parameterType="Long" resultMap="SysUserResult">
 		<include refid="selectUserVo"/>
 		where u.user_id = #{userId}
 	</select>
 	
+	<!-- 校验登录名是否唯一（仅比对未删除）：只查必要两列 + limit 1 短路 -->
 	<select id="checkUserNameUnique" parameterType="String" resultMap="SysUserResult">
 		select user_id, user_name from sys_user where user_name = #{userName} and del_flag = '0' limit 1
 	</select>
 	
+	<!-- 校验手机号是否唯一（仅比对未删除）：只查必要两列 + limit 1 短路 -->
 	<select id="checkPhoneUnique" parameterType="String" resultMap="SysUserResult">
 		select user_id, phonenumber from sys_user where phonenumber = #{phonenumber} and del_flag = '0' limit 1
 	</select>
 	
+	<!-- 校验邮箱是否唯一（仅比对未删除）：只查必要两列 + limit 1 短路 -->
 	<select id="checkEmailUnique" parameterType="String" resultMap="SysUserResult">
 		select user_id, email from sys_user where email = #{email} and del_flag = '0' limit 1
 	</select>
 	
+	<!-- 新增用户：useGeneratedKeys 回写自增主键到 userId，动态列仅插非空字段，create_time 由 sysdate() 填充 -->
 	<insert id="insertUser" parameterType="SysUser" useGeneratedKeys="true" keyProperty="userId">
  		insert into sys_user(
  			<if test="userId != null and userId != 0">user_id,</if>
@@ -177,6 +190,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
  		)
 	</insert>
 	
+	<!-- 修改用户：动态 SET（deptId!=0 避免误置空部门，email/phonenumber/remark 允许置空故只判 null），update_time 强制刷新 -->
 	<update id="updateUser" parameterType="SysUser">
  		update sys_user
  		<set>
@@ -197,26 +211,32 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
  		where user_id = #{userId}
 	</update>
 	
+	<!-- 修改用户状态（启用/停用开关） -->
 	<update id="updateUserStatus" parameterType="SysUser">
  		update sys_user set status = #{status}, update_time = sysdate() where user_id = #{userId}
 	</update>
 	
+	<!-- 更新用户头像（个人中心上传头像后回写） -->
 	<update id="updateUserAvatar" parameterType="SysUser">
  		update sys_user set avatar = #{avatar}, update_time = sysdate() where user_id = #{userId}
 	</update>
 	
+  	<!-- 登录成功后回写登录IP与登录时间（不影响 update_time） -->
   	<update id="updateLoginInfo" parameterType="SysUser">
  		update sys_user set login_ip = #{loginIp}, login_date = #{loginDate} where user_id = #{userId}
 	</update>
 	
+	<!-- 重置密码：同时刷新 pwd_update_date（密码有效期锤计）与新密码 -->
 	<update id="resetUserPwd" parameterType="SysUser">
  		update sys_user set pwd_update_date = sysdate(), password = #{password}, update_time = sysdate() where user_id = #{userId}
 	</update>
 	
+	<!-- 删除单个用户（软删除：置 del_flag='2'，保留数据可恢复） -->
 	<delete id="deleteUserById" parameterType="Long">
  		update sys_user set del_flag = '2' where user_id = #{userId}
  	</delete>
  	
+ 	<!-- 批量软删除用户（置 del_flag='2'） -->
  	<delete id="deleteUserByIds" parameterType="Long">
  		update sys_user set del_flag = '2' where user_id in
  		<foreach collection="array" item="userId" open="(" separator="," close=")">

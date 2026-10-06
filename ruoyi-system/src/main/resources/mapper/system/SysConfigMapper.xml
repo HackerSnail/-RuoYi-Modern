@@ -16,12 +16,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="updateTime"    column="update_time"    />
     </resultMap>
     
+    <!-- 参数配置表通用查询列 -->
     <sql id="selectConfigVo">
         select config_id, config_name, config_key, config_value, config_type, create_by, create_time, update_by, update_time, remark 
 		from sys_config
     </sql>
     
-    <!-- 查询条件 -->
+    <!-- 公共查询条件片段：按 config_id 或 config_key 精确定位（供 selectConfig 复用） -->
 	<sql id="sqlwhereSearch">
 		<where>
 			<if test="configId !=null">
@@ -33,11 +34,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		</where>
 	</sql>
     
+    <!-- 按条件（ID/键名）查询单个参数（Redis 缓存未命中时回源查库） -->
     <select id="selectConfig" parameterType="SysConfig" resultMap="SysConfigResult">
         <include refid="selectConfigVo"/>
         <include refid="sqlwhereSearch"/>
     </select>
     
+    <!-- 分页查询参数列表：支持名称模糊/类型精确/键名模糊 + 创建时间范围 -->
     <select id="selectConfigList" parameterType="SysConfig" resultMap="SysConfigResult">
         <include refid="selectConfigVo"/>
         <where>
@@ -59,16 +62,19 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		</where>
     </select>
     
+    <!-- 按主键ID查询单个参数 -->
     <select id="selectConfigById" parameterType="Long" resultMap="SysConfigResult">
         <include refid="selectConfigVo"/>
         where config_id = #{configId}
     </select>
 	
+    <!-- 校验参数键名是否唯一（新增/修改前检查）：limit 1 短路查询，命中即返回 -->
     <select id="checkConfigKeyUnique" parameterType="String" resultMap="SysConfigResult">
         <include refid="selectConfigVo"/>
         where config_key = #{configKey} limit 1
     </select>
     
+    <!-- 新增参数：动态列插入仅写非空字段，create_time 由 sysdate() 填充 -->
     <insert id="insertConfig" parameterType="SysConfig">
         insert into sys_config (
 			<if test="configName != null and configName != '' ">config_name,</if>
@@ -89,6 +95,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		)
     </insert>
 	 
+    <!-- 修改参数：动态 SET 仅更新非空字段（remark 允许置空故只判 null），update_time 强制刷新 -->
     <update id="updateConfig" parameterType="SysConfig">
         update sys_config 
         <set>
@@ -103,10 +110,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where config_id = #{configId}
     </update>
 	
+    <!-- 按ID删除单个参数 -->
     <delete id="deleteConfigById" parameterType="Long">
         delete from sys_config where config_id = #{configId}
     </delete>
     
+    <!-- 批量删除参数（参数管理页勾选多行删除） -->
     <delete id="deleteConfigByIds" parameterType="Long">
         delete from sys_config where config_id in 
         <foreach item="configId" collection="array" open="(" separator="," close=")">

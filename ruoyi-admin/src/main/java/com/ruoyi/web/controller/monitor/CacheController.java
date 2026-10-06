@@ -36,6 +36,7 @@ public class CacheController
 
     private final static List<SysCache> caches = new ArrayList<SysCache>();
     {
+        // 预置缓存名称与中文说明的映射，供前端监控页下拉框展示（key 前缀 -> 业务含义）
         caches.add(new SysCache(CacheConstants.LOGIN_TOKEN_KEY, "用户信息"));
         caches.add(new SysCache(CacheConstants.SYS_CONFIG_KEY, "配置信息"));
         caches.add(new SysCache(CacheConstants.SYS_DICT_KEY, "数据字典"));
@@ -45,6 +46,9 @@ public class CacheController
         caches.add(new SysCache(CacheConstants.PWD_ERR_CNT_KEY, "密码错误次数"));
     }
 
+    /**
+     * 获取 Redis 服务器信息：基本信息 + 库键数量 + 命令统计（拆分为饼图数据）
+     */
     @SuppressWarnings("deprecation")
     @PreAuthorize("@ss.hasPermi('monitor:cache:list')")
     @GetMapping()
@@ -58,6 +62,7 @@ public class CacheController
         result.put("info", info);
         result.put("dbSize", dbSize);
 
+        // 将 cmdstat_xxx=calls=N,usec=... 形式的命令统计行解析为前端饼图所需的 name/value 列表
         List<Map<String, String>> pieList = new ArrayList<>();
         commandStats.stringPropertyNames().forEach(key -> {
             Map<String, String> data = new HashMap<>(2);
@@ -77,6 +82,9 @@ public class CacheController
         return AjaxResult.success(caches);
     }
 
+    /**
+     * 按缓存名前缀列出对应的所有缓存键（用 TreeSet 去重并排序）
+     */
     @PreAuthorize("@ss.hasPermi('monitor:cache:list')")
     @GetMapping("/getKeys/{cacheName}")
     public AjaxResult getCacheKeys(@PathVariable String cacheName)
@@ -94,6 +102,9 @@ public class CacheController
         return AjaxResult.success(sysCache);
     }
 
+    /**
+     * 清空指定缓存名下的所有键（按前缀匹配批量删除）
+     */
     @PreAuthorize("@ss.hasPermi('monitor:cache:list')")
     @DeleteMapping("/clearCacheName/{cacheName}")
     public AjaxResult clearCacheName(@PathVariable String cacheName)
@@ -111,6 +122,9 @@ public class CacheController
         return AjaxResult.success();
     }
 
+    /**
+     * 清空所有缓存（keys * 扫描全部键后删除，仅用于监控页手动清理）
+     */
     @PreAuthorize("@ss.hasPermi('monitor:cache:list')")
     @DeleteMapping("/clearCacheAll")
     public AjaxResult clearCacheAll()

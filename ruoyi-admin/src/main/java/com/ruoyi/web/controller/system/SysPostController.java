@@ -46,6 +46,9 @@ public class SysPostController extends BaseController
         return getDataTable(list);
     }
     
+    /**
+     * 导出岗位列表
+     */
     @Log(title = "岗位管理", businessType = BusinessType.EXPORT)
     @PreAuthorize("@ss.hasPermi('system:post:export')")
     @PostMapping("/export")

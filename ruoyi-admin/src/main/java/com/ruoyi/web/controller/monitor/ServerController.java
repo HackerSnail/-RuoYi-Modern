@@ -16,6 +16,9 @@ import com.ruoyi.framework.web.domain.Server;
 @RequestMapping("/monitor/server")
 public class ServerController
 {
+    /**
+     * 获取服务器监控信息：copyTo() 采集 JVM/CPU/内存/磁盘/运行时等指标后返回
+     */
     @PreAuthorize("@ss.hasPermi('monitor:server:list')")
     @GetMapping()
     public AjaxResult getInfo() throws Exception

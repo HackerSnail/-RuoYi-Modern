@@ -40,6 +40,9 @@ public class SysDictDataController extends BaseController
     @Autowired
     private ISysDictTypeService dictTypeService;
 
+    /**
+     * 获取字典数据列表
+     */
     @PreAuthorize("@ss.hasPermi('system:dict:list')")
     @GetMapping("/list")
     public TableDataInfo list(SysDictData dictData)
@@ -49,6 +52,9 @@ public class SysDictDataController extends BaseController
         return getDataTable(list);
     }
 
+    /**
+     * 导出字典数据列表
+     */
     @Log(title = "字典数据", businessType = BusinessType.EXPORT)
     @PreAuthorize("@ss.hasPermi('system:dict:export')")
     @PostMapping("/export")
@@ -70,7 +76,7 @@ public class SysDictDataController extends BaseController
     }
 
     /**
-     * 根据字典类型查询字典数据信息
+     * 根据字典类型查询字典数据（优先走字典缓存，未命中时返回空列表而非 null）
      */
     @GetMapping(value = "/type/{dictType}")
     public AjaxResult dictType(@PathVariable String dictType)

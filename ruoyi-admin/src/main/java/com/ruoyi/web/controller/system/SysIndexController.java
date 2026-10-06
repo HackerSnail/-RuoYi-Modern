@@ -38,7 +38,7 @@ public class SysIndexController
     }
 
     /**
-     * 解锁屏幕
+     * 解锁屏幕：息屏锁定后，重新校验当前登录用户密码以解锁（不重新登录）
      */
     @PostMapping("/unlockscreen")
     public AjaxResult unlockScreen(@RequestBody Map<String, String> body)
@@ -54,6 +54,7 @@ public class SysIndexController
         {
             return AjaxResult.error("服务器超时，请重新登录");
         }
+        // BCrypt 比对输入的明文密码与库中密文，不匹配则拒绝解锁
         if (!SecurityUtils.matchesPassword(password, user.getPassword()))
         {
             return AjaxResult.error("密码错误，请重新输入");

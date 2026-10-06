@@ -21,6 +21,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
  * swagger 用户测试方法
+ * <p>
+ * 仅用于演示 Swagger/OpenAPI 注解与增删改查接口形态，数据存在内存 LinkedHashMap 中，重启即丢失。
  *
  * @author ruoyi
  */
@@ -31,6 +33,7 @@ public class TestController extends BaseController
 {
     private final static Map<Integer, UserEntity> users = new LinkedHashMap<Integer, UserEntity>();
     {
+        // 初始化两条演示数据（实例初始化块，随首个实例创建时填充）
         users.put(1, new UserEntity(1, "admin", "admin123", "15888888888"));
         users.put(2, new UserEntity(2, "ry", "admin123", "15666666666"));
     }

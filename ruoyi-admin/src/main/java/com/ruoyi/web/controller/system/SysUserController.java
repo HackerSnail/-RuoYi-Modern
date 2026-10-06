@@ -65,6 +65,9 @@ public class SysUserController extends BaseController
         return getDataTable(list);
     }
 
+    /**
+     * 导出用户列表
+     */
     @Log(title = "用户管理", businessType = BusinessType.EXPORT)
     @PreAuthorize("@ss.hasPermi('system:user:export')")
     @PostMapping("/export")
@@ -75,6 +78,11 @@ public class SysUserController extends BaseController
         util.exportExcel(response, list, "用户数据");
     }
 
+    /**
+     * 导入用户数据
+     * 
+     * @param updateSupport 已存在的用户名是否更新其数据（false 则仅新增、重复报错）
+     */
     @Log(title = "用户管理", businessType = BusinessType.IMPORT)
     @PreAuthorize("@ss.hasPermi('system:user:import')")
     @PostMapping("/importData")
@@ -87,6 +95,9 @@ public class SysUserController extends BaseController
         return success(message);
     }
 
+    /**
+     * 下载用户导入模板
+     */
     @PostMapping("/importTemplate")
     public void importTemplate(HttpServletResponse response)
     {
@@ -111,6 +122,7 @@ public class SysUserController extends BaseController
             ajax.put("roleIds", sysUser.getRoles().stream().map(SysRole::getRoleId).collect(Collectors.toList()));
         }
         List<SysRole> roles = roleService.selectRoleAll();
+        // 非管理员不可见/不可授予超级管理员角色，过滤掉 isAdmin 的角色
         ajax.put("roles", SecurityUtils.isAdmin(userId) ? roles : roles.stream().filter(r -> !r.isAdmin()).collect(Collectors.toList()));
         ajax.put("posts", postService.selectPostAll());
         return ajax;
@@ -179,6 +191,7 @@ public class SysUserController extends BaseController
     @DeleteMapping("/{userIds}")
     public AjaxResult remove(@PathVariable Long[] userIds)
     {
+        // 拦截把当前登录用户自己删掉的误操作
         if (ArrayUtils.contains(userIds, getUserId()))
         {
             return error("当前用户不能删除");

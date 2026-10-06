@@ -31,6 +31,9 @@ public class SysOperlogController extends BaseController
     @Autowired
     private ISysOperLogService operLogService;
 
+    /**
+     * 获取操作日志列表
+     */
     @PreAuthorize("@ss.hasPermi('monitor:operlog:list')")
     @GetMapping("/list")
     public TableDataInfo list(SysOperLog operLog)
@@ -40,6 +43,9 @@ public class SysOperlogController extends BaseController
         return getDataTable(list);
     }
 
+    /**
+     * 导出操作日志
+     */
     @Log(title = "操作日志", businessType = BusinessType.EXPORT)
     @PreAuthorize("@ss.hasPermi('monitor:operlog:export')")
     @PostMapping("/export")
@@ -50,6 +56,9 @@ public class SysOperlogController extends BaseController
         util.exportExcel(response, list, "操作日志");
     }
 
+    /**
+     * 批量删除操作日志
+     */
     @Log(title = "操作日志", businessType = BusinessType.DELETE)
     @PreAuthorize("@ss.hasPermi('monitor:operlog:remove')")
     @DeleteMapping("/{operIds}")
@@ -58,6 +67,9 @@ public class SysOperlogController extends BaseController
         return toAjax(operLogService.deleteOperLogByIds(operIds));
     }
 
+    /**
+     * 清空操作日志
+     */
     @Log(title = "操作日志", businessType = BusinessType.CLEAN)
     @PreAuthorize("@ss.hasPermi('monitor:operlog:remove')")
     @DeleteMapping("/clean")

@@ -73,6 +73,7 @@ public class SysMenuController extends BaseController
     {
         List<SysMenu> menus = menuService.selectMenuList(getUserId());
         AjaxResult ajax = AjaxResult.success();
+        // checkedKeys 为该角色已分配的菜单 ID；menus 为当前用户可见的完整菜单树，供前端回显勾选
         ajax.put("checkedKeys", menuService.selectMenuListByRoleId(roleId));
         ajax.put("menus", menuService.buildMenuTreeSelect(menus));
         return ajax;
@@ -92,6 +93,7 @@ public class SysMenuController extends BaseController
         }
         else if (UserConstants.YES_FRAME.equals(menu.getIsFrame()) && !StringUtils.ishttp(menu.getPath()))
         {
+            // 外链菜单（isFrame=是）的路径必须是完整 http(s) 地址，否则前端无法正确跳转
             return error("新增菜单'" + menu.getMenuName() + "'失败，地址必须以http(s)://开头");
         }
         else if (!menuService.checkRouteConfigUnique(menu))

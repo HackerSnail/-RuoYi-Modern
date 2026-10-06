@@ -38,10 +38,16 @@ public class SysUserOnlineController extends BaseController
     @Autowired
     private RedisCache redisCache;
 
+    /**
+     * 获取在线用户列表
+     * <p>
+     * 在线状态源于 Redis 中的登录 token（非数据库），遍历全部 token 缓存并按 ip/用户名过滤。
+     */
     @PreAuthorize("@ss.hasPermi('monitor:online:list')")
     @GetMapping("/list")
     public TableDataInfo list(String ipaddr, String userName)
     {
+        // 扫描 LOGIN_TOKEN_KEY 前缀的全部缓存键，即当前持有的有效会话
         Collection<String> keys = redisCache.keys(CacheConstants.LOGIN_TOKEN_KEY + "*");
         List<SysUserOnline> userOnlineList = new ArrayList<SysUserOnline>();
         for (String key : keys)
@@ -65,12 +71,13 @@ public class SysUserOnlineController extends BaseController
             }
         }
         Collections.reverse(userOnlineList);
+        // 反转后最近的登录在前；不匹配过滤条件时 service 返回 null，统一剔除
         userOnlineList.removeAll(Collections.singleton(null));
         return getDataTable(userOnlineList);
     }
 
     /**
-     * 强退用户
+     * 强退用户：直接删除对应 token 缓存，该用户下次请求将因 token 失效而被踢下线
      */
     @PreAuthorize("@ss.hasPermi('monitor:online:forceLogout')")
     @Log(title = "在线用户", businessType = BusinessType.FORCE)

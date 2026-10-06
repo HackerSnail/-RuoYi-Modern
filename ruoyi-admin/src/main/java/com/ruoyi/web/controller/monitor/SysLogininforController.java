@@ -35,6 +35,9 @@ public class SysLogininforController extends BaseController
     @Autowired
     private SysPasswordService passwordService;
 
+    /**
+     * 获取登录日志列表
+     */
     @PreAuthorize("@ss.hasPermi('monitor:logininfor:list')")
     @GetMapping("/list")
     public TableDataInfo list(SysLogininfor logininfor)
@@ -44,6 +47,9 @@ public class SysLogininforController extends BaseController
         return getDataTable(list);
     }
 
+    /**
+     * 导出登录日志
+     */
     @Log(title = "登录日志", businessType = BusinessType.EXPORT)
     @PreAuthorize("@ss.hasPermi('monitor:logininfor:export')")
     @PostMapping("/export")
@@ -54,6 +60,9 @@ public class SysLogininforController extends BaseController
         util.exportExcel(response, list, "登录日志");
     }
 
+    /**
+     * 批量删除登录日志
+     */
     @PreAuthorize("@ss.hasPermi('monitor:logininfor:remove')")
     @Log(title = "登录日志", businessType = BusinessType.DELETE)
     @DeleteMapping("/{infoIds}")
@@ -62,6 +71,9 @@ public class SysLogininforController extends BaseController
         return toAjax(logininforService.deleteLogininforByIds(infoIds));
     }
 
+    /**
+     * 清空登录日志
+     */
     @PreAuthorize("@ss.hasPermi('monitor:logininfor:remove')")
     @Log(title = "登录日志", businessType = BusinessType.CLEAN)
     @DeleteMapping("/clean")
@@ -71,6 +83,9 @@ public class SysLogininforController extends BaseController
         return success();
     }
 
+    /**
+     * 账户解锁：清除密码错误次数缓存，解除因多次输错密码触发的锁定
+     */
     @PreAuthorize("@ss.hasPermi('monitor:logininfor:unlock')")
     @Log(title = "账户解锁", businessType = BusinessType.OTHER)
     @GetMapping("/unlock/{userName}")

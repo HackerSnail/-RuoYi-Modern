@@ -46,6 +46,9 @@ public class SysConfigController extends BaseController
         return getDataTable(list);
     }
 
+    /**
+     * 导出参数配置列表
+     */
     @Log(title = "参数管理", businessType = BusinessType.EXPORT)
     @PreAuthorize("@ss.hasPermi('system:config:export')")
     @PostMapping("/export")
@@ -115,6 +118,7 @@ public class SysConfigController extends BaseController
     @DeleteMapping("/{configIds}")
     public AjaxResult remove(@PathVariable Long[] configIds)
     {
+        // 批量删除（内部会一并清理非内置参数的缓存）
         configService.deleteConfigByIds(configIds);
         return success();
     }

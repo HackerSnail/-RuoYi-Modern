@@ -78,6 +78,7 @@ public class SysLoginController
         Set<String> roles = permissionService.getRolePermission(user);
         // 权限集合
         Set<String> permissions = permissionService.getMenuPermission(user);
+        // 登录态缓存的权限可能与库不一致（如刚改过角色），发现差异则刷新 token 中的权限，避免使用陈旧授权
         if (!loginUser.getPermissions().equals(permissions))
         {
             loginUser.setPermissions(permissions);
@@ -119,10 +120,11 @@ public class SysLoginController
         return initPasswordModify != null && initPasswordModify == 1 && pwdUpdateDate == null;
     }
 
-    // 检查密码是否过期
+    // 检查密码是否过期：基于 sys.account.passwordValidateDays 配置，从未改过密码或距上次修改超过阈值天数则视为过期
     public boolean passwordIsExpiration(Date pwdUpdateDate)
     {
         Integer passwordValidateDays = Convert.toInt(configService.selectConfigByKey("sys.account.passwordValidateDays"));
+        // 未配置或配置为 0（负数）表示不启用过期策略
         if (passwordValidateDays != null && passwordValidateDays > 0)
         {
             if (StringUtils.isNull(pwdUpdateDate))
@@ -131,6 +133,7 @@ public class SysLoginController
                 return true;
             }
             Date nowDate = DateUtils.getNowDate();
+            // 距上次改密的天数超过配置阈值即判定过期
             return DateUtils.differentDaysByMillisecond(nowDate, pwdUpdateDate) > passwordValidateDays;
         }
         return false;

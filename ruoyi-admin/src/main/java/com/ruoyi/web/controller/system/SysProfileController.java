@@ -98,6 +98,7 @@ public class SysProfileController extends BaseController
         Long userId = loginUser.getUserId();
         SysUser user = userService.selectUserById(userId);
         String password = user.getPassword();
+        // 先校验旧密码是否匹配（BCrypt 比对），再拦新密码与旧密码相同的情况
         if (!SecurityUtils.matchesPassword(oldPassword, password))
         {
             return error("修改密码失败，旧密码错误");
@@ -131,6 +132,7 @@ public class SysProfileController extends BaseController
             String avatar = FileUploadUtils.upload(RuoYiConfig.getAvatarPath(), file, MimeTypeUtils.IMAGE_EXTENSION, true);
             if (userService.updateUserAvatar(loginUser.getUserId(), avatar))
             {
+                // 新头像保存成功后，删除磁盘上的旧头像文件，避免残留孤儿文件
                 String oldAvatar = loginUser.getUser().getAvatar();
                 if (StringUtils.isNotEmpty(oldAvatar))
                 {

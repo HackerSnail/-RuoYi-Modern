@@ -25,9 +25,13 @@ public class SysRegisterController extends BaseController
     @Autowired
     private ISysConfigService configService;
 
+    /**
+     * 用户注册
+     */
     @PostMapping("/register")
     public AjaxResult register(@RequestBody RegisterBody user)
     {
+        // 注册开关由参数 sys.account.registerUser 控制，未开启时直接拒绝
         if (!("true".equals(configService.selectConfigByKey("sys.account.registerUser"))))
         {
             return error("当前系统没有开启注册功能！");

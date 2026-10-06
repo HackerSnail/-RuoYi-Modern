@@ -92,6 +92,7 @@ public class SysNoticeController extends BaseController
     {
         Long userId = getUserId();
         List<SysNotice> list = noticeReadService.selectNoticeListWithReadStatus(userId, 5);
+        // 统计当前用户未读条数，供顶栏小红点展示
         long unreadCount = list.stream().filter(n -> !n.getIsRead()).count();
         AjaxResult result = AjaxResult.success(list);
         result.put("unreadCount", unreadCount);
@@ -144,6 +145,7 @@ public class SysNoticeController extends BaseController
     @DeleteMapping("/{noticeIds}")
     public AjaxResult remove(@PathVariable Long[] noticeIds)
     {
+        // 先清掉关联的已读记录，再删公告本体，避免遗留孤儿已读数据
         noticeReadService.deleteByNoticeIds(noticeIds);
         return toAjax(noticeService.deleteNoticeByIds(noticeIds));
     }

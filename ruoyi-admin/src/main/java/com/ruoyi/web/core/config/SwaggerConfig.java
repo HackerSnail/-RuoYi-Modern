@@ -36,6 +36,9 @@ public class SwaggerConfig
             .info(getApiInfo());
     }
     
+    /**
+     * 定义 Authorization 请求头的鉴权方案（Bearer Token），供 Swagger 页面统一注入 token
+     */
     @Bean
     public SecurityScheme securityScheme()
     {

@@ -53,6 +53,9 @@ public class SysRoleController extends BaseController
     @Autowired
     private ISysDeptService deptService;
 
+    /**
+     * 获取角色列表
+     */
     @PreAuthorize("@ss.hasPermi('system:role:list')")
     @GetMapping("/list")
     public TableDataInfo list(SysRole role)
@@ -62,6 +65,9 @@ public class SysRoleController extends BaseController
         return getDataTable(list);
     }
 
+    /**
+     * 导出角色列表
+     */
     @Log(title = "角色管理", businessType = BusinessType.EXPORT)
     @PreAuthorize("@ss.hasPermi('system:role:export')")
     @PostMapping("/export")
@@ -247,6 +253,7 @@ public class SysRoleController extends BaseController
     public AjaxResult deptTree(@PathVariable("roleId") Long roleId)
     {
         AjaxResult ajax = AjaxResult.success();
+        // checkedKeys 为该角色已关联的部门 ID，前端据高回显部门树的勾选状态
         ajax.put("checkedKeys", deptService.selectDeptListByRoleId(roleId));
         ajax.put("depts", deptService.selectDeptTreeList(new SysDept()));
         return ajax;

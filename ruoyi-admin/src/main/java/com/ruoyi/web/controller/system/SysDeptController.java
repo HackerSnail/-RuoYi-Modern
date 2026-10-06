@@ -54,6 +54,7 @@ public class SysDeptController extends BaseController
     public AjaxResult excludeChild(@PathVariable(value = "deptId", required = false) Long deptId)
     {
         List<SysDept> depts = deptService.selectDeptList(new SysDept());
+        // 排除自身及子孙节点（ancestors 逗号串中包含 deptId 即为后代），用于上级部门下拉选择时避免成环
         depts.removeIf(d -> d.getDeptId().intValue() == deptId || ArrayUtils.contains(StringUtils.split(d.getAncestors(), ","), deptId + ""));
         return success(depts);
     }
@@ -105,6 +106,7 @@ public class SysDeptController extends BaseController
         }
         else if (StringUtils.equals(UserConstants.DEPT_DISABLE, dept.getStatus()) && deptService.selectNormalChildrenDeptById(deptId) > 0)
         {
+            // 停用父部门前先拦截：若还有未停用的子部门，不允许直接停用父级
             return error("该部门包含未停用的子部门！");
         }
         dept.setUpdateBy(getUsername());
@@ -141,6 +143,7 @@ public class SysDeptController extends BaseController
         {
             return warn("部门存在用户,不允许删除");
         }
+        // 两道前置校验后，再按数据权限校验归属，最后执行软删除
         deptService.checkDeptDataScope(deptId);
         return toAjax(deptService.deleteDeptById(deptId));
     }

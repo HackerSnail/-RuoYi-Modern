@@ -324,11 +324,18 @@ public class GenTableColumn extends BaseEntity
         return sort;
     }
 
+    /** 当前列是否为父类(BaseEntity/TreeEntity)自带字段，是则不重复生成 Domain 属性 */
     public boolean isSuperColumn()
     {
         return isSuperColumn(this.javaField);
     }
 
+    /**
+     * 判断指定 Java 字段名是否属于父类已声明的公共字段（创建/更新人时间、备注、树相关）
+     *
+     * @param javaField Java 字段名
+     * @return true 表示由 BaseEntity/TreeEntity 提供，无需生成
+     */
     public static boolean isSuperColumn(String javaField)
     {
         return StringUtils.equalsAnyIgnoreCase(javaField,
@@ -338,17 +345,30 @@ public class GenTableColumn extends BaseEntity
                 "parentName", "parentId", "orderNum", "ancestors");
     }
 
+    /** 当前列虽属父类字段但生成页面仍需使用（白名单） */
     public boolean isUsableColumn()
     {
         return isUsableColumn(javaField);
     }
 
+    /**
+     * 判断指定字段是否在“可用白名单”：isSuperColumn 名单用于避免生成冗余属性，
+     * 但某些属性(父ID/排序/备注)在页面需展示，故在此保留不忽略
+     *
+     * @param javaField Java 字段名
+     * @return true 表示需要保留参与生成
+     */
     public static boolean isUsableColumn(String javaField)
     {
         // isSuperColumn()中的名单用于避免生成多余Domain属性，若某些属性在生成页面时需要用到不能忽略，则放在此处白名单
         return StringUtils.equalsAnyIgnoreCase(javaField, "parentId", "orderNum", "remark");
     }
 
+    /**
+     * 解析列注释中的取值表达式：从“（）”内提取形如“0=否 1=是”的映射，转为“0=否,1=是”供模板回显
+     *
+     * @return 转换后的表达式；若注释无括号补充则原样返回列注释
+     */
     public String readConverterExp()
     {
         String remarks = StringUtils.substringBetween(this.columnComment, "（", "）");

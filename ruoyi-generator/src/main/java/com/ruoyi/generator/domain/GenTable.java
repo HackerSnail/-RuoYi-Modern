@@ -364,45 +364,76 @@ public class GenTable extends BaseEntity
         this.isView = isView;
     }
 
+    /** 当前表是否主子表模板 */
     public boolean isSub()
     {
         return isSub(this.tplCategory);
     }
 
+    /**
+     * 判断模板类别是否为主子表(sub)
+     *
+     * @param tplCategory 模板类别
+     * @return true 表示主子表
+     */
     public static boolean isSub(String tplCategory)
     {
         return tplCategory != null && StringUtils.equals(GenConstants.TPL_SUB, tplCategory);
     }
 
+    /** 当前表是否树表模板 */
     public boolean isTree()
     {
         return isTree(this.tplCategory);
     }
 
+    /**
+     * 判断模板类别是否为树表(tree)
+     *
+     * @param tplCategory 模板类别
+     * @return true 表示树表
+     */
     public static boolean isTree(String tplCategory)
     {
         return tplCategory != null && StringUtils.equals(GenConstants.TPL_TREE, tplCategory);
     }
 
+    /** 当前表是否普通 CRUD 模板 */
     public boolean isCrud()
     {
         return isCrud(this.tplCategory);
     }
 
+    /**
+     * 判断模板类别是否为普通增删改查(crud)
+     *
+     * @param tplCategory 模板类别
+     * @return true 表示 CRUD
+     */
     public static boolean isCrud(String tplCategory)
     {
         return tplCategory != null && StringUtils.equals(GenConstants.TPL_CRUD, tplCategory);
     }
 
+    /** 当前模板下指定字段是否为父类已声明字段（树表额外含 TreeEntity 字段） */
     public boolean isSuperColumn(String javaField)
     {
         return isSuperColumn(this.tplCategory, javaField);
     }
 
+    /**
+     * 按模板类别判断字段是否属于父类基类字段：树表需同时排除 BASE_ENTITY+TREE_ENTITY，
+     * 其余仅排除 BASE_ENTITY
+     *
+     * @param tplCategory 模板类别
+     * @param javaField   Java 字段名
+     * @return true 表示由基类提供，无需重复生成
+     */
     public static boolean isSuperColumn(String tplCategory, String javaField)
     {
         if (isTree(tplCategory))
         {
+            // 树表模板：BaseEntity 与 TreeEntity 的字段都已在父类定义，不重复生成
             return StringUtils.equalsAnyIgnoreCase(javaField,
                     ArrayUtils.addAll(GenConstants.TREE_ENTITY, GenConstants.BASE_ENTITY));
         }

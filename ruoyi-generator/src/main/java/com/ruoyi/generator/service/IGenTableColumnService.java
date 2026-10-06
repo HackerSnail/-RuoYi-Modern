@@ -11,15 +11,15 @@ import com.ruoyi.generator.domain.GenTableColumn;
 public interface IGenTableColumnService
 {
     /**
-     * 查询业务字段列表
+     * 按生成表ID查询其列配置列表
      * 
-     * @param tableId 业务字段编号
+     * @param tableId 生成表ID
      * @return 业务字段集合
      */
     public List<GenTableColumn> selectGenTableColumnListByTableId(Long tableId);
 
     /**
-     * 新增业务字段
+     * 新增列配置
      * 
      * @param genTableColumn 业务字段信息
      * @return 结果
@@ -27,7 +27,7 @@ public interface IGenTableColumnService
     public int insertGenTableColumn(GenTableColumn genTableColumn);
 
     /**
-     * 修改业务字段
+     * 修改列配置
      * 
      * @param genTableColumn 业务字段信息
      * @return 结果
@@ -35,9 +35,9 @@ public interface IGenTableColumnService
     public int updateGenTableColumn(GenTableColumn genTableColumn);
 
     /**
-     * 删除业务字段信息
+     * 按ID字符串（逗号分隔）批量删除列配置
      * 
-     * @param ids 需要删除的数据ID
+     * @param ids 需要删除的数据ID，逗号分隔
      * @return 结果
      */
     public int deleteGenTableColumnByIds(String ids);

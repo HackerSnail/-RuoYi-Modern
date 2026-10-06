@@ -65,7 +65,7 @@ public class GenController extends BaseController
     }
 
     /**
-     * 获取代码生成信息
+     * 获取代码生成信息：一次返回表配置(info)+列配置(rows)+全部可关联表(tables)，供编辑页回显与主子表选择
      */
     @PreAuthorize("@ss.hasPermi('tool:gen:query')")
     @GetMapping(value = "/{tableId}")
@@ -74,6 +74,7 @@ public class GenController extends BaseController
         GenTable table = genTableService.selectGenTableById(tableId);
         List<GenTable> tables = genTableService.selectGenTableAll();
         List<GenTableColumn> list = genTableColumnService.selectGenTableColumnListByTableId(tableId);
+        // 聚合三部分数据：当前表、其列列表、全量表(供选择子表)
         Map<String, Object> map = new HashMap<String, Object>();
         map.put("info", table);
         map.put("rows", list);
@@ -123,7 +124,7 @@ public class GenController extends BaseController
     }
 
     /**
-     * 创建表结构（保存）
+     * 创建表结构（保存）：先过滤危险关键字，解析 CREATE 语句→建表→回读元数据→自动导入生成配置
      */
     @PreAuthorize("@ss.hasRole('admin')")
     @Log(title = "创建表", businessType = BusinessType.OTHER)
@@ -132,21 +133,26 @@ public class GenController extends BaseController
     {
         try
         {
+            // 安全前置：过滤 DROP/TRUNCATE 等危险关键字，防止拼接恶意语句
             SqlUtil.filterKeyword(sql);
+            // 用 Druid 按 MySQL 方言解析出语句列表
             List<SQLStatement> sqlStatements = SQLUtils.parseStatements(sql, DbType.mysql);
             List<String> tableNames = new ArrayList<>();
             for (SQLStatement sqlStatement : sqlStatements)
             {
+                // 仅处理 CREATE TABLE 语句，其余忽略
                 if (sqlStatement instanceof MySqlCreateTableStatement)
                 {
                     MySqlCreateTableStatement createTableStatement = (MySqlCreateTableStatement) sqlStatement;
                     if (genTableService.createTable(createTableStatement.toString()))
                     {
+                        // 建表成功则记录表名（剔除反引号）用于后续自动导入
                         String tableName = createTableStatement.getTableName().replaceAll("`", "");
                         tableNames.add(tableName);
                     }
                 }
             }
+            // 回读刚建好的表元数据，立即导入为生成配置（建表与导入一步完成）
             List<GenTable> tableList = genTableService.selectDbTableListByNames(tableNames.toArray(new String[tableNames.size()]));
             String operName = SecurityUtils.getUsername();
             genTableService.importGenTable(tableList, tplWebType, operName);
@@ -154,6 +160,7 @@ public class GenController extends BaseController
         }
         catch (Exception e)
         {
+            // 建表涉及 DDL 执行，任何异常统一兑底为友好提示，避免暴露 SQL 细节
             logger.error(e.getMessage(), e);
             return AjaxResult.error("创建表结构异常");
         }
@@ -249,11 +256,17 @@ public class GenController extends BaseController
     }
 
     /**
-     * 生成zip文件
+     * 生成 zip 文件并写入响应流（统一的下载响应头设置）
+     *
+     * @param response HTTP 响应，将 zip 字节写入其输出流
+     * @param data     已打包的 zip 字节数组
+     * @throws IOException 写响应流失败时抛出
      */
     private void genCode(HttpServletResponse response, byte[] data) throws IOException
     {
+        // 重置响应，清除可能的缓存/已提交头，保证下载头干净
         response.reset();
+        // 允许跨域读取，并暴露 Content-Disposition 供前端取文件名
         response.addHeader("Access-Control-Allow-Origin", "*");
         response.addHeader("Access-Control-Expose-Headers", "Content-Disposition");
         response.setHeader("Content-Disposition", "attachment; filename=\"ruoyi.zip\"");

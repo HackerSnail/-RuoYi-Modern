@@ -69,7 +69,7 @@ public class GenTableServiceImpl implements IGenTableService
     }
 
     /**
-     * 查询业务列表
+     * 查询已导入的生成表列表
      * 
      * @param genTable 业务信息
      * @return 业务集合
@@ -81,7 +81,7 @@ public class GenTableServiceImpl implements IGenTableService
     }
 
     /**
-     * 查询据库列表
+     * 查询当前库中可导入的实表列表
      * 
      * @param genTable 业务信息
      * @return 数据库表集合
@@ -93,7 +93,7 @@ public class GenTableServiceImpl implements IGenTableService
     }
 
     /**
-     * 查询据库列表
+     * 按表名数组批量查询待导入实表
      * 
      * @param tableNames 表名称组
      * @return 数据库表集合
@@ -116,7 +116,7 @@ public class GenTableServiceImpl implements IGenTableService
     }
 
     /**
-     * 修改业务
+     * 修改业务：先将前端 params 聚合为 options JSON 写主表，行更新成功后再逐条同步列配置（事务内）
      * 
      * @param genTable 业务信息
      * @return 结果
@@ -125,11 +125,13 @@ public class GenTableServiceImpl implements IGenTableService
     @Transactional
     public void updateGenTable(GenTable genTable)
     {
+        // params(Map) → options(JSON 字符串)：树配置/上级菜单等额外选项统一序列化存一列
         String options = JSON.toJSONString(genTable.getParams());
         genTable.setOptions(options);
         int row = genTableMapper.updateGenTable(genTable);
         if (row > 0)
         {
+            // 主表更新成功后才级联刷列，避免主表失败时列已改的不一致
             for (GenTableColumn genTableColumn : genTable.getColumns())
             {
                 genTableColumnMapper.updateGenTableColumn(genTableColumn);
@@ -138,7 +140,7 @@ public class GenTableServiceImpl implements IGenTableService
     }
 
     /**
-     * 删除业务对象
+     * 删除业务对象：同时删除主表配置与其列配置（事务保证级联一致）
      * 
      * @param tableIds 需要删除的数据ID
      * @return 结果
@@ -152,19 +154,20 @@ public class GenTableServiceImpl implements IGenTableService
     }
 
     /**
-     * 创建表
+     * 创建表：mapper 执行 DDL 返回 0 视为成功
      *
      * @param sql 创建表语句
-     * @return 结果
+     * @return 建表是否成功
      */
     @Override
     public boolean createTable(String sql)
     {
+        // execute 对 DDL 语句固定返回 0，== 0 即成功
         return genTableMapper.createTable(sql) == 0;
     }
 
     /**
-     * 导入表结构
+     * 导入表结构：逐表初始化元数据并写主表，主表写入成功后再从 information_schema 回读列并逐列初始化入库
      * 
      * @param tableList 导入表列表
      */
@@ -266,6 +269,7 @@ public class GenTableServiceImpl implements IGenTableService
         List<String> templates = VelocityUtils.getTemplateList(table);
         for (String template : templates)
         {
+            // 跳过 SQL/前端 API/类型/列表页等模板（这些不适合写入本地工程目录，仅供下载/预览）
             if (!StringUtils.containsAny(template, "sql.vm", "api.js.vm", "api.ts.vm", "type.ts.vm", "index.ts.vm", "index.vue.vm", "index-tree.vue.vm", "view.vue.vm"))
             {
                 // 渲染模板
@@ -279,6 +283,7 @@ public class GenTableServiceImpl implements IGenTableService
                 }
                 catch (IOException e)
                 {
+                    // 写盘失败无法降级（用户预期拿到文件），包装为业务异常上抛
                     throw new ServiceException("渲染模板失败，表名：" + table.getTableName());
                 }
             }
@@ -286,7 +291,7 @@ public class GenTableServiceImpl implements IGenTableService
     }
 
     /**
-     * 同步数据库
+     * 同步数据库：以实表为准做增量 diff——新增列插入、已存在列保留人工配置后更新、实表已删的列删除
      * 
      * @param tableName 表名称
      */
@@ -309,6 +314,7 @@ public class GenTableServiceImpl implements IGenTableService
             GenUtils.initColumnField(column, table);
             if (tableColumnMap.containsKey(column.getColumnName()))
             {
+                // 列已存在：沿用旧 columnId 转 UPDATE，并尽量保留用户之前调过的查询/必填等人工配置
                 GenTableColumn prevColumn = tableColumnMap.get(column.getColumnName());
                 column.setColumnId(prevColumn.getColumnId());
                 if (column.isList())
@@ -329,10 +335,12 @@ public class GenTableServiceImpl implements IGenTableService
             }
             else
             {
+                // 实表新增的列：之前无配置，直接插入
                 genTableColumnMapper.insertGenTableColumn(column);
             }
         });
 
+        // 实表已不存在的旧列：从配置表中删除
         List<GenTableColumn> delColumns = tableColumns.stream().filter(column -> !dbTableColumnNames.contains(column.getColumnName())).collect(Collectors.toList());
         if (StringUtils.isNotEmpty(delColumns))
         {
@@ -341,25 +349,28 @@ public class GenTableServiceImpl implements IGenTableService
     }
 
     /**
-     * 批量生成代码（下载方式）
+     * 批量生成代码（下载方式）：逐表渲染写入 zip；index-bak.ts 类型的聚合内容最后一次性补入
      * 
      * @param tableNames 表数组
-     * @return 数据
+     * @return zip 字节数据
      */
     @Override
     public byte[] downloadCode(String[] tableNames)
     {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         ZipOutputStream zip = new ZipOutputStream(outputStream);
+        // typeFiles 缓存需跨表合并的 index-bak.ts（多表 export 行追加到同一文件）
         Map<String, StringBuffer> typeFiles = new HashMap<>();
         for (String tableName : tableNames)
         {
             generatorCode(tableName, zip, typeFiles);
         }
+        // 合并完后再把聚合结果作为一个条目写入 zip
         for (Map.Entry<String, StringBuffer> entry : typeFiles.entrySet())
         {
             writeToZip(zip, entry.getKey(), entry.getValue().toString());
         }
+        // closeQuietly 确保 zip 中央目录写入完成（不写则 zip 不可解压）
         IOUtils.closeQuietly(zip);
         return outputStream.toByteArray();
     }
@@ -389,15 +400,17 @@ public class GenTableServiceImpl implements IGenTableService
             Template tpl = Velocity.getTemplate(template, Constants.UTF8);
             tpl.merge(context, sw);
             String fileName = VelocityUtils.getFileName(template, table);
-            // index-bak.ts 模版，追加内容
+            // index-bak.ts 模版，追加内容（多表共享同一声明文件，只收集 export * from 行）
             if (fileName.contains("index-bak.ts"))
             {
                 if (!typeFiles.containsKey(fileName))
                 {
+                    // 首次：整份内容作为基线
                     typeFiles.put(fileName, new StringBuffer(sw.toString()));
                 }
                 else
                 {
+                    // 后续表：仅提取 export * from 行追加，避免重复模板样板内容
                     Arrays.stream(sw.toString().split("\n")).filter(line -> line.startsWith("export * from")).forEach(line -> typeFiles.get(fileName).append("\n").append(line));
                 }
             }
@@ -486,6 +499,7 @@ public class GenTableServiceImpl implements IGenTableService
         }
         if (StringUtils.isNull(table.getPkColumn()))
         {
+            // 未标记主键时降级取第一列，保证模板渲染不因 pkColumn 为空而 NPE
             table.setPkColumn(table.getColumns().get(0));
         }
         if (GenConstants.TPL_SUB.equals(table.getTplCategory()))
@@ -546,7 +560,7 @@ public class GenTableServiceImpl implements IGenTableService
     }
 
     /**
-     * 获取代码生成地址
+     * 获取代码生成地址：genPath 为 "/" 时回退到工程目录下的 src，否则直接拼接自定义路径
      * 
      * @param table 业务表信息
      * @param template 模板文件路径
@@ -555,6 +569,7 @@ public class GenTableServiceImpl implements IGenTableService
     public static String getGenPath(GenTable table, String template)
     {
         String genPath = table.getGenPath();
+        // "/" 为默认占位，表示未自定义路径，落到当前工作目录/src
         if (StringUtils.equals(genPath, "/"))
         {
             return System.getProperty("user.dir") + File.separator + "src" + File.separator + VelocityUtils.getFileName(template, table);

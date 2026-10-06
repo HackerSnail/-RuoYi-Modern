@@ -11,23 +11,23 @@ import com.ruoyi.generator.domain.GenTable;
 public interface GenTableMapper
 {
     /**
-     * 查询业务列表
+     * 查询已导入的生成表列表（数据源：gen_table 配置表）
      * 
-     * @param genTable 业务信息
+     * @param genTable 业务信息（含表名/备注模糊、时间范围等查询条件）
      * @return 业务集合
      */
     public List<GenTable> selectGenTableList(GenTable genTable);
 
     /**
-     * 查询据库列表
+     * 查询当前库中可导入的实表列表（数据源：information_schema.tables，排除 qrtz_/gen_ 前缀及已导入表）
      * 
-     * @param genTable 业务信息
+     * @param genTable 业务信息（含表名/备注模糊、时间范围等查询条件）
      * @return 数据库表集合
      */
     public List<GenTable> selectDbTableList(GenTable genTable);
 
     /**
-     * 查询据库列表
+     * 按表名数组从 information_schema 批量查询待导入实表（导入预览用）
      * 
      * @param tableNames 表名称组
      * @return 数据库表集合
@@ -35,14 +35,14 @@ public interface GenTableMapper
     public List<GenTable> selectDbTableListByNames(String[] tableNames);
 
     /**
-     * 查询所有表信息
+     * 查询所有生成表及其列配置（一次性 LEFT JOIN 加载，用于批量生成）
      * 
      * @return 表信息集合
      */
     public List<GenTable> selectGenTableAll();
 
     /**
-     * 查询表ID业务信息
+     * 按主键ID查询生成表（LEFT JOIN 装配列配置集合）
      * 
      * @param id 业务ID
      * @return 业务信息
@@ -50,7 +50,7 @@ public interface GenTableMapper
     public GenTable selectGenTableById(Long id);
 
     /**
-     * 查询表名称业务信息
+     * 按表名查询生成表（LEFT JOIN 装配列配置，用于生成时定位表结构）
      * 
      * @param tableName 表名称
      * @return 业务信息
@@ -58,7 +58,7 @@ public interface GenTableMapper
     public GenTable selectGenTableByName(String tableName);
 
     /**
-     * 新增业务
+     * 新增生成表配置（回写自增主键到 tableId）
      * 
      * @param genTable 业务信息
      * @return 结果
@@ -66,7 +66,7 @@ public interface GenTableMapper
     public int insertGenTable(GenTable genTable);
 
     /**
-     * 修改业务
+     * 修改生成表配置（动态 SET 仅更新非空字段）
      * 
      * @param genTable 业务信息
      * @return 结果
@@ -74,7 +74,7 @@ public interface GenTableMapper
     public int updateGenTable(GenTable genTable);
 
     /**
-     * 批量删除业务
+     * 按ID批量删除生成表配置（物理删除）
      * 
      * @param ids 需要删除的数据ID
      * @return 结果

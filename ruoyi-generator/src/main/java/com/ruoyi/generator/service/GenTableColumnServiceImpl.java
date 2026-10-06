@@ -10,6 +10,8 @@ import com.ruoyi.generator.mapper.GenTableColumnMapper;
 /**
  * 业务字段 服务层实现
  * 
+ * <p>本类为薄委托层：除删除需将逗号分隔字符串转 Long[] 外，其余方法直接转发 GenTableColumnMapper。</p>
+ * 
  * @author ruoyi
  */
 @Service
@@ -21,7 +23,7 @@ public class GenTableColumnServiceImpl implements IGenTableColumnService
 	/**
      * 查询业务字段列表
      * 
-     * @param tableId 业务字段编号
+     * @param tableId 生成表ID
      * @return 业务字段集合
      */
 	@Override
@@ -57,12 +59,13 @@ public class GenTableColumnServiceImpl implements IGenTableColumnService
 	/**
      * 删除业务字段对象
      * 
-     * @param ids 需要删除的数据ID
+     * @param ids 需要删除的数据ID，逗号分隔字符串
      * @return 结果
      */
 	@Override
 	public int deleteGenTableColumnByIds(String ids)
 	{
+		// 前端传逗号分隔字符串，转 Long[] 后交由 mapper 批量删除
 		return genTableColumnMapper.deleteGenTableColumnByIds(Convert.toLongArray(ids));
 	}
 }

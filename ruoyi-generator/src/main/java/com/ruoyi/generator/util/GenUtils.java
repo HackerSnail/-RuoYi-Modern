@@ -16,7 +16,10 @@ import com.ruoyi.generator.domain.GenTableColumn;
 public class GenUtils
 {
     /**
-     * 初始化表信息
+     * 初始化表信息：根据表名与全局配置推导类名/包名/模块名/业务名/功能名等生成元数据
+     *
+     * @param genTable 待初始化的生成表
+     * @param operName 操作人员（写入 createBy）
      */
     public static void initTable(GenTable genTable, String operName)
     {
@@ -30,7 +33,10 @@ public class GenUtils
     }
 
     /**
-     * 初始化列属性字段
+     * 初始化列属性字段：根据列类型推导 Java 类型/HTML 控件/是否必填，并根据列名后缀推导查询方式与控件
+     *
+     * @param column 待初始化的列
+     * @param table  所属生成表（提供 tableId/createBy）
      */
     public static void initColumnField(GenTableColumn column, GenTable table)
     {
@@ -46,7 +52,7 @@ public class GenUtils
 
         if (arraysContains(GenConstants.COLUMNTYPE_STR, dataType) || arraysContains(GenConstants.COLUMNTYPE_TEXT, dataType))
         {
-            // 字符串长度超过500设置为文本域
+            // 字符串长度超过500（经验阈值，长文本输入体验差）设置为文本域
             Integer columnLength = getColumnLength(column.getColumnType());
             String htmlType = columnLength >= 500 || arraysContains(GenConstants.COLUMNTYPE_TEXT, dataType) ? GenConstants.HTML_TEXTAREA : GenConstants.HTML_INPUT;
             column.setHtmlType(htmlType);
@@ -66,7 +72,7 @@ public class GenUtils
             {
                 column.setJavaType(GenConstants.TYPE_BIGDECIMAL);
             }
-            // 如果是整形
+            // 如果是整形（长度<=10 可容纳于 int，经验阈值）
             else if (str != null && str.length == 1 && Integer.parseInt(str[0]) <= 10)
             {
                 column.setJavaType(GenConstants.TYPE_INTEGER);
@@ -187,11 +193,11 @@ public class GenUtils
     }
 
     /**
-     * 批量替换前缀
+     * 批量替换前缀：逐个比对前缀列表，命中第一个即剔除
      * 
-     * @param replacementm 替换值
-     * @param searchList 替换列表
-     * @return
+     * @param replacementm 替换值（表名）
+     * @param searchList   待剔除的前缀列表
+     * @return 剔除前缀后的表名
      */
     public static String replaceFirst(String replacementm, String[] searchList)
     {
@@ -208,7 +214,7 @@ public class GenUtils
     }
 
     /**
-     * 关键字替换
+     * 关键字替换：从表备注中剔除“表”“若依”等噪声词，得到干净的功能名
      * 
      * @param text 需要被替换的名字
      * @return 替换后的名字

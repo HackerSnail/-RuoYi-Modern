@@ -36,9 +36,10 @@ public class VelocityUtils
     private static final String ELEMENT_PLUS_TYPESSRIPT = "element-plus-typescript";
 
     /**
-     * 设置模板变量信息
+     * 装配 Velocity 渲染上下文：把表元数据、列、权限前缀、字典、菜单/树/子表等模板变量一次性放入 context
      *
-     * @return 模板列表
+     * @param genTable 生成表对象
+     * @return 已填好变量的模板上下文
      */
     public static VelocityContext prepareContext(GenTable genTable)
     {
@@ -81,6 +82,9 @@ public class VelocityUtils
         return velocityContext;
     }
 
+    /**
+     * 将扩展选项（当前仅“是否生成详情页”）解析并放入上下文
+     */
     public static void setExtensionsContext(VelocityContext context, String options)
     {
         JSONObject paramsObj = JSONObject.parseObject(options);
@@ -88,6 +92,9 @@ public class VelocityUtils
         context.put("genView", genView);
     }
 
+    /**
+     * 装配菜单模板上下文：从 options 取上级菜单ID（缺省为系统工具菜单）
+     */
     public static void setMenuVelocityContext(VelocityContext context, GenTable genTable)
     {
         String options = genTable.getOptions();
@@ -96,6 +103,9 @@ public class VelocityUtils
         context.put("parentMenuId", parentMenuId);
     }
 
+    /**
+     * 装配树表模板上下文：从 options 取树编码/父编码/名称列及展开列序号（仅 TPL_TREE 时调用）
+     */
     public static void setTreeVelocityContext(VelocityContext context, GenTable genTable)
     {
         String options = genTable.getOptions();
@@ -118,6 +128,9 @@ public class VelocityUtils
         }
     }
 
+    /**
+     * 装配主子表模板上下文：放入子表对象、子表类名/外键类名（大小写两版）及子表导入包（仅 TPL_SUB 时调用）
+     */
     public static void setSubVelocityContext(VelocityContext context, GenTable genTable)
     {
         GenTable subTable = genTable.getSubTable();
@@ -137,9 +150,8 @@ public class VelocityUtils
     }
 
     /**
-     * 获取模板信息
-     * @param tplCategory 生成的模板
-     * @param tplWebType 前端类型
+     * 获取模板信息：根据前端类型(vue2/vue3/vue3ts)与模板类别(crud/tree/sub)组装需渲染的模板路径列表，按需追加详情页/子表/TS 类型模板
+     * @param table 生成表对象（携 tplCategory/tplWebType/options）
      * @return 模板列表
      */
     public static List<String> getTemplateList(GenTable table)

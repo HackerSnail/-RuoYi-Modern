@@ -110,6 +110,10 @@ public class SysJob extends BaseEntity
         this.cronExpression = cronExpression;
     }
 
+    /**
+     * 非持久化字段：基于 cronExpression 实时推算下一次触发时间，供列表页展示。
+     * cron 为空时返回 null（不抛异常，避免无表达式的临时对象序列化失败）。
+     */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     public Date getNextValidTime()
     {

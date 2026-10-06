@@ -11,15 +11,15 @@ import com.ruoyi.quartz.domain.SysJob;
 public interface SysJobMapper
 {
     /**
-     * 查询调度任务日志集合
+     * 查询调度任务列表
      * 
-     * @param job 调度信息
-     * @return 操作日志集合
+     * @param job 调度信息（作为查询条件）
+     * @return 调度任务集合
      */
     public List<SysJob> selectJobList(SysJob job);
 
     /**
-     * 查询所有调度任务
+     * 查询所有调度任务（项目启动时 init() 用它重建调度器，不取任何查询条件）
      * 
      * @return 调度任务列表
      */
@@ -29,7 +29,7 @@ public interface SysJobMapper
      * 通过调度ID查询调度任务信息
      * 
      * @param jobId 调度ID
-     * @return 角色对象信息
+     * @return 调度任务对象信息
      */
     public SysJob selectJobById(Long jobId);
 

@@ -29,22 +29,30 @@ public abstract class AbstractQuartzJob implements Job
      */
     private static ThreadLocal<Date> threadLocal = new ThreadLocal<>();
 
+    /**
+     * Quartz 回调入口：采用模板方法模式，串起 before→doExecute→after 三个阶段。
+     * 无论从 JobDataMap 取出的任务属性是否成功拷贝，finally 语义下都会落到 after 记录日志，
+     * 因此即便业务方法抛出异常，本次调度的耗时与异常堆栈仍会被持久化。
+     */
     @Override
     public void execute(JobExecutionContext context)
     {
         SysJob sysJob = new SysJob();
+        // 从合并后的 JobDataMap 还原出调度时的任务快照（创建 trigger 时放入的 TASK_PROPERTIES）
         BeanUtils.copyBeanProp(sysJob, context.getMergedJobDataMap().get(ScheduleConstants.TASK_PROPERTIES));
         try
         {
             before(context, sysJob);
             if (sysJob != null)
             {
+                // 交由子类实现真正的反射调用逻辑
                 doExecute(context, sysJob);
             }
             after(context, sysJob, null);
         }
         catch (Exception e)
         {
+            // 任务执行失败不向外抛出（避免影响 Quartz 线程），改为在 after 中落库失败日志
             log.error("任务执行异常  - ：", e);
             after(context, sysJob, e);
         }
@@ -58,6 +66,7 @@ public abstract class AbstractQuartzJob implements Job
      */
     protected void before(JobExecutionContext context, SysJob sysJob)
     {
+        // 记录开始时间戳，供 after 计算耗时；用 ThreadLocal 隔离并发调度的执行线程
         threadLocal.set(new Date());
     }
 
@@ -70,6 +79,7 @@ public abstract class AbstractQuartzJob implements Job
     protected void after(JobExecutionContext context, SysJob sysJob, Exception e)
     {
         Date startTime = threadLocal.get();
+        // 取出后必须清理，防止线程被 Quartz 线程池复用时残留脏数据导致内存泄漏/耗时错算
         threadLocal.remove();
 
         final SysJobLog sysJobLog = new SysJobLog();
@@ -83,6 +93,7 @@ public abstract class AbstractQuartzJob implements Job
         if (e != null)
         {
             sysJobLog.setStatus(Constants.FAIL);
+            // 异常信息截断到 2000 字符，避免超长堆栈撑爆日志表的字符串列
             String errorMsg = StringUtils.substring(ExceptionUtil.getExceptionMessage(e), 0, 2000);
             sysJobLog.setExceptionInfo(errorMsg);
         }
@@ -91,7 +102,7 @@ public abstract class AbstractQuartzJob implements Job
             sysJobLog.setStatus(Constants.SUCCESS);
         }
 
-        // 写入数据库当中
+        // 写入数据库当中（Job 非 Spring 托管，故通过 SpringUtils 手动拉取日志 Service）
         SpringUtils.getBean(ISysJobLogService.class).addJobLog(sysJobLog);
     }
 

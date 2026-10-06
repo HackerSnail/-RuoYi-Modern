@@ -30,10 +30,11 @@ public class ScheduleUtils
      * 得到quartz任务类
      *
      * @param sysJob 执行计划
-     * @return 具体执行任务类
+     * @return 具体执行任务类（根据 concurrent 标志选择允许/禁止并发执行的 Job 实现）
      */
     private static Class<? extends Job> getQuartzJobClass(SysJob sysJob)
     {
+        // concurrent 为允许时用普通 Job；否则用 @DisallowConcurrentExecution 标注的子类，串行执行同一 JobDetail
         boolean isConcurrent = ScheduleConstants.CONCURRENT_ALLOW.equals(sysJob.getConcurrent());
         return isConcurrent ? QuartzJobExecution.class : QuartzDisallowConcurrentExecution.class;
     }
@@ -55,7 +56,7 @@ public class ScheduleUtils
     }
 
     /**
-     * 创建定时任务
+     * 创建定时任务：拼装 JobDetail + CronTrigger 注册到调度器，并根据状态决定是否立即暂停。
      */
     public static void createScheduleJob(Scheduler scheduler, SysJob job) throws SchedulerException, TaskException
     {
@@ -67,13 +68,14 @@ public class ScheduleUtils
 
         // 表达式调度构建器
         CronScheduleBuilder cronScheduleBuilder = CronScheduleBuilder.cronSchedule(job.getCronExpression());
+        // 根据 misfire 策略配置补偿行为
         cronScheduleBuilder = handleCronScheduleMisfirePolicy(job, cronScheduleBuilder);
 
         // 按新的cronExpression表达式构建一个新的trigger
         CronTrigger trigger = TriggerBuilder.newTrigger().withIdentity(getTriggerKey(jobId, jobGroup))
                 .withSchedule(cronScheduleBuilder).build();
 
-        // 放入参数，运行时的方法可以获取
+        // 放入参数，运行时的方法可以获取（将 SysJob 快照随 JobDetail 存入，供 AbstractQuartzJob 还原上下文）
         jobDetail.getJobDataMap().put(ScheduleConstants.TASK_PROPERTIES, job);
 
         // 判断是否存在
@@ -120,7 +122,8 @@ public class ScheduleUtils
     }
 
     /**
-     * 检查包名是否为白名单配置
+     * 检查包名是否为白名单配置。
+     * 防止调度表被注入任意 invokeTarget 导致 RCE：只有白名单包下的类/bean 才允许被调度。
      * 
      * @param invokeTarget 目标字符串
      * @return 结果
@@ -131,8 +134,10 @@ public class ScheduleUtils
         int count = StringUtils.countMatches(packageName, ".");
         if (count > 1)
         {
+            // 全类名写法：直接校验 invokeTarget 本身是否以白名单包前缀开头
             return StringUtils.startsWithAny(invokeTarget, Constants.JOB_WHITELIST_STR);
         }
+        // bean 名写法：先取出容器中的 bean，再根据其实际所在包名做白名单/黑名单双重校验
         Object obj = SpringUtils.getBean(StringUtils.split(invokeTarget, ".")[0]);
         String beanPackageName = obj.getClass().getPackage().getName();
         return StringUtils.startsWithAny(beanPackageName, Constants.JOB_WHITELIST_STR)

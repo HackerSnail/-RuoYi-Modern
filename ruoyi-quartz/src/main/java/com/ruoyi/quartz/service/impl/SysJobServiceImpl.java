@@ -37,6 +37,7 @@ public class SysJobServiceImpl implements ISysJobService
     @PostConstruct
     public void init() throws SchedulerException, TaskException
     {
+        // 先清空调度器内存量 Job，再以数据库为准全量重建，保证二者一致（避免手动改库遗留脏 Job）
         scheduler.clear();
         List<SysJob> jobList = jobMapper.selectJobAll();
         for (SysJob job : jobList)
@@ -81,6 +82,7 @@ public class SysJobServiceImpl implements ISysJobService
         Long jobId = job.getJobId();
         String jobGroup = job.getJobGroup();
         job.setStatus(ScheduleConstants.Status.PAUSE.getValue());
+        // 先更新 DB 状态，成功后再同步调度器；配合 @Transactional，scheduler 抛异常时 DB 变更回滚，避免状态不一致
         int rows = jobMapper.updateJob(job);
         if (rows > 0)
         {
@@ -120,6 +122,7 @@ public class SysJobServiceImpl implements ISysJobService
     {
         Long jobId = job.getJobId();
         String jobGroup = job.getJobGroup();
+        // 先删 DB 记录，再删调度器中的 Job（连同其 trigger）；DB 未删成功则不动调度器
         int rows = jobMapper.deleteJobById(jobId);
         if (rows > 0)
         {
@@ -179,6 +182,7 @@ public class SysJobServiceImpl implements ISysJobService
         boolean result = false;
         Long jobId = job.getJobId();
         String jobGroup = job.getJobGroup();
+        // 取库中最新的任务配置（而非前端传入的 job），避免使用陈旧参数触发
         SysJob properties = selectJobById(job.getJobId());
         // 参数
         JobDataMap dataMap = new JobDataMap();
@@ -186,6 +190,7 @@ public class SysJobServiceImpl implements ISysJobService
         JobKey jobKey = ScheduleUtils.getJobKey(jobId, jobGroup);
         if (scheduler.checkExists(jobKey))
         {
+            // triggerJob 立即以传入 dataMap 触发一次，不影响原有的 cron 调度计划
             result = true;
             scheduler.triggerJob(jobKey, dataMap);
         }
@@ -201,6 +206,7 @@ public class SysJobServiceImpl implements ISysJobService
     @Transactional(rollbackFor = Exception.class)
     public int insertJob(SysJob job) throws SchedulerException, TaskException
     {
+        // 新增任务默认置为暂停状态，交由用户手动启动，避免入库即意外触发
         job.setStatus(ScheduleConstants.Status.PAUSE.getValue());
         int rows = jobMapper.insertJob(job);
         if (rows > 0)
@@ -241,7 +247,7 @@ public class SysJobServiceImpl implements ISysJobService
         JobKey jobKey = ScheduleUtils.getJobKey(jobId, jobGroup);
         if (scheduler.checkExists(jobKey))
         {
-            // 防止创建时存在数据问题 先移除，然后在执行创建操作
+            // Quartz 不提供“原地替换” JobDetail 的 API，故先移除旧 Job 再重建，防止创建时存在数据问题
             scheduler.deleteJob(jobKey);
         }
         ScheduleUtils.createScheduleJob(scheduler, job);

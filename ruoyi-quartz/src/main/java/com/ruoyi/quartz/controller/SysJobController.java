@@ -76,6 +76,10 @@ public class SysJobController extends BaseController
 
     /**
      * 新增定时任务
+     * <p>
+     * 入库前对 invokeTarget 做多级安全校验（防止调度表被利用为 RCE 入口）：
+     * cron 合法性 → 拒绝 rmi/ldap(s)/http(s) 远程加载 → 拒绝违规特征字符串 → 必须命中白名单包。
+     * edit 采用完全相同的校验链。
      */
     @PreAuthorize("@ss.hasPermi('monitor:job:add')")
     @Log(title = "定时任务", businessType = BusinessType.INSERT)
@@ -106,6 +110,7 @@ public class SysJobController extends BaseController
         {
             return error("新增任务'" + job.getJobName() + "'失败，目标字符串不在白名单内");
         }
+        // 校验均通过后，以当前登录用户为创建人入库（不信任前端传入的 createBy）
         job.setCreateBy(getUsername());
         return toAjax(jobService.insertJob(job));
     }
@@ -154,6 +159,7 @@ public class SysJobController extends BaseController
     @PutMapping("/changeStatus")
     public AjaxResult changeStatus(@RequestBody SysJob job) throws SchedulerException
     {
+        // 以库中完整记录为基准仅改 status，避免前端只传部分字段导致其他配置被置空
         SysJob newJob = jobService.selectJobById(job.getJobId());
         newJob.setStatus(job.getStatus());
         return toAjax(jobService.changeStatus(newJob));

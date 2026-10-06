@@ -5,6 +5,9 @@ import com.ruoyi.common.utils.StringUtils;
 
 /**
  * 定时任务调度测试
+ * <p>
+ * 注册为 bean “ryTask”，提供三种入参签名的样例方法，供调度配置里的 invokeTarget
+ * （如 ryTask.ryMultipleParams('a',true,100L,2.0D,3)）演示参数类型解析与反射调用。
  * 
  * @author ruoyi
  */

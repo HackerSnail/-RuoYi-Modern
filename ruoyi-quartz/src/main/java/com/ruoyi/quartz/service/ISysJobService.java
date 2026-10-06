@@ -6,7 +6,10 @@ import com.ruoyi.common.exception.job.TaskException;
 import com.ruoyi.quartz.domain.SysJob;
 
 /**
- * 定时任务调度信息信息 服务层
+ * 定时任务调度信息 服务层
+ * <p>
+ * 写类方法（增删改、暂停/恢复/立即运行）遵循“先写 DB、成功后同步 Quartz 调度器”的双写契约，
+ * 并置于事务中，以保证调度器与 sys_job 表状态一致。
  * 
  * @author ruoyi
  */
@@ -69,10 +72,10 @@ public interface ISysJobService
     public int changeStatus(SysJob job) throws SchedulerException;
 
     /**
-     * 立即运行任务
+     * 立即运行任务（一次性触发，不改变原 cron 调度计划）
      * 
      * @param job 调度信息
-     * @return 结果
+     * @return 任务存在且成功触发返回 true，不存在或已过期返回 false
      */
     public boolean run(SysJob job) throws SchedulerException;
 

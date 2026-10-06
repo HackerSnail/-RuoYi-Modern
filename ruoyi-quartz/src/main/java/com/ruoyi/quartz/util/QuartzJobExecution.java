@@ -5,6 +5,9 @@ import com.ruoyi.quartz.domain.SysJob;
 
 /**
  * 定时任务处理（允许并发执行）
+ * <p>
+ * 未标注 @DisallowConcurrentExecution，同一任务的多次触发可并行执行，
+ * 与 QuartzDisallowConcurrentExecution 的区别仅在于是否允许重入。
  * 
  * @author ruoyi
  *

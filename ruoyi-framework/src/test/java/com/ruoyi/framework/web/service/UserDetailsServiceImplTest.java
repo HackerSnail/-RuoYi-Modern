@@ -18,7 +18,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.domain.model.LoginUser;
@@ -47,14 +46,11 @@ public class UserDetailsServiceImplTest
     @BeforeEach
     void setUp()
     {
-        userDetailsService = new UserDetailsServiceImpl();
         userService = mock(ISysUserService.class);
         passwordService = mock(SysPasswordService.class);
         permissionService = mock(SysPermissionService.class);
 
-        ReflectionTestUtils.setField(userDetailsService, "userService", userService);
-        ReflectionTestUtils.setField(userDetailsService, "passwordService", passwordService);
-        ReflectionTestUtils.setField(userDetailsService, "permissionService", permissionService);
+        userDetailsService = new UserDetailsServiceImpl(userService, passwordService, permissionService);
     }
 
     private SysUser activeUser()

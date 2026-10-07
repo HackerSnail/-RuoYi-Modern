@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import com.alibaba.fastjson2.JSON;
@@ -33,8 +32,12 @@ public class SameUrlDataInterceptor extends RepeatSubmitInterceptor
     @Value("${token.header}")
     private String header;
 
-    @Autowired
-    private RedisCache redisCache;
+    private final RedisCache redisCache;
+
+    public SameUrlDataInterceptor(RedisCache redisCache)
+    {
+        this.redisCache = redisCache;
+    }
 
     /**
      * 基于 Redis 的重复提交判定：以 key(前缀+url+令牌) 缓存本次“参数+时间戳”，

@@ -1,7 +1,6 @@
 package com.ruoyi.framework.config;
 
 import java.util.concurrent.TimeUnit;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.CacheControl;
@@ -23,8 +22,12 @@ import com.ruoyi.framework.interceptor.RepeatSubmitInterceptor;
 @Configuration
 public class ResourcesConfig implements WebMvcConfigurer
 {
-    @Autowired
-    private RepeatSubmitInterceptor repeatSubmitInterceptor;
+    private final RepeatSubmitInterceptor repeatSubmitInterceptor;
+
+    public ResourcesConfig(RepeatSubmitInterceptor repeatSubmitInterceptor)
+    {
+        this.repeatSubmitInterceptor = repeatSubmitInterceptor;
+    }
 
     /**
      * 映射静态资源：将上传目录暴露为 HTTP 可访问路径，并挂载 swagger-ui 静态资源（缓存 5 小时）

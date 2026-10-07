@@ -2,7 +2,6 @@ package com.ruoyi.framework.web.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -25,14 +24,19 @@ public class UserDetailsServiceImpl implements UserDetailsService
 {
     private static final Logger log = LoggerFactory.getLogger(UserDetailsServiceImpl.class);
 
-    @Autowired
-    private ISysUserService userService;
+    private final ISysUserService userService;
     
-    @Autowired
-    private SysPasswordService passwordService;
+    private final SysPasswordService passwordService;
 
-    @Autowired
-    private SysPermissionService permissionService;
+    private final SysPermissionService permissionService;
+
+    public UserDetailsServiceImpl(ISysUserService userService, SysPasswordService passwordService,
+            SysPermissionService permissionService)
+    {
+        this.userService = userService;
+        this.passwordService = passwordService;
+        this.permissionService = permissionService;
+    }
 
     /**
      * Spring Security 认证回调：按用户名校查用户，依次拦截不存在/已删除/已停用，

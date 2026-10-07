@@ -4,7 +4,6 @@ import java.io.IOException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
@@ -27,8 +26,12 @@ import com.ruoyi.framework.web.service.TokenService;
 @Configuration
 public class LogoutSuccessHandlerImpl implements LogoutSuccessHandler
 {
-    @Autowired
-    private TokenService tokenService;
+    private final TokenService tokenService;
+
+    public LogoutSuccessHandlerImpl(TokenService tokenService)
+    {
+        this.tokenService = tokenService;
+    }
 
     /**
      * 退出处理

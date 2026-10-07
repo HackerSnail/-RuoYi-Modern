@@ -1,6 +1,5 @@
 package com.ruoyi.framework.config;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
@@ -33,38 +32,44 @@ public class SecurityConfig
     /**
      * 认证失败处理类
      */
-    @Autowired
-    private AuthenticationEntryPointImpl unauthorizedHandler;
+    private final AuthenticationEntryPointImpl unauthorizedHandler;
 
     /**
      * 退出处理类
      */
-    @Autowired
-    private LogoutSuccessHandlerImpl logoutSuccessHandler;
+    private final LogoutSuccessHandlerImpl logoutSuccessHandler;
 
     /**
      * token认证过滤器
      */
-    @Autowired
-    private JwtAuthenticationTokenFilter authenticationTokenFilter;
+    private final JwtAuthenticationTokenFilter authenticationTokenFilter;
     
     /**
      * 跨域过滤器
      */
-    @Autowired
-    private CorsFilter corsFilter;
+    private final CorsFilter corsFilter;
 
     /**
      * 允许匿名访问的地址
      */
-    @Autowired
-    private PermitAllUrlProperties permitAllUrl;
+    private final PermitAllUrlProperties permitAllUrl;
 
     /**
      * 环境信息，用于按 profile 区分端点放行策略
      */
-    @Autowired
-    private Environment env;
+    private final Environment env;
+
+    public SecurityConfig(AuthenticationEntryPointImpl unauthorizedHandler,
+            LogoutSuccessHandlerImpl logoutSuccessHandler, JwtAuthenticationTokenFilter authenticationTokenFilter,
+            CorsFilter corsFilter, PermitAllUrlProperties permitAllUrl, Environment env)
+    {
+        this.unauthorizedHandler = unauthorizedHandler;
+        this.logoutSuccessHandler = logoutSuccessHandler;
+        this.authenticationTokenFilter = authenticationTokenFilter;
+        this.corsFilter = corsFilter;
+        this.permitAllUrl = permitAllUrl;
+        this.env = env;
+    }
 
 	/**
 	 * 身份验证实现

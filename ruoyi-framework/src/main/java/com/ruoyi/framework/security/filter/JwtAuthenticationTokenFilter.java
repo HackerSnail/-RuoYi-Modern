@@ -5,7 +5,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -24,8 +23,12 @@ import com.ruoyi.framework.web.service.TokenService;
 @Component
 public class JwtAuthenticationTokenFilter extends OncePerRequestFilter
 {
-    @Autowired
-    private TokenService tokenService;
+    private final TokenService tokenService;
+
+    public JwtAuthenticationTokenFilter(TokenService tokenService)
+    {
+        this.tokenService = tokenService;
+    }
 
     /**
      * 每请求执行一次：从 token 解析登录用户，仅当解析成功且当前尚未认证时，

@@ -16,7 +16,6 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.constant.UserConstants;
@@ -43,11 +42,9 @@ public class SysPermissionServiceTest
     @BeforeEach
     void setUp()
     {
-        permissionService = new SysPermissionService();
         roleService = mock(ISysRoleService.class);
         menuService = mock(ISysMenuService.class);
-        ReflectionTestUtils.setField(permissionService, "roleService", roleService);
-        ReflectionTestUtils.setField(permissionService, "menuService", menuService);
+        permissionService = new SysPermissionService(roleService, menuService);
     }
 
     private SysUser user(Long userId)

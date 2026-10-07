@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.ruoyi.common.constant.Constants;
+import com.ruoyi.common.core.redis.RedisCache;
 
 import io.jsonwebtoken.Claims;
 
@@ -39,7 +41,7 @@ public class TokenServiceTest
     @BeforeEach
     void setUp()
     {
-        tokenService = new TokenService();
+        tokenService = new TokenService(mock(RedisCache.class));
         ReflectionTestUtils.setField(tokenService, "header", "Authorization");
         ReflectionTestUtils.setField(tokenService, "secret", VALID_SECRET);
         ReflectionTestUtils.setField(tokenService, "expireTime", 30);

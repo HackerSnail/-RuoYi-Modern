@@ -3,7 +3,6 @@ package com.ruoyi.framework.web.service;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import com.ruoyi.common.constant.Constants;
@@ -22,11 +21,15 @@ import com.ruoyi.system.service.ISysRoleService;
 @Component
 public class SysPermissionService
 {
-    @Autowired
-    private ISysRoleService roleService;
+    private final ISysRoleService roleService;
 
-    @Autowired
-    private ISysMenuService menuService;
+    private final ISysMenuService menuService;
+
+    public SysPermissionService(ISysRoleService roleService, ISysMenuService menuService)
+    {
+        this.roleService = roleService;
+        this.menuService = menuService;
+    }
 
     /**
      * 获取角色数据权限

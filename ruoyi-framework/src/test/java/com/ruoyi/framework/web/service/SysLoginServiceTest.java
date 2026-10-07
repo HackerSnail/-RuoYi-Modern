@@ -83,18 +83,14 @@ public class SysLoginServiceTest
     @BeforeEach
     void setUp()
     {
-        loginService = new SysLoginService();
         tokenService = mock(TokenService.class);
         authenticationManager = mock(AuthenticationManager.class);
         redisCache = mock(RedisCache.class);
         userService = mock(ISysUserService.class);
         configService = mock(ISysConfigService.class);
 
-        ReflectionTestUtils.setField(loginService, "tokenService", tokenService);
+        loginService = new SysLoginService(tokenService, redisCache, userService, configService);
         ReflectionTestUtils.setField(loginService, "authenticationManager", authenticationManager);
-        ReflectionTestUtils.setField(loginService, "redisCache", redisCache);
-        ReflectionTestUtils.setField(loginService, "userService", userService);
-        ReflectionTestUtils.setField(loginService, "configService", configService);
     }
 
     private LoginUser adminLoginUser()

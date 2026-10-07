@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.MessageListener;
 import org.springframework.data.redis.listener.ChannelTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
-import com.ruoyi.framework.cache.MultiLevelCacheService;
+import com.ruoyi.framework.multicache.MultiLevelCacheService;
 
 /**
  * 二级缓存失效广播的订阅端配置：监听 {@link MultiLevelCacheService#INVALIDATE_CHANNEL} 频道，

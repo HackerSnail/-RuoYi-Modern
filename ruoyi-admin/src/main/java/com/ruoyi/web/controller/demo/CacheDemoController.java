@@ -11,8 +11,8 @@ import com.ruoyi.common.annotation.Anonymous;
 import com.ruoyi.common.annotation.RateLimiter;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.redis.RedisBloomFilter;
-import com.ruoyi.framework.cache.CacheDemoService;
-import com.ruoyi.framework.cache.MultiLevelCacheService;
+import com.ruoyi.framework.multicache.CacheDemoService;
+import com.ruoyi.framework.multicache.MultiLevelCacheService;
 
 /**
  * 缓存基建演示接口：把 #1 三防、#2 分布式锁、#4 二级缓存、限流之外的可观测部分

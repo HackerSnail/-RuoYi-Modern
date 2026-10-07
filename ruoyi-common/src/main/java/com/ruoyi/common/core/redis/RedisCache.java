@@ -119,24 +119,35 @@ public class RedisCache
     }
 
     /**
-     * 删除单个对象
+     * 删除单个对象（UNLINK 而非 DEL）。
+     * <p>
+     * UNLINK (Redis 4.0+) 将实际内存回收从命令执行线程剥离到后台 IO 线程，
+     * 对大 key（集合 / 大 value / 位图）尤其重要：DEL 一个百万成员的 hash/set/zset
+     * 会直接拖住主线程几百毫秒，UNLINK 只从 keyspace 摘除引用、主线程无感。
+     * 对不存在或较小的 key，UNLINK 与 DEL 行为、耗时完全等价。
      *
-     * @param key
+     * @param key 缓存键
+     * @return true=确实删除了一个 key；false=key 不存在
      */
     public boolean deleteObject(final String key)
     {
-        return redisTemplate.delete(key);
+        // SDR 4.x: RedisTemplate.unlink(K) 返回 Boolean（true=key 实际被删），
+        // RedisTemplate.unlink(Collection<K>) 返回 Long（实际删除个数），两者签名不同
+        return Boolean.TRUE.equals(redisTemplate.unlink(key));
     }
 
     /**
-     * 删除集合对象
+     * 删除集合对象（分批 UNLINK）。
+     * <p>
+     * 旧写法一次 DEL 传 N 个键：命令自身 O(N) 且同步回收内存，大集合场景会长时间
+     * 阻塞 Redis 主线程。本方法委托 {@link #unlinkObjects(Collection)} 按 500 个一批发送 UNLINK。
      *
      * @param collection 多个对象
-     * @return
+     * @return 至少删除一个则 true
      */
     public boolean deleteObject(final Collection collection)
     {
-        return redisTemplate.delete(collection) > 0;
+        return unlinkObjects(collection) > 0;
     }
 
     /**

@@ -67,10 +67,14 @@ public class RedisBloomFilter {
     }
 
     /**
-     * 重置位图（删除全部元素），供重建场景使用。
+     * 清空位图（删整个 key，供重建场景使用）：使用 UNLINK 而非 DEL。
+     * <p>
+     * 布隆位图实际占用很容易到 MB 级（例如 n=10w, p=1% → m≈96w bit ≈ 115KB；
+     * n=1000w, p=1% → m≈960w bit ≈ 1.15MB），DEL 会同步回收这块内存直接拖住 Redis
+     * 主线程；UNLINK 将回收交给后台 IO 线程，主线程无感。
      */
     public void clear(String bloomKey) {
-        redisTemplate.delete(bloomKey);
+        redisTemplate.unlink(bloomKey);
     }
 
     /**

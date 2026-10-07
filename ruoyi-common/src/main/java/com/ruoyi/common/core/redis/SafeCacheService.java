@@ -94,7 +94,9 @@ public class SafeCacheService {
                 }
                 return value;
             } finally {
-                redisTemplate.delete(lockKey);
+                // 锁本身只是一个很短的字符串，不存在大 key 风险；统一走 UNLINK 与项目其它删除路径保持同行为，
+                // 避免日后锁实现变成集合时回到 DEL 同步回收旧路
+                redisTemplate.unlink(lockKey);
             }
         }
         // 未抢到锁：短暂自旋等待持锁线程回填，避免同 key 惊群同时打 DB

@@ -119,7 +119,8 @@ public class CacheController {
     @PreAuthorize("@ss.hasPermi('monitor:cache:list')")
     @DeleteMapping("/clearCacheKey/{cacheKey}")
     public AjaxResult clearCacheKey(@PathVariable String cacheKey) {
-        redisTemplate.delete(cacheKey);
+        // 统一走 RedisCache.deleteObject → UNLINK，大 key 不阻塞主线程
+        redisCache.deleteObject(cacheKey);
         return AjaxResult.success();
     }
 

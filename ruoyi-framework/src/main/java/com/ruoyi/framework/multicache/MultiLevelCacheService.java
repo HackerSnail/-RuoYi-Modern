@@ -85,9 +85,10 @@ public class MultiLevelCacheService {
 
     /**
      * 失效：删除 L2、清除本节点 L1，并广播失效。
+     * L2 删除走 UNLINK 而非 DEL，避免集合型大 value 同释内存时拖住 Redis 主线程。
      */
     public void evict(String key) {
-        redisTemplate.delete(L2_PREFIX + key);
+        redisTemplate.unlink(L2_PREFIX + key);
         l1Cache.invalidate(key);
         stringRedisTemplate.convertAndSend(INVALIDATE_CHANNEL, key);
     }

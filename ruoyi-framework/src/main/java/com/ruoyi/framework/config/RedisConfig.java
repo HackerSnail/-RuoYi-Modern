@@ -54,21 +54,25 @@ public class RedisConfig extends CachingConfigurerSupport {
     }
 
     /**
-     * 限流脚本：固定窗口计数。首次 INCR 得到 1 时设置过期时间 time 形窗口；
-     * 当前计数超过 count 则直接返回不回增，否则 INCR 后返回当前次数。整个脚本在 Redis 单线执行以保证原子性。
+     * 限流脚本：基于 ZSET 的滑动窗口。以微秒时间戳为 score，先 ZREMRANGEBYSCORE 剔除窗口外的旧记录，
+     * 再取 ZCARD 作为窗口内当前请求数：若已达阈值 count 则返回 count+1（触发上层拒绝，且不写入本次）；
+     * 否则 ZADD 本次并 PEXPIRE 收尾，返回新的窗口计数。时间取 redis.call('TIME') 由服务端生成，
+     * 避免多节点客户端时钟漂移；整段脚本在 Redis 单线执行以保证原子性。相较固定窗口可消除临界突刺。
      */
     private String limitScriptText() {
         return "local key = KEYS[1]\n" +
                 "local count = tonumber(ARGV[1])\n" +
                 "local time = tonumber(ARGV[2])\n" +
-                "local current = redis.call('get', key);\n" +
-                "if current and tonumber(current) > count then\n" +
-                "    return tonumber(current);\n" +
+                "local t = redis.call('TIME')\n" +
+                "local now = tonumber(t[1]) * 1000000 + tonumber(t[2])\n" +
+                "local window = time * 1000000\n" +
+                "redis.call('ZREMRANGEBYSCORE', key, 0, now - window)\n" +
+                "local current = redis.call('ZCARD', key)\n" +
+                "if current >= count then\n" +
+                "    return current + 1\n" +
                 "end\n" +
-                "current = redis.call('incr', key)\n" +
-                "if tonumber(current) == 1 then\n" +
-                "    redis.call('expire', key, time)\n" +
-                "end\n" +
-                "return tonumber(current);";
+                "redis.call('ZADD', key, now, now .. '-' .. math.random(1, 1000000))\n" +
+                "redis.call('PEXPIRE', key, time * 1000)\n" +
+                "return current + 1;";
     }
 }

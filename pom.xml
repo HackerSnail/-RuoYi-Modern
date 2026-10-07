@@ -29,6 +29,7 @@
         <poi.version>5.5.1</poi.version>
         <velocity.version>2.3</velocity.version>
         <jjwt.version>0.13.0</jjwt.version>
+        <redisson.version>4.8.0</redisson.version>
         <springdoc.version>3.1.0</springdoc.version>
         <maven-surefire.version>3.5.2</maven-surefire.version>
         <!-- 默认仅运行单元测试：排除打了 integration 标签、需连远程 MySQL/Redis 的测试；
@@ -143,6 +144,13 @@
                 <groupId>pro.fessional</groupId>
                 <artifactId>kaptcha</artifactId>
                 <version>${kaptcha.version}</version>
+            </dependency>
+
+            <!-- Redisson 分布式对象与锁（用核心包手动装配，规避 starter 对 Spring Boot 4 的自动装配兼容风险） -->
+            <dependency>
+                <groupId>org.redisson</groupId>
+                <artifactId>redisson</artifactId>
+                <version>${redisson.version}</version>
             </dependency>
 
             <!-- 定时任务-->

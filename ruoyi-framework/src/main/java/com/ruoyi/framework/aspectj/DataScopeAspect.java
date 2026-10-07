@@ -143,9 +143,8 @@ public class DataScopeAspect
         if (StringUtils.isNotBlank(sqlString.toString()))
         {
             Object params = joinPoint.getArgs()[0];
-            if (StringUtils.isNotNull(params) && params instanceof BaseEntity)
+            if (StringUtils.isNotNull(params) && params instanceof BaseEntity baseEntity)
             {
-                BaseEntity baseEntity = (BaseEntity) params;
                 // substring(4) 去掉首部多余的分隔“ OR ”，再以 AND (...) 包裹作为独立条件注入查询参数
                 baseEntity.getParams().put(DATA_SCOPE, " AND (" + sqlString.substring(4) + ")");
             }
@@ -158,9 +157,8 @@ public class DataScopeAspect
     private void clearDataScope(final JoinPoint joinPoint)
     {
         Object params = joinPoint.getArgs()[0];
-        if (StringUtils.isNotNull(params) && params instanceof BaseEntity)
+        if (StringUtils.isNotNull(params) && params instanceof BaseEntity baseEntity)
         {
-            BaseEntity baseEntity = (BaseEntity) params;
             baseEntity.getParams().put(DATA_SCOPE, "");
         }
     }

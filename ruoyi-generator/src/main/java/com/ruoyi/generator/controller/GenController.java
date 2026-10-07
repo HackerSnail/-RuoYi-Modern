@@ -144,9 +144,8 @@ public class GenController extends BaseController
             for (SQLStatement sqlStatement : sqlStatements)
             {
                 // 仅处理 CREATE TABLE 语句，其余忽略
-                if (sqlStatement instanceof MySqlCreateTableStatement)
+                if (sqlStatement instanceof MySqlCreateTableStatement createTableStatement)
                 {
-                    MySqlCreateTableStatement createTableStatement = (MySqlCreateTableStatement) sqlStatement;
                     if (genTableService.createTable(createTableStatement.toString()))
                     {
                         // 建表成功则记录表名（剔除反引号）用于后续自动导入

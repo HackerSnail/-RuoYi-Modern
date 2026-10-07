@@ -1929,9 +1929,8 @@ public class ExcelUtil<T>
         {
             for (HSSFShape shape : sheet.getDrawingPatriarch().getChildren())
             {
-                if (shape instanceof HSSFPicture)
+                if (shape instanceof HSSFPicture pic)
                 {
-                    HSSFPicture pic = (HSSFPicture) shape;
                     HSSFClientAnchor anchor = (HSSFClientAnchor) pic.getAnchor();
                     String picIndex = anchor.getRow1() + "_" + anchor.getCol1();
                     sheetIndexPicMap.computeIfAbsent(picIndex, k -> new ArrayList<>()).add(pic.getPictureData());
@@ -1953,14 +1952,12 @@ public class ExcelUtil<T>
         Map<String, List<PictureData>> sheetIndexPicMap = new HashMap<>();
         for (POIXMLDocumentPart dr : sheet.getRelations())
         {
-            if (dr instanceof XSSFDrawing)
+            if (dr instanceof XSSFDrawing drawing)
             {
-                XSSFDrawing drawing = (XSSFDrawing) dr;
                 for (XSSFShape shape : drawing.getShapes())
                 {
-                    if (shape instanceof XSSFPicture)
+                    if (shape instanceof XSSFPicture pic)
                     {
-                        XSSFPicture pic = (XSSFPicture) shape;
                         XSSFClientAnchor anchor = pic.getPreferredSize();
                         CTMarker ctMarker = anchor.getFrom();
                         String picIndex = ctMarker.getRow() + "_" + ctMarker.getCol();
@@ -1986,17 +1983,17 @@ public class ExcelUtil<T>
             return "";
         }
         String str;
-        if (val instanceof Date)
+        if (val instanceof Date date)
         {
-            str = DateUtils.parseDateToStr(dateFormat, (Date) val);
+            str = DateUtils.parseDateToStr(dateFormat, date);
         }
-        else if (val instanceof LocalDateTime)
+        else if (val instanceof LocalDateTime localDateTime)
         {
-            str = DateUtils.parseDateToStr(dateFormat, DateUtils.toDate((LocalDateTime) val));
+            str = DateUtils.parseDateToStr(dateFormat, DateUtils.toDate(localDateTime));
         }
-        else if (val instanceof LocalDate)
+        else if (val instanceof LocalDate localDate)
         {
-            str = DateUtils.parseDateToStr(dateFormat, DateUtils.toDate((LocalDate) val));
+            str = DateUtils.parseDateToStr(dateFormat, DateUtils.toDate(localDate));
         }
         else
         {

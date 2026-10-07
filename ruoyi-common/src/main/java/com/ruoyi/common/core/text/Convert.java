@@ -31,9 +31,9 @@ public class Convert
         {
             return defaultValue;
         }
-        if (value instanceof String)
+        if (value instanceof String strVal)
         {
-            return (String) value;
+            return strVal;
         }
         return value.toString();
     }
@@ -66,9 +66,9 @@ public class Convert
         {
             return defaultValue;
         }
-        if (value instanceof Character)
+        if (value instanceof Character charVal)
         {
-            return (Character) value;
+            return charVal;
         }
 
         final String valueStr = toStr(value, null);
@@ -103,13 +103,13 @@ public class Convert
         {
             return defaultValue;
         }
-        if (value instanceof Byte)
+        if (value instanceof Byte byteVal)
         {
-            return (Byte) value;
+            return byteVal;
         }
-        if (value instanceof Number)
+        if (value instanceof Number numVal)
         {
-            return ((Number) value).byteValue();
+            return numVal.byteValue();
         }
         final String valueStr = toStr(value, null);
         if (StringUtils.isEmpty(valueStr))
@@ -154,13 +154,13 @@ public class Convert
         {
             return defaultValue;
         }
-        if (value instanceof Short)
+        if (value instanceof Short shortVal)
         {
-            return (Short) value;
+            return shortVal;
         }
-        if (value instanceof Number)
+        if (value instanceof Number numVal)
         {
-            return ((Number) value).shortValue();
+            return numVal.shortValue();
         }
         final String valueStr = toStr(value, null);
         if (StringUtils.isEmpty(valueStr))
@@ -205,9 +205,9 @@ public class Convert
         {
             return defaultValue;
         }
-        if (value instanceof Number)
+        if (value instanceof Number numVal)
         {
-            return (Number) value;
+            return numVal;
         }
         final String valueStr = toStr(value, null);
         if (StringUtils.isEmpty(valueStr))
@@ -252,13 +252,13 @@ public class Convert
         {
             return defaultValue;
         }
-        if (value instanceof Integer)
+        if (value instanceof Integer intVal)
         {
-            return (Integer) value;
+            return intVal;
         }
-        if (value instanceof Number)
+        if (value instanceof Number numVal)
         {
-            return ((Number) value).intValue();
+            return numVal.intValue();
         }
         final String valueStr = toStr(value, null);
         if (StringUtils.isEmpty(valueStr))
@@ -398,13 +398,13 @@ public class Convert
         {
             return defaultValue;
         }
-        if (value instanceof Long)
+        if (value instanceof Long longVal)
         {
-            return (Long) value;
+            return longVal;
         }
-        if (value instanceof Number)
+        if (value instanceof Number numVal)
         {
-            return ((Number) value).longValue();
+            return numVal.longValue();
         }
         final String valueStr = toStr(value, null);
         if (StringUtils.isEmpty(valueStr))
@@ -450,13 +450,13 @@ public class Convert
         {
             return defaultValue;
         }
-        if (value instanceof Double)
+        if (value instanceof Double doubleVal)
         {
-            return (Double) value;
+            return doubleVal;
         }
-        if (value instanceof Number)
+        if (value instanceof Number numVal)
         {
-            return ((Number) value).doubleValue();
+            return numVal.doubleValue();
         }
         final String valueStr = toStr(value, null);
         if (StringUtils.isEmpty(valueStr))
@@ -502,13 +502,13 @@ public class Convert
         {
             return defaultValue;
         }
-        if (value instanceof Float)
+        if (value instanceof Float floatVal)
         {
-            return (Float) value;
+            return floatVal;
         }
-        if (value instanceof Number)
+        if (value instanceof Number numVal)
         {
-            return ((Number) value).floatValue();
+            return numVal.floatValue();
         }
         final String valueStr = toStr(value, null);
         if (StringUtils.isEmpty(valueStr))

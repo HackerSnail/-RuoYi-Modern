@@ -26,9 +26,8 @@ public abstract class RepeatSubmitInterceptor implements HandlerInterceptor
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception
     {
-        if (handler instanceof HandlerMethod)
+        if (handler instanceof HandlerMethod handlerMethod)
         {
-            HandlerMethod handlerMethod = (HandlerMethod) handler;
             Method method = handlerMethod.getMethod();
             RepeatSubmit annotation = method.getAnnotation(RepeatSubmit.class);
             if (annotation != null)

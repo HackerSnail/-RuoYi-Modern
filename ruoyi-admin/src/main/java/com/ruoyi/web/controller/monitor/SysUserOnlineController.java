@@ -52,7 +52,7 @@ public class SysUserOnlineController extends BaseController
     {
         // 扫描 LOGIN_TOKEN_KEY 前缀的全部缓存键，即当前持有的有效会话
         Collection<String> keys = redisCache.keys(CacheConstants.LOGIN_TOKEN_KEY + "*");
-        List<SysUserOnline> userOnlineList = new ArrayList<SysUserOnline>();
+        List<SysUserOnline> userOnlineList = new ArrayList<>();
         for (String key : keys)
         {
             LoginUser user = redisCache.getCacheObject(key);

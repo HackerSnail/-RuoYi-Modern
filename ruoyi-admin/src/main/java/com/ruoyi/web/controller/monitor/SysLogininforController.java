@@ -59,7 +59,7 @@ public class SysLogininforController extends BaseController
     public void export(HttpServletResponse response, SysLogininfor logininfor)
     {
         List<SysLogininfor> list = logininforService.selectLogininforList(logininfor);
-        ExcelUtil<SysLogininfor> util = new ExcelUtil<SysLogininfor>(SysLogininfor.class);
+        ExcelUtil<SysLogininfor> util = new ExcelUtil<>(SysLogininfor.class);
         util.exportExcel(response, list, "登录日志");
     }
 

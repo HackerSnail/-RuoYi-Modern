@@ -31,7 +31,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @RequestMapping("/test/user")
 public class TestController extends BaseController
 {
-    private final static Map<Integer, UserEntity> users = new LinkedHashMap<Integer, UserEntity>();
+    private final static Map<Integer, UserEntity> users = new LinkedHashMap<>();
     {
         // 初始化两条演示数据（实例初始化块，随首个实例创建时填充）
         users.put(1, new UserEntity(1, "admin", "admin123", "15888888888"));
@@ -42,7 +42,7 @@ public class TestController extends BaseController
     @GetMapping("/list")
     public R<List<UserEntity>> userList()
     {
-        List<UserEntity> userList = new ArrayList<UserEntity>(users.values());
+        List<UserEntity> userList = new ArrayList<>(users.values());
         return R.ok(userList);
     }
     

@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.io.IOUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -46,11 +45,15 @@ import com.ruoyi.generator.service.IGenTableService;
 @RequestMapping("/tool/gen")
 public class GenController extends BaseController
 {
-    @Autowired
-    private IGenTableService genTableService;
+    private final IGenTableService genTableService;
 
-    @Autowired
-    private IGenTableColumnService genTableColumnService;
+    private final IGenTableColumnService genTableColumnService;
+
+    public GenController(IGenTableService genTableService, IGenTableColumnService genTableColumnService)
+    {
+        this.genTableService = genTableService;
+        this.genTableColumnService = genTableColumnService;
+    }
 
     /**
      * 查询代码生成列表

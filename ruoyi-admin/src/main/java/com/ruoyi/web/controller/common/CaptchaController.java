@@ -3,9 +3,9 @@ package com.ruoyi.web.controller.common;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
-import jakarta.annotation.Resource;
 import javax.imageio.ImageIO;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.util.FastByteArrayOutputStream;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,18 +27,20 @@ import com.ruoyi.system.service.ISysConfigService;
 @RestController
 public class CaptchaController
 {
-    @Resource(name = "captchaProducer")
-    private Producer captchaProducer;
+    private final Producer captchaProducer;
 
-    @Resource(name = "captchaProducerMath")
-    private Producer captchaProducerMath;
+    private final Producer captchaProducerMath;
 
     private final RedisCache redisCache;
 
     private final ISysConfigService configService;
 
-    public CaptchaController(RedisCache redisCache, ISysConfigService configService)
+    public CaptchaController(@Qualifier("captchaProducer") Producer captchaProducer,
+            @Qualifier("captchaProducerMath") Producer captchaProducerMath,
+            RedisCache redisCache, ISysConfigService configService)
     {
+        this.captchaProducer = captchaProducer;
+        this.captchaProducerMath = captchaProducerMath;
         this.redisCache = redisCache;
         this.configService = configService;
     }

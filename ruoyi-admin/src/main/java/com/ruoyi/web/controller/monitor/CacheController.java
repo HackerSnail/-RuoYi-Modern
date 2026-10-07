@@ -38,7 +38,7 @@ public class CacheController
     }
 
     private final static List<SysCache> caches = new ArrayList<SysCache>();
-    {
+    static {
         // 预置缓存名称与中文说明的映射，供前端监控页下拉框展示（key 前缀 -> 业务含义）
         caches.add(new SysCache(CacheConstants.LOGIN_TOKEN_KEY, "用户信息"));
         caches.add(new SysCache(CacheConstants.SYS_CONFIG_KEY, "配置信息"));

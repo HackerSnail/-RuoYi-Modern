@@ -1,6 +1,6 @@
 package com.ruoyi.common.core.domain.entity;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.List;
 import jakarta.validation.constraints.*;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -72,10 +72,11 @@ public class SysUser extends BaseEntity
     /** 最后登录时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Excel(name = "最后登录时间", width = 30, dateFormat = "yyyy-MM-dd HH:mm:ss", type = Type.EXPORT)
-    private Date loginDate;
+    private LocalDateTime loginDate;
 
     /** 密码最后更新时间 */
-    private Date pwdUpdateDate;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime pwdUpdateDate;
 
     /** 部门对象 */
     @Excels({
@@ -240,22 +241,22 @@ public class SysUser extends BaseEntity
         this.loginIp = loginIp;
     }
 
-    public Date getLoginDate()
+    public LocalDateTime getLoginDate()
     {
         return loginDate;
     }
 
-    public void setLoginDate(Date loginDate)
+    public void setLoginDate(LocalDateTime loginDate)
     {
         this.loginDate = loginDate;
     }
 
-    public Date getPwdUpdateDate()
+    public LocalDateTime getPwdUpdateDate()
     {
         return pwdUpdateDate;
     }
 
-    public void setPwdUpdateDate(Date pwdUpdateDate)
+    public void setPwdUpdateDate(LocalDateTime pwdUpdateDate)
     {
         this.pwdUpdateDate = pwdUpdateDate;
     }

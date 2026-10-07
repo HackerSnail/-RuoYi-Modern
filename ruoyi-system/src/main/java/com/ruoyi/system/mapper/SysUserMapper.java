@@ -1,6 +1,6 @@
 package com.ruoyi.system.mapper;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.apache.ibatis.annotations.Param;
 import com.ruoyi.common.core.domain.entity.SysUser;
@@ -94,7 +94,7 @@ public interface SysUserMapper
      * @param loginDate 登录时间
      * @return 结果
      */
-    public int updateLoginInfo(@Param("userId") Long userId, @Param("loginIp") String loginIp, @Param("loginDate") Date loginDate);
+    public int updateLoginInfo(@Param("userId") Long userId, @Param("loginIp") String loginIp, @Param("loginDate") LocalDateTime loginDate);
 
     /**
      * 重置用户密码

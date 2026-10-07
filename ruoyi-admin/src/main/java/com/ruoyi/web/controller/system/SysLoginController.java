@@ -1,6 +1,6 @@
 package com.ruoyi.web.controller.system;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -118,14 +118,14 @@ public class SysLoginController
     }
 
     // 检查初始密码是否提醒修改
-    public boolean initPasswordIsModify(Date pwdUpdateDate)
+    public boolean initPasswordIsModify(LocalDateTime pwdUpdateDate)
     {
         Integer initPasswordModify = Convert.toInt(configService.selectConfigByKey("sys.account.initPasswordModify"));
         return initPasswordModify != null && initPasswordModify == 1 && pwdUpdateDate == null;
     }
 
     // 检查密码是否过期：基于 sys.account.passwordValidateDays 配置，从未改过密码或距上次修改超过阈值天数则视为过期
-    public boolean passwordIsExpiration(Date pwdUpdateDate)
+    public boolean passwordIsExpiration(LocalDateTime pwdUpdateDate)
     {
         Integer passwordValidateDays = Convert.toInt(configService.selectConfigByKey("sys.account.passwordValidateDays"));
         // 未配置或配置为 0（负数）表示不启用过期策略
@@ -136,9 +136,8 @@ public class SysLoginController
                 // 如果从未修改过初始密码，直接提醒过期
                 return true;
             }
-            Date nowDate = DateUtils.getNowDate();
             // 距上次改密的天数超过配置阈值即判定过期
-            return DateUtils.differentDaysByMillisecond(nowDate, pwdUpdateDate) > passwordValidateDays;
+            return DateUtils.differentDaysByMillisecond(DateUtils.getNowDate(), DateUtils.toDate(pwdUpdateDate)) > passwordValidateDays;
         }
         return false;
     }

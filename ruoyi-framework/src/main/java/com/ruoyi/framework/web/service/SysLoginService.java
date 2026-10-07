@@ -16,7 +16,7 @@ import com.ruoyi.common.exception.user.CaptchaException;
 import com.ruoyi.common.exception.user.CaptchaExpireException;
 import com.ruoyi.common.exception.user.UserNotExistsException;
 import com.ruoyi.common.exception.user.UserPasswordNotMatchException;
-import com.ruoyi.common.utils.DateUtils;
+import java.time.LocalDateTime;
 import com.ruoyi.common.utils.MessageUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.ip.IpUtils;
@@ -174,6 +174,6 @@ public class SysLoginService
      */
     public void recordLoginInfo(Long userId)
     {
-        userService.updateLoginInfo(userId, IpUtils.getIpAddr(), DateUtils.getNowDate());
+        userService.updateLoginInfo(userId, IpUtils.getIpAddr(), LocalDateTime.now());
     }
 }

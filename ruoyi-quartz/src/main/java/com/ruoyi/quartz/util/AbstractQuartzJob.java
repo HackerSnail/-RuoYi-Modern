@@ -1,6 +1,7 @@
 package com.ruoyi.quartz.util;
 
-import java.util.Date;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.slf4j.Logger;
@@ -27,7 +28,7 @@ public abstract class AbstractQuartzJob implements Job
     /**
      * 线程本地变量
      */
-    private static ThreadLocal<Date> threadLocal = new ThreadLocal<>();
+    private static ThreadLocal<LocalDateTime> threadLocal = new ThreadLocal<>();
 
     /**
      * Quartz 回调入口：采用模板方法模式，串起 before→doExecute→after 三个阶段。
@@ -67,7 +68,7 @@ public abstract class AbstractQuartzJob implements Job
     protected void before(JobExecutionContext context, SysJob sysJob)
     {
         // 记录开始时间戳，供 after 计算耗时；用 ThreadLocal 隔离并发调度的执行线程
-        threadLocal.set(new Date());
+        threadLocal.set(LocalDateTime.now());
     }
 
     /**
@@ -78,7 +79,7 @@ public abstract class AbstractQuartzJob implements Job
      */
     protected void after(JobExecutionContext context, SysJob sysJob, Exception e)
     {
-        Date startTime = threadLocal.get();
+        LocalDateTime startTime = threadLocal.get();
         // 取出后必须清理，防止线程被 Quartz 线程池复用时残留脏数据导致内存泄漏/耗时错算
         threadLocal.remove();
 
@@ -87,8 +88,8 @@ public abstract class AbstractQuartzJob implements Job
         sysJobLog.setJobGroup(sysJob.getJobGroup());
         sysJobLog.setInvokeTarget(sysJob.getInvokeTarget());
         sysJobLog.setStartTime(startTime);
-        sysJobLog.setEndTime(new Date());
-        long runMs = sysJobLog.getEndTime().getTime() - sysJobLog.getStartTime().getTime();
+        sysJobLog.setEndTime(LocalDateTime.now());
+        long runMs = Duration.between(sysJobLog.getStartTime(), sysJobLog.getEndTime()).toMillis();
         sysJobLog.setJobMessage(sysJobLog.getJobName() + " 总共耗时：" + runMs + "毫秒");
         if (e != null)
         {

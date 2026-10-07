@@ -1,6 +1,7 @@
 package com.ruoyi.system.domain;
 
-import java.util.Date;
+import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 
@@ -21,7 +22,8 @@ public class SysNoticeRead
     private Long userId;
 
     /** 阅读时间 */
-    private Date readTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime readTime;
 
     public Long getReadId()
     {
@@ -53,12 +55,12 @@ public class SysNoticeRead
         this.userId = userId;
     }
 
-    public Date getReadTime()
+    public LocalDateTime getReadTime()
     {
         return readTime;
     }
 
-    public void setReadTime(Date readTime)
+    public void setReadTime(LocalDateTime readTime)
     {
         this.readTime = readTime;
     }

@@ -1,6 +1,6 @@
 package com.ruoyi.system.domain;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.ruoyi.common.annotation.Excel;
 import com.ruoyi.common.annotation.Excel.ColumnType;
@@ -81,7 +81,7 @@ public class SysOperLog extends BaseEntity
     /** 操作时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Excel(name = "操作时间", width = 30, dateFormat = "yyyy-MM-dd HH:mm:ss")
-    private Date operTime;
+    private LocalDateTime operTime;
 
     /** 消耗时间 */
     @Excel(name = "消耗时间", suffix = "毫秒")
@@ -247,12 +247,12 @@ public class SysOperLog extends BaseEntity
         this.errorMsg = errorMsg;
     }
 
-    public Date getOperTime()
+    public LocalDateTime getOperTime()
     {
         return operTime;
     }
 
-    public void setOperTime(Date operTime)
+    public void setOperTime(LocalDateTime operTime)
     {
         this.operTime = operTime;
     }

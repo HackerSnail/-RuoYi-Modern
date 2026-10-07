@@ -189,4 +189,12 @@ public class DateUtils extends org.apache.commons.lang3.time.DateUtils
         ZonedDateTime zdt = localDateTime.atZone(ZoneId.systemDefault());
         return Date.from(zdt.toInstant());
     }
+
+    /**
+     * Date ==> LocalDateTime
+     */
+    public static LocalDateTime toLocalDateTime(Date date)
+    {
+        return date == null ? null : LocalDateTime.ofInstant(date.toInstant(), ZoneId.systemDefault());
+    }
 }

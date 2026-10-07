@@ -1,6 +1,6 @@
 package com.ruoyi.quartz.domain;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -10,6 +10,7 @@ import com.ruoyi.common.annotation.Excel;
 import com.ruoyi.common.annotation.Excel.ColumnType;
 import com.ruoyi.common.constant.ScheduleConstants;
 import com.ruoyi.common.core.domain.BaseEntity;
+import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.quartz.util.CronUtils;
 
@@ -115,11 +116,11 @@ public class SysJob extends BaseEntity
      * cron 为空时返回 null（不抛异常，避免无表达式的临时对象序列化失败）。
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    public Date getNextValidTime()
+    public LocalDateTime getNextValidTime()
     {
         if (StringUtils.isNotEmpty(cronExpression))
         {
-            return CronUtils.getNextExecution(cronExpression);
+            return DateUtils.toLocalDateTime(CronUtils.getNextExecution(cronExpression));
         }
         return null;
     }

@@ -1,6 +1,6 @@
 package com.ruoyi.system.service;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.List;
 import com.ruoyi.common.core.domain.entity.SysUser;
 
@@ -170,7 +170,7 @@ public interface ISysUserService
      * @param loginDate 登录时间
      * @return 结果
      */
-    public void updateLoginInfo(Long userId, String loginIp, Date loginDate);
+    public void updateLoginInfo(Long userId, String loginIp, LocalDateTime loginDate);
 
     /**
      * 重置用户密码

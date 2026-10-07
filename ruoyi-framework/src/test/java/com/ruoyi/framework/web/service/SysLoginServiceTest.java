@@ -12,7 +12,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -186,7 +186,7 @@ public class SysLoginServiceTest
 
             loginService.recordLoginInfo(2L);
 
-            verify(userService).updateLoginInfo(eq(2L), eq("10.0.0.1"), any(Date.class));
+            verify(userService).updateLoginInfo(eq(2L), eq("10.0.0.1"), any(LocalDateTime.class));
         }
     }
 

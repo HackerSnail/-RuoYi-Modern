@@ -363,13 +363,13 @@ public class GenTableServiceImpl implements IGenTableService
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         ZipOutputStream zip = new ZipOutputStream(outputStream);
         // typeFiles 缓存需跨表合并的 index-bak.ts（多表 export 行追加到同一文件）
-        Map<String, StringBuffer> typeFiles = new HashMap<>();
+        Map<String, StringBuilder> typeFiles = new HashMap<>();
         for (String tableName : tableNames)
         {
             generatorCode(tableName, zip, typeFiles);
         }
         // 合并完后再把聚合结果作为一个条目写入 zip
-        for (Map.Entry<String, StringBuffer> entry : typeFiles.entrySet())
+        for (Map.Entry<String, StringBuilder> entry : typeFiles.entrySet())
         {
             writeToZip(zip, entry.getKey(), entry.getValue().toString());
         }
@@ -381,7 +381,7 @@ public class GenTableServiceImpl implements IGenTableService
     /**
      * 查询表信息并生成代码
      */
-    private void generatorCode(String tableName, ZipOutputStream zip, Map<String, StringBuffer> typeFiles)
+    private void generatorCode(String tableName, ZipOutputStream zip, Map<String, StringBuilder> typeFiles)
     {
         // 查询表信息
         GenTable table = genTableMapper.selectGenTableByName(tableName);
@@ -409,7 +409,7 @@ public class GenTableServiceImpl implements IGenTableService
                 if (!typeFiles.containsKey(fileName))
                 {
                     // 首次：整份内容作为基线
-                    typeFiles.put(fileName, new StringBuffer(sw.toString()));
+                    typeFiles.put(fileName, new StringBuilder(sw.toString()));
                 }
                 else
                 {

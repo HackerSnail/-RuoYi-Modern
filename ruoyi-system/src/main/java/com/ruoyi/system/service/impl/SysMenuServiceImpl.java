@@ -3,7 +3,6 @@ package com.ruoyi.system.service.impl;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -175,7 +174,7 @@ public class SysMenuServiceImpl implements ISysMenuService
     @Override
     public List<RouterVo> buildMenus(List<SysMenu> menus)
     {
-        List<RouterVo> routers = new LinkedList<RouterVo>();
+        List<RouterVo> routers = new LinkedList<>();
         for (SysMenu menu : menus)
         {
             RouterVo router = new RouterVo();
@@ -197,7 +196,7 @@ public class SysMenuServiceImpl implements ISysMenuService
             {
                 // 一级普通菜单（非目录非外链）：包一层虚拟子路由，使其在 Layout 下正确渲染
                 router.setMeta(null);
-                List<RouterVo> childrenList = new ArrayList<RouterVo>();
+                List<RouterVo> childrenList = new ArrayList<>();
                 RouterVo children = new RouterVo();
                 children.setPath(menu.getPath());
                 children.setComponent(menu.getComponent());
@@ -212,7 +211,7 @@ public class SysMenuServiceImpl implements ISysMenuService
                 // 根级内链菜单：用 InnerLink 组件包裹外部 http 地址，路径中的协议/域名特殊字符先替换为合法路由段
                 router.setMeta(new MetaVo(menu.getMenuName(), menu.getIcon()));
                 router.setPath("/");
-                List<RouterVo> childrenList = new ArrayList<RouterVo>();
+                List<RouterVo> childrenList = new ArrayList<>();
                 RouterVo children = new RouterVo();
                 String routerPath = innerLinkReplaceEach(menu.getPath());
                 children.setPath(routerPath);
@@ -236,11 +235,10 @@ public class SysMenuServiceImpl implements ISysMenuService
     @Override
     public List<SysMenu> buildMenuTree(List<SysMenu> menus)
     {
-        List<SysMenu> returnList = new ArrayList<SysMenu>();
+        List<SysMenu> returnList = new ArrayList<>();
         List<Long> tempList = menus.stream().map(SysMenu::getMenuId).collect(Collectors.toList());
-        for (Iterator<SysMenu> iterator = menus.iterator(); iterator.hasNext();)
+        for (SysMenu menu : menus)
         {
-            SysMenu menu = (SysMenu) iterator.next();
             // 如果是顶级节点, 遍历该父节点的所有子节点
             if (!tempList.contains(menu.getParentId()))
             {
@@ -556,10 +554,9 @@ public class SysMenuServiceImpl implements ISysMenuService
      */
     public List<SysMenu> getChildPerms(List<SysMenu> list, long parentId)
     {
-        List<SysMenu> returnList = new ArrayList<SysMenu>();
-        for (Iterator<SysMenu> iterator = list.iterator(); iterator.hasNext();)
+        List<SysMenu> returnList = new ArrayList<>();
+        for (SysMenu t : list)
         {
-            SysMenu t = (SysMenu) iterator.next();
             // 一、根据传入的某个父节点ID,遍历该父节点的所有子节点
             if (t.getParentId() == parentId)
             {
@@ -595,11 +592,9 @@ public class SysMenuServiceImpl implements ISysMenuService
      */
     private List<SysMenu> getChildList(List<SysMenu> list, SysMenu t)
     {
-        List<SysMenu> tlist = new ArrayList<SysMenu>();
-        Iterator<SysMenu> it = list.iterator();
-        while (it.hasNext())
+        List<SysMenu> tlist = new ArrayList<>();
+        for (SysMenu n : list)
         {
-            SysMenu n = (SysMenu) it.next();
             if (n.getParentId().longValue() == t.getMenuId().longValue())
             {
                 tlist.add(n);

@@ -1,7 +1,6 @@
 package com.ruoyi.system.service.impl;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -73,7 +72,7 @@ public class SysDeptServiceImpl implements ISysDeptService
     @Override
     public List<SysDept> buildDeptTree(List<SysDept> depts)
     {
-        List<SysDept> returnList = new ArrayList<SysDept>();
+        List<SysDept> returnList = new ArrayList<>();
         List<Long> tempList = depts.stream().map(SysDept::getDeptId).collect(Collectors.toList());
         for (SysDept dept : depts)
         {
@@ -353,11 +352,9 @@ public class SysDeptServiceImpl implements ISysDeptService
      */
     private List<SysDept> getChildList(List<SysDept> list, SysDept t)
     {
-        List<SysDept> tlist = new ArrayList<SysDept>();
-        Iterator<SysDept> it = list.iterator();
-        while (it.hasNext())
+        List<SysDept> tlist = new ArrayList<>();
+        for (SysDept n : list)
         {
-            SysDept n = (SysDept) it.next();
             if (StringUtils.isNotNull(n.getParentId()) && n.getParentId().longValue() == t.getDeptId().longValue())
             {
                 tlist.add(n);

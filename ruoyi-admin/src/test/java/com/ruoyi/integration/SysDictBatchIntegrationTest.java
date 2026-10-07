@@ -21,8 +21,7 @@ import com.ruoyi.system.mapper.SysDictTypeMapper;
  * 用例自建字典类型 fixture（其中一个挂一条数据以构成"已分配"），方法级事务结束后自动回滚。
  */
 @DisplayName("字典批量查询：selectDictTypeByIds / selectAssignedDictTypes（真实 MySQL，事务回滚）")
-public class SysDictBatchIntegrationTest extends BaseMapperIntegrationTest
-{
+public class SysDictBatchIntegrationTest extends BaseMapperIntegrationTest {
     @Autowired
     private SysDictTypeMapper dictTypeMapper;
 
@@ -31,11 +30,10 @@ public class SysDictBatchIntegrationTest extends BaseMapperIntegrationTest
 
     @Test
     @DisplayName("按 id 批量回查类型；批量筛出已分配类型")
-    void selectByIdsAndAssignedTypes()
-    {
+    void selectByIdsAndAssignedTypes() {
         String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 10);
-        String typeAssigned = "it_dict_assigned_" + suffix;  // 挂一条数据 -> 已分配
-        String typeFree = "it_dict_free_" + suffix;          // 无数据 -> 未分配
+        String typeAssigned = "it_dict_assigned_" + suffix; // 挂一条数据 -> 已分配
+        String typeFree = "it_dict_free_" + suffix; // 无数据 -> 未分配
 
         Long idAssigned = insertDictType("集成测试已分配", typeAssigned);
         Long idFree = insertDictType("集成测试未分配", typeFree);
@@ -54,15 +52,13 @@ public class SysDictBatchIntegrationTest extends BaseMapperIntegrationTest
 
     // ---- fixture helpers ----
 
-    private Long insertDictType(String name, String type)
-    {
+    private Long insertDictType(String name, String type) {
         jdbc.update("insert into sys_dict_type(dict_name, dict_type, status, create_by) values(?, ?, '0', 'itest')",
                 name, type);
         return jdbc.queryForObject("select dict_id from sys_dict_type where dict_type = ?", Long.class, type);
     }
 
-    private void insertDictData(String type)
-    {
+    private void insertDictData(String type) {
         jdbc.update("insert into sys_dict_data(dict_sort, dict_label, dict_value, dict_type, status, create_by) "
                 + "values(0, ?, ?, ?, '0', 'itest')", "集成标签", "1", type);
     }

@@ -24,17 +24,16 @@ import com.ruoyi.quartz.domain.SysJob;
  * @author ruoyi
  *
  */
-public class ScheduleUtils
-{
+public class ScheduleUtils {
     /**
      * 得到quartz任务类
      *
      * @param sysJob 执行计划
      * @return 具体执行任务类（根据 concurrent 标志选择允许/禁止并发执行的 Job 实现）
      */
-    private static Class<? extends Job> getQuartzJobClass(SysJob sysJob)
-    {
-        // concurrent 为允许时用普通 Job；否则用 @DisallowConcurrentExecution 标注的子类，串行执行同一 JobDetail
+    private static Class<? extends Job> getQuartzJobClass(SysJob sysJob) {
+        // concurrent 为允许时用普通 Job；否则用 @DisallowConcurrentExecution 标注的子类，串行执行同一
+        // JobDetail
         boolean isConcurrent = ScheduleConstants.CONCURRENT_ALLOW.equals(sysJob.getConcurrent());
         return isConcurrent ? QuartzJobExecution.class : QuartzDisallowConcurrentExecution.class;
     }
@@ -42,24 +41,21 @@ public class ScheduleUtils
     /**
      * 构建任务触发对象
      */
-    public static TriggerKey getTriggerKey(Long jobId, String jobGroup)
-    {
+    public static TriggerKey getTriggerKey(Long jobId, String jobGroup) {
         return TriggerKey.triggerKey(ScheduleConstants.TASK_CLASS_NAME + jobId, jobGroup);
     }
 
     /**
      * 构建任务键对象
      */
-    public static JobKey getJobKey(Long jobId, String jobGroup)
-    {
+    public static JobKey getJobKey(Long jobId, String jobGroup) {
         return JobKey.jobKey(ScheduleConstants.TASK_CLASS_NAME + jobId, jobGroup);
     }
 
     /**
      * 创建定时任务：拼装 JobDetail + CronTrigger 注册到调度器，并根据状态决定是否立即暂停。
      */
-    public static void createScheduleJob(Scheduler scheduler, SysJob job) throws SchedulerException, TaskException
-    {
+    public static void createScheduleJob(Scheduler scheduler, SysJob job) throws SchedulerException, TaskException {
         Class<? extends Job> jobClass = getQuartzJobClass(job);
         // 构建job信息
         Long jobId = job.getJobId();
@@ -79,22 +75,19 @@ public class ScheduleUtils
         jobDetail.getJobDataMap().put(ScheduleConstants.TASK_PROPERTIES, job);
 
         // 判断是否存在
-        if (scheduler.checkExists(getJobKey(jobId, jobGroup)))
-        {
+        if (scheduler.checkExists(getJobKey(jobId, jobGroup))) {
             // 防止创建时存在数据问题 先移除，然后在执行创建操作
             scheduler.deleteJob(getJobKey(jobId, jobGroup));
         }
 
         // 判断任务是否过期
-        if (StringUtils.isNotNull(CronUtils.getNextExecution(job.getCronExpression())))
-        {
+        if (StringUtils.isNotNull(CronUtils.getNextExecution(job.getCronExpression()))) {
             // 执行调度任务
             scheduler.scheduleJob(jobDetail, trigger);
         }
 
         // 暂停任务
-        if (job.getStatus().equals(ScheduleConstants.Status.PAUSE.getValue()))
-        {
+        if (job.getStatus().equals(ScheduleConstants.Status.PAUSE.getValue())) {
             scheduler.pauseJob(ScheduleUtils.getJobKey(jobId, jobGroup));
         }
     }
@@ -103,10 +96,8 @@ public class ScheduleUtils
      * 设置定时任务策略
      */
     public static CronScheduleBuilder handleCronScheduleMisfirePolicy(SysJob job, CronScheduleBuilder cb)
-            throws TaskException
-    {
-        switch (job.getMisfirePolicy())
-        {
+            throws TaskException {
+        switch (job.getMisfirePolicy()) {
             case ScheduleConstants.MISFIRE_DEFAULT:
                 return cb;
             case ScheduleConstants.MISFIRE_IGNORE_MISFIRES:
@@ -128,12 +119,10 @@ public class ScheduleUtils
      * @param invokeTarget 目标字符串
      * @return 结果
      */
-    public static boolean whiteList(String invokeTarget)
-    {
+    public static boolean whiteList(String invokeTarget) {
         String packageName = StringUtils.substringBefore(invokeTarget, "(");
         int count = StringUtils.countMatches(packageName, ".");
-        if (count > 1)
-        {
+        if (count > 1) {
             // 全类名写法：直接校验 invokeTarget 本身是否以白名单包前缀开头
             return StringUtils.startsWithAny(invokeTarget, Constants.JOB_WHITELIST_STR);
         }

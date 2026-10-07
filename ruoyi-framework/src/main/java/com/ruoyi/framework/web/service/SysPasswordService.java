@@ -18,12 +18,10 @@ import com.ruoyi.framework.security.context.AuthenticationContextHolder;
  * @author ruoyi
  */
 @Component
-public class SysPasswordService
-{
+public class SysPasswordService {
     private final RedisCache redisCache;
 
-    public SysPasswordService(RedisCache redisCache)
-    {
+    public SysPasswordService(RedisCache redisCache) {
         this.redisCache = redisCache;
     }
 
@@ -39,8 +37,7 @@ public class SysPasswordService
      * @param username 用户名
      * @return 缓存键key
      */
-    private String getCacheKey(String username)
-    {
+    private String getCacheKey(String username) {
         return CacheConstants.PWD_ERR_CNT_KEY + username;
     }
 
@@ -48,32 +45,26 @@ public class SysPasswordService
      * 密码校验：从 AuthenticationContext 取出明文密码，先查 Redis 中的失败次数是否达上限（锁定），
      * 再用 BCrypt 比对；失败则递增计数并回写（带 lockTime 过期），成功则清除计数
      */
-    public void validate(SysUser user)
-    {
+    public void validate(SysUser user) {
         Authentication usernamePasswordAuthenticationToken = AuthenticationContextHolder.getContext();
         String username = usernamePasswordAuthenticationToken.getName();
         String password = usernamePasswordAuthenticationToken.getCredentials().toString();
 
         Integer retryCount = redisCache.getCacheObject(getCacheKey(username));
 
-        if (retryCount == null)
-        {
+        if (retryCount == null) {
             retryCount = 0;
         }
 
-        if (retryCount >= Integer.valueOf(maxRetryCount).intValue())
-        {
+        if (retryCount >= Integer.valueOf(maxRetryCount).intValue()) {
             throw new UserPasswordRetryLimitExceedException(maxRetryCount, lockTime);
         }
 
-        if (!matches(user, password))
-        {
+        if (!matches(user, password)) {
             retryCount = retryCount + 1;
             redisCache.setCacheObject(getCacheKey(username), retryCount, lockTime, TimeUnit.MINUTES);
             throw new UserPasswordNotMatchException();
-        }
-        else
-        {
+        } else {
             clearLoginRecordCache(username);
         }
     }
@@ -81,18 +72,15 @@ public class SysPasswordService
     /**
      * 使用 BCrypt 将明文密码与用户库中密文比对
      */
-    public boolean matches(SysUser user, String rawPassword)
-    {
+    public boolean matches(SysUser user, String rawPassword) {
         return SecurityUtils.matchesPassword(rawPassword, user.getPassword());
     }
 
     /**
      * 登录成功后清除该用户的密码错误计数缓存
      */
-    public void clearLoginRecordCache(String loginName)
-    {
-        if (redisCache.hasKey(getCacheKey(loginName)))
-        {
+    public void clearLoginRecordCache(String loginName) {
+        if (redisCache.hasKey(getCacheKey(loginName))) {
             redisCache.deleteObject(getCacheKey(loginName));
         }
     }

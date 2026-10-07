@@ -17,16 +17,14 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 @SuppressWarnings("deprecation")
 @Configuration
 @EnableCaching
-public class RedisConfig extends CachingConfigurerSupport
-{
+public class RedisConfig extends CachingConfigurerSupport {
     /**
      * 配置 RedisTemplate：key/Hash-key 用 String 序列化便于直观浏览与排查，
      * value/Hash-value 用 FastJson2 序列化以保留类型信息。
      */
     @Bean
     @SuppressWarnings(value = { "unchecked", "rawtypes" })
-    public RedisTemplate<Object, Object> redisTemplate(RedisConnectionFactory connectionFactory)
-    {
+    public RedisTemplate<Object, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
         RedisTemplate<Object, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
 
@@ -48,8 +46,7 @@ public class RedisConfig extends CachingConfigurerSupport
      * 限流 Lua 脚本 Bean（供 RateLimiterAspect 执行）
      */
     @Bean
-    public DefaultRedisScript<Long> limitScript()
-    {
+    public DefaultRedisScript<Long> limitScript() {
         DefaultRedisScript<Long> redisScript = new DefaultRedisScript<>();
         redisScript.setScriptText(limitScriptText());
         redisScript.setResultType(Long.class);
@@ -60,8 +57,7 @@ public class RedisConfig extends CachingConfigurerSupport
      * 限流脚本：固定窗口计数。首次 INCR 得到 1 时设置过期时间 time 形窗口；
      * 当前计数超过 count 则直接返回不回增，否则 INCR 后返回当前次数。整个脚本在 Redis 单线执行以保证原子性。
      */
-    private String limitScriptText()
-    {
+    private String limitScriptText() {
         return "local key = KEYS[1]\n" +
                 "local count = tonumber(ARGV[1])\n" +
                 "local time = tonumber(ARGV[2])\n" +

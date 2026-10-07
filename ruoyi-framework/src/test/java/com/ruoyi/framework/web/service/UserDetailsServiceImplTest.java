@@ -29,12 +29,13 @@ import com.ruoyi.system.service.ISysUserService;
 /**
  * UserDetailsServiceImpl 用户装载测试。
  *
- * <p>覆盖 {@code loadUserByUsername} 的四条分支：用户不存在 / 已删除 / 已停用 分别抛出
+ * <p>
+ * 覆盖 {@code loadUserByUsername} 的四条分支：用户不存在 / 已删除 / 已停用 分别抛出
  * {@code ServiceException}；正常用户则校验密码并构建携带权限的 {@code LoginUser}。i18n
- * （{@code MessageUtils}）用静态打桩隔离，其余依赖全部 mock，不触碰容器与数据库。</p>
+ * （{@code MessageUtils}）用静态打桩隔离，其余依赖全部 mock，不触碰容器与数据库。
+ * </p>
  */
-public class UserDetailsServiceImplTest
-{
+public class UserDetailsServiceImplTest {
     private UserDetailsServiceImpl userDetailsService;
 
     private ISysUserService userService;
@@ -44,8 +45,7 @@ public class UserDetailsServiceImplTest
     private SysPermissionService permissionService;
 
     @BeforeEach
-    void setUp()
-    {
+    void setUp() {
         userService = mock(ISysUserService.class);
         passwordService = mock(SysPasswordService.class);
         permissionService = mock(SysPermissionService.class);
@@ -53,8 +53,7 @@ public class UserDetailsServiceImplTest
         userDetailsService = new UserDetailsServiceImpl(userService, passwordService, permissionService);
     }
 
-    private SysUser activeUser()
-    {
+    private SysUser activeUser() {
         SysUser user = new SysUser();
         user.setUserId(2L);
         user.setDeptId(5L);
@@ -66,12 +65,10 @@ public class UserDetailsServiceImplTest
 
     @Test
     @DisplayName("用户不存在：抛 ServiceException")
-    void loadUserThrowsWhenMissing()
-    {
+    void loadUserThrowsWhenMissing() {
         when(userService.selectUserByUserName("ghost")).thenReturn(null);
 
-        try (MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg"))
-        {
+        try (MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg")) {
             assertThrows(ServiceException.class, () -> userDetailsService.loadUserByUsername("ghost"));
             verify(passwordService, never()).validate(any());
         }
@@ -79,36 +76,31 @@ public class UserDetailsServiceImplTest
 
     @Test
     @DisplayName("用户已删除：抛 ServiceException")
-    void loadUserThrowsWhenDeleted()
-    {
+    void loadUserThrowsWhenDeleted() {
         SysUser user = activeUser();
         user.setDelFlag(UserStatus.DELETED.getCode());
         when(userService.selectUserByUserName("zhangsan")).thenReturn(user);
 
-        try (MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg"))
-        {
+        try (MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg")) {
             assertThrows(ServiceException.class, () -> userDetailsService.loadUserByUsername("zhangsan"));
         }
     }
 
     @Test
     @DisplayName("用户已停用：抛 ServiceException")
-    void loadUserThrowsWhenDisabled()
-    {
+    void loadUserThrowsWhenDisabled() {
         SysUser user = activeUser();
         user.setStatus(UserStatus.DISABLE.getCode());
         when(userService.selectUserByUserName("zhangsan")).thenReturn(user);
 
-        try (MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg"))
-        {
+        try (MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg")) {
             assertThrows(ServiceException.class, () -> userDetailsService.loadUserByUsername("zhangsan"));
         }
     }
 
     @Test
     @DisplayName("正常用户：校验密码并构建携带权限的 LoginUser")
-    void loadUserSuccessBuildsLoginUser()
-    {
+    void loadUserSuccessBuildsLoginUser() {
         SysUser user = activeUser();
         when(userService.selectUserByUserName("zhangsan")).thenReturn(user);
         Set<String> perms = new HashSet<>();

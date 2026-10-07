@@ -16,14 +16,12 @@ import com.ruoyi.system.service.ISysConfigService;
  * @author ruoyi
  */
 @RestController
-public class SysRegisterController extends BaseController
-{
+public class SysRegisterController extends BaseController {
     private final SysRegisterService registerService;
 
     private final ISysConfigService configService;
 
-    public SysRegisterController(SysRegisterService registerService, ISysConfigService configService)
-    {
+    public SysRegisterController(SysRegisterService registerService, ISysConfigService configService) {
         this.registerService = registerService;
         this.configService = configService;
     }
@@ -32,11 +30,9 @@ public class SysRegisterController extends BaseController
      * 用户注册
      */
     @PostMapping("/register")
-    public AjaxResult register(@RequestBody RegisterBody user)
-    {
+    public AjaxResult register(@RequestBody RegisterBody user) {
         // 注册开关由参数 sys.account.registerUser 控制，未开启时直接拒绝
-        if (!("true".equals(configService.selectConfigByKey("sys.account.registerUser"))))
-        {
+        if (!("true".equals(configService.selectConfigByKey("sys.account.registerUser")))) {
             return error("当前系统没有开启注册功能！");
         }
         String msg = registerService.register(user);

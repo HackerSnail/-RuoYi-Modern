@@ -10,8 +10,7 @@ import com.alibaba.druid.pool.DruidDataSource;
  * @author ruoyi
  */
 @Configuration
-public class DruidProperties
-{
+public class DruidProperties {
     @Value("${spring.datasource.druid.initialSize}")
     private int initialSize;
 
@@ -55,8 +54,7 @@ public class DruidProperties
      * 将本类中通过 @Value 注入的连接池参数统一应用到传入的 DruidDataSource 上，
      * 供主/从数据源 Bean 创建后复用同一套池化配置
      */
-    public DruidDataSource dataSource(DruidDataSource datasource)
-    {
+    public DruidDataSource dataSource(DruidDataSource datasource) {
         /** 配置初始化大小、最小、最大 */
         datasource.setInitialSize(initialSize);
         datasource.setMaxActive(maxActive);
@@ -64,10 +62,10 @@ public class DruidProperties
 
         /** 配置获取连接等待超时的时间 */
         datasource.setMaxWait(maxWait);
-        
+
         /** 配置驱动连接超时时间，检测数据库建立连接的超时时间，单位是毫秒 */
         datasource.setConnectTimeout(connectTimeout);
-        
+
         /** 配置网络超时时间，等待数据库操作完成的网络超时时间，单位是毫秒 */
         datasource.setSocketTimeout(socketTimeout);
 
@@ -79,10 +77,13 @@ public class DruidProperties
         datasource.setMaxEvictableIdleTimeMillis(maxEvictableIdleTimeMillis);
 
         /**
-         * 用来检测连接是否有效的sql，要求是一个查询语句，常用select 'x'。如果validationQuery为null，testOnBorrow、testOnReturn、testWhileIdle都不会起作用。
+         * 用来检测连接是否有效的sql，要求是一个查询语句，常用select
+         * 'x'。如果validationQuery为null，testOnBorrow、testOnReturn、testWhileIdle都不会起作用。
          */
         datasource.setValidationQuery(validationQuery);
-        /** 建议配置为true，不影响性能，并且保证安全性。申请连接的时候检测，如果空闲时间大于timeBetweenEvictionRunsMillis，执行validationQuery检测连接是否有效。 */
+        /**
+         * 建议配置为true，不影响性能，并且保证安全性。申请连接的时候检测，如果空闲时间大于timeBetweenEvictionRunsMillis，执行validationQuery检测连接是否有效。
+         */
         datasource.setTestWhileIdle(testWhileIdle);
         /** 申请连接时执行validationQuery检测连接是否有效，做了这个配置会降低性能。 */
         datasource.setTestOnBorrow(testOnBorrow);

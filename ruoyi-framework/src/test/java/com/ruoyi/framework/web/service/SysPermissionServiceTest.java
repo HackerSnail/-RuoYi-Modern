@@ -27,12 +27,13 @@ import com.ruoyi.system.service.ISysRoleService;
 /**
  * SysPermissionService 权限聚合测试。
  *
- * <p>锁定角色/菜单数据权限的分配规则：超级管理员直接短路为全权限标记；普通用户按角色
+ * <p>
+ * 锁定角色/菜单数据权限的分配规则：超级管理员直接短路为全权限标记；普通用户按角色
  * 聚合——仅统计状态正常且非管理员的角色，逐角色查菜单权限，无角色时回落到按用户查询。
- * 依赖的 role/menu service 全部 mock。</p>
+ * 依赖的 role/menu service 全部 mock。
+ * </p>
  */
-public class SysPermissionServiceTest
-{
+public class SysPermissionServiceTest {
     private SysPermissionService permissionService;
 
     private ISysRoleService roleService;
@@ -40,22 +41,19 @@ public class SysPermissionServiceTest
     private ISysMenuService menuService;
 
     @BeforeEach
-    void setUp()
-    {
+    void setUp() {
         roleService = mock(ISysRoleService.class);
         menuService = mock(ISysMenuService.class);
         permissionService = new SysPermissionService(roleService, menuService);
     }
 
-    private SysUser user(Long userId)
-    {
+    private SysUser user(Long userId) {
         SysUser user = new SysUser();
         user.setUserId(userId);
         return user;
     }
 
-    private SysRole role(Long roleId, String status)
-    {
+    private SysRole role(Long roleId, String status) {
         SysRole role = new SysRole();
         role.setRoleId(roleId);
         role.setStatus(status);
@@ -64,8 +62,7 @@ public class SysPermissionServiceTest
 
     @Test
     @DisplayName("角色权限：超级管理员短路返回 admin，不查库")
-    void rolePermissionForAdmin()
-    {
+    void rolePermissionForAdmin() {
         Set<String> roles = permissionService.getRolePermission(user(1L));
 
         assertTrue(roles.contains(Constants.SUPER_ADMIN));
@@ -74,8 +71,7 @@ public class SysPermissionServiceTest
 
     @Test
     @DisplayName("角色权限：普通用户委托 roleService 查询")
-    void rolePermissionForNormalUser()
-    {
+    void rolePermissionForNormalUser() {
         when(roleService.selectRolePermissionByUserId(2L)).thenReturn(new HashSet<>(Arrays.asList("common")));
 
         Set<String> roles = permissionService.getRolePermission(user(2L));
@@ -86,8 +82,7 @@ public class SysPermissionServiceTest
 
     @Test
     @DisplayName("菜单权限：超级管理员短路返回全权限标记，不查库")
-    void menuPermissionForAdmin()
-    {
+    void menuPermissionForAdmin() {
         Set<String> perms = permissionService.getMenuPermission(user(1L));
 
         assertTrue(perms.contains(Constants.ALL_PERMISSION));
@@ -97,13 +92,12 @@ public class SysPermissionServiceTest
 
     @Test
     @DisplayName("菜单权限：多角色仅聚合状态正常且非管理员的角色")
-    void menuPermissionAggregatesOnlyNormalNonAdminRoles()
-    {
+    void menuPermissionAggregatesOnlyNormalNonAdminRoles() {
         SysUser user = user(2L);
         user.setRoles(Arrays.asList(
-                role(2L, UserConstants.ROLE_NORMAL),        // 正常，应统计
-                role(3L, "1"),                              // 停用，跳过
-                role(1L, UserConstants.ROLE_NORMAL)));      // 管理员角色，跳过
+                role(2L, UserConstants.ROLE_NORMAL), // 正常，应统计
+                role(3L, "1"), // 停用，跳过
+                role(1L, UserConstants.ROLE_NORMAL))); // 管理员角色，跳过
         when(menuService.selectMenuPermsByRoleId(2L)).thenReturn(new HashSet<>(Arrays.asList("sys:user:list")));
 
         Set<String> perms = permissionService.getMenuPermission(user);
@@ -117,8 +111,7 @@ public class SysPermissionServiceTest
 
     @Test
     @DisplayName("菜单权限：无角色时回落到按用户查询")
-    void menuPermissionFallsBackToUserIdWhenNoRoles()
-    {
+    void menuPermissionFallsBackToUserIdWhenNoRoles() {
         SysUser user = user(2L);
         when(menuService.selectMenuPermsByUserId(2L)).thenReturn(new HashSet<>(Arrays.asList("a:b")));
 

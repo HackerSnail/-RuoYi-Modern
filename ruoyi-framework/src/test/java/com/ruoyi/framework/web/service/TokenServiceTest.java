@@ -25,45 +25,41 @@ import io.jsonwebtoken.Claims;
 /**
  * TokenService 令牌行为测试。
  *
- * <p>锁定本次 jjwt 0.9.1 → 0.13.0 迁移改造的核心面：{@code createToken(Map)} 的签名生成、
+ * <p>
+ * 锁定本次 jjwt 0.9.1 → 0.13.0 迁移改造的核心面：{@code createToken(Map)} 的签名生成、
  * {@code parseToken(String)} 的解析校验、以及 HS512 对密钥强度的强制要求。通过反射直接驱动
  * 这两个私有方法，验证“签发—解析”往返语义等价、篡改令牌被拒绝、密钥构建符合算法约束，
- * 不依赖 Redis / Servlet / Spring 容器。</p>
+ * 不依赖 Redis / Servlet / Spring 容器。
+ * </p>
  */
-public class TokenServiceTest
-{
+public class TokenServiceTest {
     /** 满足 HS512（≥512bit / 64 字节）要求的测试密钥 */
-    private static final String VALID_SECRET =
-            "k9Zx2Qf7Lm4Tn8Rs1Vw6Yb3Jd5Hc0Pe2Ag7Kf4Lz9Xq1Wm3Nr6Ts8Vb0Yd2Hc5Jk7Pl9Rz";
+    private static final String VALID_SECRET = "k9Zx2Qf7Lm4Tn8Rs1Vw6Yb3Jd5Hc0Pe2Ag7Kf4Lz9Xq1Wm3Nr6Ts8Vb0Yd2Hc5Jk7Pl9Rz";
 
     private TokenService tokenService;
 
     @BeforeEach
-    void setUp()
-    {
+    void setUp() {
         tokenService = new TokenService(mock(RedisCache.class));
         ReflectionTestUtils.setField(tokenService, "header", "Authorization");
         ReflectionTestUtils.setField(tokenService, "secret", VALID_SECRET);
         ReflectionTestUtils.setField(tokenService, "expireTime", 30);
     }
 
-    private Map<String, Object> sampleClaims()
-    {
+    private Map<String, Object> sampleClaims() {
         Map<String, Object> claims = new HashMap<>();
         claims.put(Constants.LOGIN_USER_KEY, "uuid-123-456");
         claims.put(Constants.JWT_USERNAME, "admin");
         return claims;
     }
 
-    private String issueToken(Map<String, Object> claims)
-    {
+    private String issueToken(Map<String, Object> claims) {
         return ReflectionTestUtils.invokeMethod(tokenService, "createToken", claims);
     }
 
     @Test
     @DisplayName("签发-解析往返保留自定义声明与主题")
-    void jwtRoundTripPreservesClaims()
-    {
+    void jwtRoundTripPreservesClaims() {
         Map<String, Object> claims = sampleClaims();
         String token = issueToken(claims);
 
@@ -80,16 +76,14 @@ public class TokenServiceTest
 
     @Test
     @DisplayName("getUsernameFromToken 取回主题中的用户名")
-    void getUsernameFromTokenReturnsSubject()
-    {
+    void getUsernameFromTokenReturnsSubject() {
         String token = issueToken(sampleClaims());
         assertEquals("admin", tokenService.getUsernameFromToken(token));
     }
 
     @Test
     @DisplayName("签名被篡改的令牌解析时抛异常")
-    void tamperedTokenIsRejected()
-    {
+    void tamperedTokenIsRejected() {
         String token = issueToken(sampleClaims());
         char last = token.charAt(token.length() - 1);
         char flipped = last == 'a' ? 'b' : 'a';
@@ -101,8 +95,7 @@ public class TokenServiceTest
 
     @Test
     @DisplayName("HS512 密钥被缓存复用且算法正确")
-    void secretKeyIsCachedAndStable()
-    {
+    void secretKeyIsCachedAndStable() {
         SecretKey first = ReflectionTestUtils.invokeMethod(tokenService, "getSecretKey");
         SecretKey second = ReflectionTestUtils.invokeMethod(tokenService, "getSecretKey");
 
@@ -114,8 +107,7 @@ public class TokenServiceTest
 
     @Test
     @DisplayName("密钥过短无法构建 HMAC 签名密钥（强度约束）")
-    void shortSecretIsRejected()
-    {
+    void shortSecretIsRejected() {
         ReflectionTestUtils.setField(tokenService, "secret", "too-short");
         assertThrows(Exception.class, () -> issueToken(sampleClaims()));
     }

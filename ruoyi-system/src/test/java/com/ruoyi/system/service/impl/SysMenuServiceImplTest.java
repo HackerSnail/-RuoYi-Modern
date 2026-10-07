@@ -25,20 +25,20 @@ import com.ruoyi.system.mapper.SysRoleMenuMapper;
 /**
  * SysMenuServiceImpl.updateMenuSort 批量排序测试。
  *
- * <p>本次将“拖拽保存排序”从逐行 {@code updateMenuSort}（N 次数据库往返）改为单次
+ * <p>
+ * 本次将“拖拽保存排序”从逐行 {@code updateMenuSort}（N 次数据库往返）改为单次
  * {@code updateMenuSortBatch}。测试用 mock mapper 锁定服务契约：ID/序号按序映射进同一条
  * 批量列表、只发起一次批量调用、空输入不触发、以及底层异常被包装为 {@code ServiceException}。
- * （批量 SQL 语句本身的执行需依赖真实数据库，非本单测覆盖范围。）</p>
+ * （批量 SQL 语句本身的执行需依赖真实数据库，非本单测覆盖范围。）
+ * </p>
  */
-public class SysMenuServiceImplTest
-{
+public class SysMenuServiceImplTest {
     private SysMenuServiceImpl menuService;
 
     private SysMenuMapper menuMapper;
 
     @BeforeEach
-    void setUp()
-    {
+    void setUp() {
         menuMapper = mock(SysMenuMapper.class);
         menuService = new SysMenuServiceImpl(menuMapper, mock(SysRoleMapper.class), mock(SysRoleMenuMapper.class));
     }
@@ -46,8 +46,7 @@ public class SysMenuServiceImplTest
     @Test
     @DisplayName("排序：单次批量调用且 ID/序号按序正确映射")
     @SuppressWarnings("unchecked")
-    void updateMenuSortIssuesSingleBatchCall()
-    {
+    void updateMenuSortIssuesSingleBatchCall() {
         menuService.updateMenuSort(new String[] { "1", "2", "3" }, new String[] { "10", "20", "30" });
 
         ArgumentCaptor<List<SysMenu>> captor = ArgumentCaptor.forClass(List.class);
@@ -66,8 +65,7 @@ public class SysMenuServiceImplTest
 
     @Test
     @DisplayName("排序：空输入不触发批量调用")
-    void updateMenuSortSkipsBatchWhenEmpty()
-    {
+    void updateMenuSortSkipsBatchWhenEmpty() {
         menuService.updateMenuSort(new String[] {}, new String[] {});
 
         verify(menuMapper, never()).updateMenuSortBatch(any());
@@ -75,8 +73,7 @@ public class SysMenuServiceImplTest
 
     @Test
     @DisplayName("排序：底层异常被包装为 ServiceException")
-    void updateMenuSortWrapsFailureAsServiceException()
-    {
+    void updateMenuSortWrapsFailureAsServiceException() {
         doThrow(new RuntimeException("db down")).when(menuMapper).updateMenuSortBatch(any());
 
         ServiceException ex = assertThrows(ServiceException.class,

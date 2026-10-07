@@ -24,8 +24,7 @@ import com.ruoyi.common.annotation.Anonymous;
  * @author ruoyi
  */
 @Configuration
-public class PermitAllUrlProperties implements InitializingBean, ApplicationContextAware
-{
+public class PermitAllUrlProperties implements InitializingBean, ApplicationContextAware {
     private static final Pattern PATTERN = Pattern.compile("\\{(.*?)\\}");
 
     private ApplicationContext applicationContext;
@@ -40,9 +39,9 @@ public class PermitAllUrlProperties implements InitializingBean, ApplicationCont
      */
     @SuppressWarnings("deprecation")
     @Override
-    public void afterPropertiesSet()
-    {
-        RequestMappingHandlerMapping mapping = applicationContext.getBean("requestMappingHandlerMapping", RequestMappingHandlerMapping.class);
+    public void afterPropertiesSet() {
+        RequestMappingHandlerMapping mapping = applicationContext.getBean("requestMappingHandlerMapping",
+                RequestMappingHandlerMapping.class);
         Map<RequestMappingInfo, HandlerMethod> map = mapping.getHandlerMethods();
 
         map.keySet().forEach(info -> {
@@ -50,29 +49,28 @@ public class PermitAllUrlProperties implements InitializingBean, ApplicationCont
 
             // 获取方法上边的注解 替代path variable 为 *
             Anonymous method = AnnotationUtils.findAnnotation(handlerMethod.getMethod(), Anonymous.class);
-            Optional.ofNullable(method).ifPresent(anonymous -> Objects.requireNonNull(info.getPathPatternsCondition().getPatternValues())
-                    .forEach(url -> urls.add(RegExUtils.replaceAll(url, PATTERN, ASTERISK))));
+            Optional.ofNullable(method)
+                    .ifPresent(anonymous -> Objects.requireNonNull(info.getPathPatternsCondition().getPatternValues())
+                            .forEach(url -> urls.add(RegExUtils.replaceAll(url, PATTERN, ASTERISK))));
 
             // 获取类上边的注解, 替代path variable 为 *
             Anonymous controller = AnnotationUtils.findAnnotation(handlerMethod.getBeanType(), Anonymous.class);
-            Optional.ofNullable(controller).ifPresent(anonymous -> Objects.requireNonNull(info.getPathPatternsCondition().getPatternValues())
-                    .forEach(url -> urls.add(RegExUtils.replaceAll(url, PATTERN, ASTERISK))));
+            Optional.ofNullable(controller)
+                    .ifPresent(anonymous -> Objects.requireNonNull(info.getPathPatternsCondition().getPatternValues())
+                            .forEach(url -> urls.add(RegExUtils.replaceAll(url, PATTERN, ASTERISK))));
         });
     }
 
     @Override
-    public void setApplicationContext(ApplicationContext context) throws BeansException
-    {
+    public void setApplicationContext(ApplicationContext context) throws BeansException {
         this.applicationContext = context;
     }
 
-    public List<String> getUrls()
-    {
+    public List<String> getUrls() {
         return urls;
     }
 
-    public void setUrls(List<String> urls)
-    {
+    public void setUrls(List<String> urls) {
         this.urls = urls;
     }
 }

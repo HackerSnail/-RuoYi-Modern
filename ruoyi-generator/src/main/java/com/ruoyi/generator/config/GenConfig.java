@@ -13,8 +13,7 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "gen")
 @PropertySource(value = { "classpath:generator.yml" })
-public class GenConfig
-{
+public class GenConfig {
     /** 作者 */
     public static String author;
 
@@ -35,22 +34,22 @@ public class GenConfig
      *
      * @return generator.yml 中配置的 author 值
      */
-    public static String getAuthor()
-    {
+    public static String getAuthor() {
         return author;
     }
 
     /**
      * 注入作者配置。
      *
-     * <p>Spring 的 @ConfigurationProperties 只能写入实例字段，此处通过带 @Value 的实例 setter
-     * 将值转存到 static 字段，以便静态工具类（VelocityUtils 等）无需持有 bean 即可读取。</p>
+     * <p>
+     * Spring 的 @ConfigurationProperties 只能写入实例字段，此处通过带 @Value 的实例 setter
+     * 将值转存到 static 字段，以便静态工具类（VelocityUtils 等）无需持有 bean 即可读取。
+     * </p>
      *
      * @param author generator.yml 中的 author 值
      */
     @Value("${author}")
-    public void setAuthor(String author)
-    {
+    public void setAuthor(String author) {
         GenConfig.author = author;
     }
 
@@ -59,8 +58,7 @@ public class GenConfig
      *
      * @return generator.yml 中配置的 packageName 值
      */
-    public static String getPackageName()
-    {
+    public static String getPackageName() {
         return packageName;
     }
 
@@ -70,8 +68,7 @@ public class GenConfig
      * @param packageName generator.yml 中的 packageName 值
      */
     @Value("${packageName}")
-    public void setPackageName(String packageName)
-    {
+    public void setPackageName(String packageName) {
         GenConfig.packageName = packageName;
     }
 
@@ -80,8 +77,7 @@ public class GenConfig
      *
      * @return true 表示去前缀
      */
-    public static boolean getAutoRemovePre()
-    {
+    public static boolean getAutoRemovePre() {
         return autoRemovePre;
     }
 
@@ -91,8 +87,7 @@ public class GenConfig
      * @param autoRemovePre generator.yml 中的 autoRemovePre 值
      */
     @Value("${autoRemovePre}")
-    public void setAutoRemovePre(boolean autoRemovePre)
-    {
+    public void setAutoRemovePre(boolean autoRemovePre) {
         GenConfig.autoRemovePre = autoRemovePre;
     }
 
@@ -101,8 +96,7 @@ public class GenConfig
      *
      * @return generator.yml 中配置的 tablePrefix 值
      */
-    public static String getTablePrefix()
-    {
+    public static String getTablePrefix() {
         return tablePrefix;
     }
 
@@ -112,8 +106,7 @@ public class GenConfig
      * @param tablePrefix generator.yml 中的 tablePrefix 值
      */
     @Value("${tablePrefix}")
-    public void setTablePrefix(String tablePrefix)
-    {
+    public void setTablePrefix(String tablePrefix) {
         GenConfig.tablePrefix = tablePrefix;
     }
 
@@ -122,8 +115,7 @@ public class GenConfig
      *
      * @return true 表示允许覆盖写入磁盘
      */
-    public static boolean isAllowOverwrite()
-    {
+    public static boolean isAllowOverwrite() {
         return allowOverwrite;
     }
 
@@ -133,8 +125,7 @@ public class GenConfig
      * @param allowOverwrite generator.yml 中的 allowOverwrite 值
      */
     @Value("${allowOverwrite}")
-    public void setAllowOverwrite(boolean allowOverwrite)
-    {
+    public void setAllowOverwrite(boolean allowOverwrite) {
         GenConfig.allowOverwrite = allowOverwrite;
     }
 }

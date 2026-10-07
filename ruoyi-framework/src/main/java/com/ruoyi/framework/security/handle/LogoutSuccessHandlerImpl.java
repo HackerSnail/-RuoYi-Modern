@@ -24,12 +24,10 @@ import com.ruoyi.framework.web.service.TokenService;
  * @author ruoyi
  */
 @Configuration
-public class LogoutSuccessHandlerImpl implements LogoutSuccessHandler
-{
+public class LogoutSuccessHandlerImpl implements LogoutSuccessHandler {
     private final TokenService tokenService;
 
-    public LogoutSuccessHandlerImpl(TokenService tokenService)
-    {
+    public LogoutSuccessHandlerImpl(TokenService tokenService) {
         this.tokenService = tokenService;
     }
 
@@ -40,17 +38,17 @@ public class LogoutSuccessHandlerImpl implements LogoutSuccessHandler
      */
     @Override
     public void onLogoutSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication)
-            throws IOException, ServletException
-    {
+            throws IOException, ServletException {
         LoginUser loginUser = tokenService.getLoginUser(request);
-        if (StringUtils.isNotNull(loginUser))
-        {
+        if (StringUtils.isNotNull(loginUser)) {
             String userName = loginUser.getUsername();
             // 删除用户缓存记录
             tokenService.delLoginUser(loginUser.getToken());
             // 记录用户退出日志
-            AsyncManager.me().execute(AsyncFactory.recordLogininfor(userName, Constants.LOGOUT, MessageUtils.message("user.logout.success")));
+            AsyncManager.me().execute(AsyncFactory.recordLogininfor(userName, Constants.LOGOUT,
+                    MessageUtils.message("user.logout.success")));
         }
-        ServletUtils.renderString(response, JSON.toJSONString(AjaxResult.success(MessageUtils.message("user.logout.success"))));
+        ServletUtils.renderString(response,
+                JSON.toJSONString(AjaxResult.success(MessageUtils.message("user.logout.success"))));
     }
 }

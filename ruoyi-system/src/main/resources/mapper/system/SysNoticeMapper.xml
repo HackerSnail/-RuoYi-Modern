@@ -1,97 +1,86 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper
-PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.ruoyi.system.mapper.SysNoticeMapper">
-    
+
     <resultMap type="SysNotice" id="SysNoticeResult">
-        <result property="noticeId"       column="notice_id"       />
-        <result property="noticeTitle"    column="notice_title"    />
-        <result property="noticeType"     column="notice_type"     />
-        <result property="noticeContent"  column="notice_content"  />
-        <result property="status"         column="status"          />
-        <result property="createBy"       column="create_by"       />
-        <result property="createTime"     column="create_time"     />
-        <result property="updateBy"       column="update_by"       />
-        <result property="updateTime"     column="update_time"     />
-        <result property="remark"         column="remark"          />
+        <result property="noticeId" column="notice_id" />
+        <result property="noticeTitle" column="notice_title" />
+        <result property="noticeType" column="notice_type" />
+        <result property="noticeContent" column="notice_content" />
+        <result property="status" column="status" />
+        <result property="createBy" column="create_by" />
+        <result property="createTime" column="create_time" />
+        <result property="updateBy" column="update_by" />
+        <result property="updateTime" column="update_time" />
+        <result property="remark" column="remark" />
     </resultMap>
-    
+
     <!-- 公告表通用查询列：notice_content 用 cast(... as char) 将 BLOB/TEXT 转为字符串便于 resultMap 映射 -->
-    <sql id="selectNoticeVo">
-        select notice_id, notice_title, notice_type, cast(notice_content as char) as notice_content, status, create_by, create_time, update_by, update_time, remark 
-		from sys_notice
-    </sql>
-    
+    <sql id="selectNoticeVo"> select notice_id, notice_title, notice_type, cast(notice_content as
+        char) as notice_content, status, create_by, create_time, update_by, update_time, remark from
+        sys_notice </sql>
+
     <!-- 按公告ID查询单条公告（详情页/编辑回显用） -->
     <select id="selectNoticeById" parameterType="Long" resultMap="SysNoticeResult">
-        <include refid="selectNoticeVo"/>
-        where notice_id = #{noticeId}
-    </select>
-    
+        <include refid="selectNoticeVo" /> where notice_id = #{noticeId} </select>
+
     <!-- 分页查询公告列表：支持标题模糊/类型精确/创建人模糊，按ID倒序（后台公告管理页用） -->
     <select id="selectNoticeList" parameterType="SysNotice" resultMap="SysNoticeResult">
-        <include refid="selectNoticeVo"/>
+        <include refid="selectNoticeVo" />
         <where>
-			<if test="noticeTitle != null and noticeTitle != ''">
-				AND notice_title like concat('%', #{noticeTitle}, '%')
-			</if>
-			<if test="noticeType != null and noticeType != ''">
-				AND notice_type = #{noticeType}
-			</if>
-			<if test="createBy != null and createBy != ''">
-				AND create_by like concat('%', #{createBy}, '%')
-			</if>
-		</where>
-		order by notice_id desc
-    </select>
-    
+            <if test="noticeTitle != null and noticeTitle != ''"> AND notice_title like concat('%',
+        #{noticeTitle}, '%') </if>
+			<if test="noticeType != null and noticeType != ''"> AND
+        notice_type = #{noticeType} </if>
+			<if test="createBy != null and createBy != ''"> AND
+        create_by like concat('%', #{createBy}, '%') </if>
+        </where> order by notice_id desc </select>
+
     <!-- 新增公告：动态列插入，仅写入非空字段，create_time 由 sysdate() 填充 -->
-    <insert id="insertNotice" parameterType="SysNotice">
-        insert into sys_notice (
-			<if test="noticeTitle != null and noticeTitle != '' ">notice_title, </if>
-			<if test="noticeType != null and noticeType != '' ">notice_type, </if>
-			<if test="noticeContent != null and noticeContent != '' ">notice_content, </if>
-			<if test="status != null and status != '' ">status, </if>
-			<if test="remark != null and remark != ''">remark,</if>
- 			<if test="createBy != null and createBy != ''">create_by,</if>
- 			create_time
- 		)values(
-			<if test="noticeTitle != null and noticeTitle != ''">#{noticeTitle}, </if>
-			<if test="noticeType != null and noticeType != ''">#{noticeType}, </if>
-			<if test="noticeContent != null and noticeContent != ''">#{noticeContent}, </if>
-			<if test="status != null and status != ''">#{status}, </if>
-			<if test="remark != null and remark != ''">#{remark},</if>
- 			<if test="createBy != null and createBy != ''">#{createBy},</if>
- 			sysdate()
-		)
-    </insert>
-	 
+    <insert id="insertNotice" parameterType="SysNotice"> insert into sys_notice ( <if
+            test="noticeTitle != null and noticeTitle != '' ">notice_title, </if>
+			<if
+            test="noticeType != null and noticeType != '' ">notice_type, </if>
+			<if
+            test="noticeContent != null and noticeContent != '' ">notice_content, </if>
+			<if
+            test="status != null and status != '' ">status, </if>
+			<if
+            test="remark != null and remark != ''">remark,</if>
+ 			<if
+            test="createBy != null and createBy != ''">create_by,</if> create_time )values( <if
+            test="noticeTitle != null and noticeTitle != ''">#{noticeTitle}, </if>
+			<if
+            test="noticeType != null and noticeType != ''">#{noticeType}, </if>
+			<if
+            test="noticeContent != null and noticeContent != ''">#{noticeContent}, </if>
+			<if
+            test="status != null and status != ''">#{status}, </if>
+			<if
+            test="remark != null and remark != ''">#{remark},</if>
+ 			<if
+            test="createBy != null and createBy != ''">#{createBy},</if> sysdate() ) </insert>
+
     <!-- 修改公告：动态 SET 仅更新非空字段（notice_content 允许清空故只判 null 不判空串），update_time 强制刷新 -->
-    <update id="updateNotice" parameterType="SysNotice">
-        update sys_notice 
-        <set>
+    <update id="updateNotice" parameterType="SysNotice"> update sys_notice <set>
             <if test="noticeTitle != null and noticeTitle != ''">notice_title = #{noticeTitle}, </if>
-            <if test="noticeType != null and noticeType != ''">notice_type = #{noticeType}, </if>
-            <if test="noticeContent != null">notice_content = #{noticeContent}, </if>
-            <if test="status != null and status != ''">status = #{status}, </if>
-            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
- 			update_time = sysdate()
-        </set>
-        where notice_id = #{noticeId}
-    </update>
-	
+            <if
+                test="noticeType != null and noticeType != ''">notice_type = #{noticeType}, </if>
+            <if
+                test="noticeContent != null">notice_content = #{noticeContent}, </if>
+            <if
+                test="status != null and status != ''">status = #{status}, </if>
+            <if
+                test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if> update_time
+        = sysdate() </set> where notice_id = #{noticeId} </update>
+
     <!-- 按ID删除单条公告 -->
-    <delete id="deleteNoticeById" parameterType="Long">
-        delete from sys_notice where notice_id = #{noticeId}
-    </delete>
-    
+    <delete id="deleteNoticeById" parameterType="Long"> delete from sys_notice where notice_id =
+        #{noticeId} </delete>
+
     <!-- 批量删除公告（公告管理页勾选多行删除） -->
-    <delete id="deleteNoticeByIds" parameterType="Long">
-        delete from sys_notice where notice_id in 
-        <foreach item="noticeId" collection="array" open="(" separator="," close=")">
-            #{noticeId}
-        </foreach>
+    <delete id="deleteNoticeByIds" parameterType="Long"> delete from sys_notice where notice_id in <foreach
+            item="noticeId" collection="array" open="(" separator="," close=")"> #{noticeId} </foreach>
     </delete>
-    
+
 </mapper>

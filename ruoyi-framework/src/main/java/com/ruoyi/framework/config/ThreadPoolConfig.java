@@ -15,8 +15,7 @@ import java.util.concurrent.ThreadPoolExecutor;
  * @author ruoyi
  **/
 @Configuration
-public class ThreadPoolConfig
-{
+public class ThreadPoolConfig {
     // 核心线程池大小
     private int corePoolSize = 50;
 
@@ -33,8 +32,7 @@ public class ThreadPoolConfig
      * 普通异步任务线程池（供 AsyncManager 等提交一次性任务）
      */
     @Bean(name = "threadPoolTaskExecutor")
-    public ThreadPoolTaskExecutor threadPoolTaskExecutor()
-    {
+    public ThreadPoolTaskExecutor threadPoolTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setMaxPoolSize(maxPoolSize);
         executor.setCorePoolSize(corePoolSize);
@@ -50,15 +48,12 @@ public class ThreadPoolConfig
      * 重写 afterExecute 统一打印任务抛出的异常，避免定时任务静默失败
      */
     @Bean(name = "scheduledExecutorService")
-    protected ScheduledExecutorService scheduledExecutorService()
-    {
+    protected ScheduledExecutorService scheduledExecutorService() {
         return new ScheduledThreadPoolExecutor(corePoolSize,
-            BasicThreadFactory.builder().namingPattern("schedule-pool-%d").daemon(true).build(),
-            new ThreadPoolExecutor.CallerRunsPolicy())
-        {
+                BasicThreadFactory.builder().namingPattern("schedule-pool-%d").daemon(true).build(),
+                new ThreadPoolExecutor.CallerRunsPolicy()) {
             @Override
-            protected void afterExecute(Runnable r, Throwable t)
-            {
+            protected void afterExecute(Runnable r, Throwable t) {
                 super.afterExecute(r, t);
                 Threads.printException(r, t);
             }

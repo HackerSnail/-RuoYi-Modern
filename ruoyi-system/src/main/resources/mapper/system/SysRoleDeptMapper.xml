@@ -1,38 +1,29 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper
-PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.ruoyi.system.mapper.SysRoleDeptMapper">
 
 	<resultMap type="SysRoleDept" id="SysRoleDeptResult">
-		<result property="roleId"     column="role_id"      />
-		<result property="deptId"     column="dept_id"      />
+		<result property="roleId" column="role_id" />
+		<result property="deptId" column="dept_id" />
 	</resultMap>
 
 	<!-- 清除单个角色关联的所有部门（角色编辑时先删后插） -->
-	<delete id="deleteRoleDeptByRoleId" parameterType="Long">
-		delete from sys_role_dept where role_id=#{roleId}
-	</delete>
-	
+	<delete id="deleteRoleDeptByRoleId" parameterType="Long"> delete from sys_role_dept where
+		role_id=#{roleId} </delete>
+
 	<!-- 检查指定部门是否被角色引用（删除部门前检查，返回>0表示有角色关联不可删） -->
-	<select id="selectCountRoleDeptByDeptId" resultType="Integer">
-	    select count(1) from sys_role_dept where dept_id=#{deptId}
-	</select>
-	
+	<select id="selectCountRoleDeptByDeptId" resultType="Integer"> select count(1) from
+		sys_role_dept where dept_id=#{deptId} </select>
+
 	<!-- 批量清除多个角色的部门关联（批量删除角色时级联清理） -->
-	<delete id="deleteRoleDept" parameterType="Long">
- 		delete from sys_role_dept where role_id in
- 		<foreach collection="array" item="roleId" open="(" separator="," close=")">
- 			#{roleId}
-        </foreach> 
- 	</delete>
-	
+	<delete id="deleteRoleDept" parameterType="Long"> delete from sys_role_dept where role_id in <foreach
+			collection="array" item="roleId" open="(" separator="," close=")"> #{roleId} </foreach>
+	</delete>
+
 	<!-- 批量插入角色-部门关联（角色保存数据权限时写入） -->
-	<insert id="batchRoleDept">
-		insert into sys_role_dept(role_id, dept_id) values
-		<foreach item="item" index="index" collection="list" separator=",">
-			(#{item.roleId},#{item.deptId})
-		</foreach>
+	<insert id="batchRoleDept"> insert into sys_role_dept(role_id, dept_id) values <foreach
+			item="item" index="index" collection="list" separator=",">
+		(#{item.roleId},#{item.deptId}) </foreach>
 	</insert>
-	
+
 </mapper> 

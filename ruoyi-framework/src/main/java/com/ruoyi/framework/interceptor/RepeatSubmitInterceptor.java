@@ -17,32 +17,26 @@ import com.ruoyi.common.utils.ServletUtils;
  * @author ruoyi
  */
 @Component
-public abstract class RepeatSubmitInterceptor implements HandlerInterceptor
-{
+public abstract class RepeatSubmitInterceptor implements HandlerInterceptor {
     /**
      * 前置拦截：仅对标注 @RepeatSubmit 的控制器方法生效，调用子类 isRepeatSubmit 判定，
      * 命中重复则直接回写错误 JSON 并中断请求，否则放行
      */
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception
-    {
-        if (handler instanceof HandlerMethod handlerMethod)
-        {
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
+            throws Exception {
+        if (handler instanceof HandlerMethod handlerMethod) {
             Method method = handlerMethod.getMethod();
             RepeatSubmit annotation = method.getAnnotation(RepeatSubmit.class);
-            if (annotation != null)
-            {
-                if (this.isRepeatSubmit(request, annotation))
-                {
+            if (annotation != null) {
+                if (this.isRepeatSubmit(request, annotation)) {
                     AjaxResult ajaxResult = AjaxResult.error(annotation.message());
                     ServletUtils.renderString(response, JSON.toJSONString(ajaxResult));
                     return false;
                 }
             }
             return true;
-        }
-        else
-        {
+        } else {
             return true;
         }
     }
@@ -50,7 +44,7 @@ public abstract class RepeatSubmitInterceptor implements HandlerInterceptor
     /**
      * 验证是否重复提交由子类实现具体的防重复提交的规则
      *
-     * @param request 请求信息
+     * @param request    请求信息
      * @param annotation 防重复注解参数
      * @return 结果
      * @throws Exception

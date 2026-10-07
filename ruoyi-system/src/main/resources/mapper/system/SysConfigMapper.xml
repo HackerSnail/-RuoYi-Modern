@@ -1,126 +1,112 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper
-PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.ruoyi.system.mapper.SysConfigMapper">
-    
+
     <resultMap type="SysConfig" id="SysConfigResult">
-    	<id     property="configId"      column="config_id"      />
-        <result property="configName"    column="config_name"    />
-        <result property="configKey"     column="config_key"     />
-        <result property="configValue"   column="config_value"   />
-        <result property="configType"    column="config_type"    />
-        <result property="createBy"      column="create_by"      />
-        <result property="createTime"    column="create_time"    />
-        <result property="updateBy"      column="update_by"      />
-        <result property="updateTime"    column="update_time"    />
+        <id property="configId" column="config_id" />
+        <result property="configName" column="config_name" />
+        <result property="configKey" column="config_key" />
+        <result property="configValue" column="config_value" />
+        <result property="configType" column="config_type" />
+        <result property="createBy" column="create_by" />
+        <result property="createTime" column="create_time" />
+        <result property="updateBy" column="update_by" />
+        <result property="updateTime" column="update_time" />
     </resultMap>
-    
+
     <!-- 参数配置表通用查询列 -->
-    <sql id="selectConfigVo">
-        select config_id, config_name, config_key, config_value, config_type, create_by, create_time, update_by, update_time, remark 
-		from sys_config
-    </sql>
-    
+    <sql id="selectConfigVo"> select config_id, config_name, config_key, config_value, config_type,
+        create_by, create_time, update_by, update_time, remark from sys_config </sql>
+
     <!-- 公共查询条件片段：按 config_id 或 config_key 精确定位（供 selectConfig 复用） -->
-	<sql id="sqlwhereSearch">
-		<where>
-			<if test="configId !=null">
-				and config_id = #{configId}
-			</if>
-			<if test="configKey !=null and configKey != ''">
-				and config_key = #{configKey}
-			</if>
-		</where>
-	</sql>
-    
+    <sql id="sqlwhereSearch">
+        <where>
+            <if test="configId !=null"> and config_id = #{configId} </if>
+			<if
+                test="configKey !=null and configKey != ''"> and config_key = #{configKey} </if>
+        </where>
+    </sql>
+
     <!-- 按条件（ID/键名）查询单个参数（Redis 缓存未命中时回源查库） -->
     <select id="selectConfig" parameterType="SysConfig" resultMap="SysConfigResult">
-        <include refid="selectConfigVo"/>
-        <include refid="sqlwhereSearch"/>
+        <include refid="selectConfigVo" />
+        <include refid="sqlwhereSearch" />
     </select>
-    
+
     <!-- 分页查询参数列表：支持名称模糊/类型精确/键名模糊 + 创建时间范围 -->
     <select id="selectConfigList" parameterType="SysConfig" resultMap="SysConfigResult">
-        <include refid="selectConfigVo"/>
+        <include refid="selectConfigVo" />
         <where>
-			<if test="configName != null and configName != ''">
-				AND config_name like concat('%', #{configName}, '%')
-			</if>
-			<if test="configType != null and configType != ''">
-				AND config_type = #{configType}
-			</if>
-			<if test="configKey != null and configKey != ''">
-				AND config_key like concat('%', #{configKey}, '%')
-			</if>
-			<if test="params.beginTime != null and params.beginTime != ''"><!-- 开始时间检索 -->
-				and date_format(create_time,'%Y%m%d') &gt;= date_format(#{params.beginTime},'%Y%m%d')
-			</if>
-			<if test="params.endTime != null and params.endTime != ''"><!-- 结束时间检索 -->
-				and date_format(create_time,'%Y%m%d') &lt;= date_format(#{params.endTime},'%Y%m%d')
-			</if>
-		</where>
+            <if test="configName != null and configName != ''"> AND config_name like concat('%',
+        #{configName}, '%') </if>
+			<if test="configType != null and configType != ''"> AND config_type
+        = #{configType} </if>
+			<if test="configKey != null and configKey != ''"> AND config_key like
+        concat('%', #{configKey}, '%') </if>
+			<if
+                test="params.beginTime != null and params.beginTime != ''"><!-- 开始时间检索 --> and
+        date_format(create_time,'%Y%m%d') &gt;= date_format(#{params.beginTime},'%Y%m%d') </if>
+			<if
+                test="params.endTime != null and params.endTime != ''"><!-- 结束时间检索 --> and
+        date_format(create_time,'%Y%m%d') &lt;= date_format(#{params.endTime},'%Y%m%d') </if>
+        </where>
     </select>
-    
+
     <!-- 按主键ID查询单个参数 -->
     <select id="selectConfigById" parameterType="Long" resultMap="SysConfigResult">
-        <include refid="selectConfigVo"/>
-        where config_id = #{configId}
-    </select>
-	
+        <include refid="selectConfigVo" /> where config_id = #{configId} </select>
+
     <!-- 校验参数键名是否唯一（新增/修改前检查）：limit 1 短路查询，命中即返回 -->
     <select id="checkConfigKeyUnique" parameterType="String" resultMap="SysConfigResult">
-        <include refid="selectConfigVo"/>
-        where config_key = #{configKey} limit 1
-    </select>
-    
+        <include refid="selectConfigVo" /> where config_key = #{configKey} limit 1 </select>
+
     <!-- 新增参数：动态列插入仅写非空字段，create_time 由 sysdate() 填充 -->
-    <insert id="insertConfig" parameterType="SysConfig">
-        insert into sys_config (
-			<if test="configName != null and configName != '' ">config_name,</if>
-			<if test="configKey != null and configKey != '' ">config_key,</if>
-			<if test="configValue != null and configValue != '' ">config_value,</if>
-			<if test="configType != null and configType != '' ">config_type,</if>
-			<if test="createBy != null and createBy != ''">create_by,</if>
-			<if test="remark != null and remark != ''">remark,</if>
- 			create_time
-        )values(
-			<if test="configName != null and configName != ''">#{configName},</if>
-			<if test="configKey != null and configKey != ''">#{configKey},</if>
-			<if test="configValue != null and configValue != ''">#{configValue},</if>
-			<if test="configType != null and configType != ''">#{configType},</if>
-			<if test="createBy != null and createBy != ''">#{createBy},</if>
-			<if test="remark != null and remark != ''">#{remark},</if>
- 			sysdate()
-		)
-    </insert>
-	 
+    <insert id="insertConfig" parameterType="SysConfig"> insert into sys_config ( <if
+            test="configName != null and configName != '' ">config_name,</if>
+			<if
+            test="configKey != null and configKey != '' ">config_key,</if>
+			<if
+            test="configValue != null and configValue != '' ">config_value,</if>
+			<if
+            test="configType != null and configType != '' ">config_type,</if>
+			<if
+            test="createBy != null and createBy != ''">create_by,</if>
+			<if
+            test="remark != null and remark != ''">remark,</if> create_time )values( <if
+            test="configName != null and configName != ''">#{configName},</if>
+			<if
+            test="configKey != null and configKey != ''">#{configKey},</if>
+			<if
+            test="configValue != null and configValue != ''">#{configValue},</if>
+			<if
+            test="configType != null and configType != ''">#{configType},</if>
+			<if
+            test="createBy != null and createBy != ''">#{createBy},</if>
+			<if
+            test="remark != null and remark != ''">#{remark},</if> sysdate() ) </insert>
+
     <!-- 修改参数：动态 SET 仅更新非空字段（remark 允许置空故只判 null），update_time 强制刷新 -->
-    <update id="updateConfig" parameterType="SysConfig">
-        update sys_config 
-        <set>
+    <update id="updateConfig" parameterType="SysConfig"> update sys_config <set>
             <if test="configName != null and configName != ''">config_name = #{configName},</if>
-            <if test="configKey != null and configKey != ''">config_key = #{configKey},</if>
-            <if test="configValue != null and configValue != ''">config_value = #{configValue},</if>
-            <if test="configType != null and configType != ''">config_type = #{configType},</if>
-            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
-            <if test="remark != null">remark = #{remark},</if>
- 			update_time = sysdate()
-        </set>
-        where config_id = #{configId}
-    </update>
-	
+            <if
+                test="configKey != null and configKey != ''">config_key = #{configKey},</if>
+            <if
+                test="configValue != null and configValue != ''">config_value = #{configValue},</if>
+            <if
+                test="configType != null and configType != ''">config_type = #{configType},</if>
+            <if
+                test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            <if
+                test="remark != null">remark = #{remark},</if> update_time = sysdate() </set> where
+        config_id = #{configId} </update>
+
     <!-- 按ID删除单个参数 -->
-    <delete id="deleteConfigById" parameterType="Long">
-        delete from sys_config where config_id = #{configId}
-    </delete>
-    
+    <delete id="deleteConfigById" parameterType="Long"> delete from sys_config where config_id =
+        #{configId} </delete>
+
     <!-- 批量删除参数（参数管理页勾选多行删除） -->
-    <delete id="deleteConfigByIds" parameterType="Long">
-        delete from sys_config where config_id in 
-        <foreach item="configId" collection="array" open="(" separator="," close=")">
-        	#{configId}
-        </foreach>
+    <delete id="deleteConfigByIds" parameterType="Long"> delete from sys_config where config_id in <foreach
+            item="configId" collection="array" open="(" separator="," close=")"> #{configId} </foreach>
     </delete>
-    
+
 </mapper>

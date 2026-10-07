@@ -9,10 +9,8 @@ import org.springframework.jdbc.datasource.lookup.AbstractRoutingDataSource;
  * 
  * @author ruoyi
  */
-public class DynamicDataSource extends AbstractRoutingDataSource
-{
-    public DynamicDataSource(DataSource defaultTargetDataSource, Map<Object, Object> targetDataSources)
-    {
+public class DynamicDataSource extends AbstractRoutingDataSource {
+    public DynamicDataSource(DataSource defaultTargetDataSource, Map<Object, Object> targetDataSources) {
         super.setDefaultTargetDataSource(defaultTargetDataSource);
         super.setTargetDataSources(targetDataSources);
         super.afterPropertiesSet();
@@ -23,8 +21,7 @@ public class DynamicDataSource extends AbstractRoutingDataSource
      * （MASTER/SLAVE），据此在目标数据源集合中选择实际连接；key 为空时回退到默认数据源
      */
     @Override
-    protected Object determineCurrentLookupKey()
-    {
+    protected Object determineCurrentLookupKey() {
         return DynamicDataSourceContextHolder.getDataSourceType();
     }
 }

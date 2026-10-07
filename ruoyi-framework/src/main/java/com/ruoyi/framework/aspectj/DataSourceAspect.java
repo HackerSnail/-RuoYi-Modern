@@ -23,14 +23,12 @@ import com.ruoyi.framework.datasource.DynamicDataSourceContextHolder;
 @Aspect
 @Order(1)
 @Component
-public class DataSourceAspect
-{
+public class DataSourceAspect {
     protected Logger logger = LoggerFactory.getLogger(getClass());
 
     @Pointcut("@annotation(com.ruoyi.common.annotation.DataSource)"
             + "|| @within(com.ruoyi.common.annotation.DataSource)")
-    public void dsPointCut()
-    {
+    public void dsPointCut() {
 
     }
 
@@ -38,21 +36,16 @@ public class DataSourceAspect
      * 环绕增强：方法执行前根据 @DataSource 注解切换数据源，执行后无论成败都清理线程上下文，防止脏数据影响后续请求
      */
     @Around("dsPointCut()")
-    public Object around(ProceedingJoinPoint point) throws Throwable
-    {
+    public Object around(ProceedingJoinPoint point) throws Throwable {
         DataSource dataSource = getDataSource(point);
 
-        if (StringUtils.isNotNull(dataSource))
-        {
+        if (StringUtils.isNotNull(dataSource)) {
             DynamicDataSourceContextHolder.setDataSourceType(dataSource.value().name());
         }
 
-        try
-        {
+        try {
             return point.proceed();
-        }
-        finally
-        {
+        } finally {
             // 销毁数据源 在执行方法之后
             DynamicDataSourceContextHolder.clearDataSourceType();
         }
@@ -61,12 +54,10 @@ public class DataSourceAspect
     /**
      * 获取需要切换的数据源：优先取方法上的 @DataSource，未命中时回退到类上的注解
      */
-    public DataSource getDataSource(ProceedingJoinPoint point)
-    {
+    public DataSource getDataSource(ProceedingJoinPoint point) {
         MethodSignature signature = (MethodSignature) point.getSignature();
         DataSource dataSource = AnnotationUtils.findAnnotation(signature.getMethod(), DataSource.class);
-        if (Objects.nonNull(dataSource))
-        {
+        if (Objects.nonNull(dataSource)) {
             return dataSource;
         }
 

@@ -9,8 +9,7 @@ import com.ruoyi.common.core.domain.entity.SysMenu;
  *
  * @author ruoyi
  */
-public interface SysMenuMapper
-{
+public interface SysMenuMapper {
     /**
      * 查询系统菜单列表
      *
@@ -68,11 +67,12 @@ public interface SysMenuMapper
     /**
      * 根据角色ID查询菜单树信息
      * 
-     * @param roleId 角色ID
+     * @param roleId            角色ID
      * @param menuCheckStrictly 菜单树选择项是否关联显示
      * @return 选中菜单列表
      */
-    public List<Long> selectMenuListByRoleId(@Param("roleId") Long roleId, @Param("menuCheckStrictly") boolean menuCheckStrictly);
+    public List<Long> selectMenuListByRoleId(@Param("roleId") Long roleId,
+            @Param("menuCheckStrictly") boolean menuCheckStrictly);
 
     /**
      * 根据菜单ID查询信息
@@ -140,7 +140,7 @@ public interface SysMenuMapper
     /**
      * 根据路由路径或名称查询菜单信息（用于唯一性校验）
      *
-     * @param path 路由地址
+     * @param path      路由地址
      * @param routeName 路由名称
      * @return 匹配的菜单列表
      */

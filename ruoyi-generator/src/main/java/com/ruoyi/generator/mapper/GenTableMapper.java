@@ -8,8 +8,7 @@ import com.ruoyi.generator.domain.GenTable;
  * 
  * @author ruoyi
  */
-public interface GenTableMapper
-{
+public interface GenTableMapper {
     /**
      * 查询已导入的生成表列表（数据源：gen_table 配置表）
      * 

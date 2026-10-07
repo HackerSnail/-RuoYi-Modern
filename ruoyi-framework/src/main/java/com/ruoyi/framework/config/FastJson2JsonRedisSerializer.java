@@ -14,8 +14,7 @@ import com.ruoyi.common.constant.Constants;
  * 
  * @author ruoyi
  */
-public class FastJson2JsonRedisSerializer<T> implements RedisSerializer<T>
-{
+public class FastJson2JsonRedisSerializer<T> implements RedisSerializer<T> {
     public static final Charset DEFAULT_CHARSET = Charset.forName("UTF-8");
 
     /**
@@ -26,17 +25,14 @@ public class FastJson2JsonRedisSerializer<T> implements RedisSerializer<T>
 
     private Class<T> clazz;
 
-    public FastJson2JsonRedisSerializer(Class<T> clazz)
-    {
+    public FastJson2JsonRedisSerializer(Class<T> clazz) {
         super();
         this.clazz = clazz;
     }
 
     @Override
-    public byte[] serialize(T t) throws SerializationException
-    {
-        if (t == null)
-        {
+    public byte[] serialize(T t) throws SerializationException {
+        if (t == null) {
             return new byte[0];
         }
         // WriteClassName 写入实际类型，以便反序列化时能还原多态对象（配合下面白名单过滤器）
@@ -44,10 +40,8 @@ public class FastJson2JsonRedisSerializer<T> implements RedisSerializer<T>
     }
 
     @Override
-    public T deserialize(byte[] bytes) throws SerializationException
-    {
-        if (bytes == null || bytes.length <= 0)
-        {
+    public T deserialize(byte[] bytes) throws SerializationException {
+        if (bytes == null || bytes.length <= 0) {
             return null;
         }
         String str = new String(bytes, DEFAULT_CHARSET);

@@ -1,193 +1,160 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper
-PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.ruoyi.system.mapper.SysDeptMapper">
 
 	<resultMap type="SysDept" id="SysDeptResult">
-		<id     property="deptId"     column="dept_id"     />
-		<result property="parentId"   column="parent_id"   />
-		<result property="ancestors"  column="ancestors"   />
-		<result property="deptName"   column="dept_name"   />
-		<result property="orderNum"   column="order_num"   />
-		<result property="leader"     column="leader"      />
-		<result property="phone"      column="phone"       />
-		<result property="email"      column="email"       />
-		<result property="status"     column="status"      />
-		<result property="delFlag"    column="del_flag"    />
+		<id property="deptId" column="dept_id" />
+		<result property="parentId" column="parent_id" />
+		<result property="ancestors" column="ancestors" />
+		<result property="deptName" column="dept_name" />
+		<result property="orderNum" column="order_num" />
+		<result property="leader" column="leader" />
+		<result property="phone" column="phone" />
+		<result property="email" column="email" />
+		<result property="status" column="status" />
+		<result property="delFlag" column="del_flag" />
 		<result property="parentName" column="parent_name" />
-		<result property="createBy"   column="create_by"   />
+		<result property="createBy" column="create_by" />
 		<result property="createTime" column="create_time" />
-		<result property="updateBy"   column="update_by"   />
+		<result property="updateBy" column="update_by" />
 		<result property="updateTime" column="update_time" />
 	</resultMap>
-	
-	<sql id="selectDeptVo">
-        select d.dept_id, d.parent_id, d.ancestors, d.dept_name, d.order_num, d.leader, d.phone, d.email, d.status, d.del_flag, d.create_by, d.create_time 
-        from sys_dept d
-    </sql>
-    
+
+	<sql id="selectDeptVo"> select d.dept_id, d.parent_id, d.ancestors, d.dept_name, d.order_num,
+		d.leader, d.phone, d.email, d.status, d.del_flag, d.create_by, d.create_time from sys_dept d </sql>
+
 	<!-- 查询部门列表（带条件动态过滤：ID/父ID/名称模糊/状态）+ 数据权限范围拼接 + 按父ID和排序号排列 -->
 	<select id="selectDeptList" parameterType="SysDept" resultMap="SysDeptResult">
-        <include refid="selectDeptVo"/>
-        where d.del_flag = '0'
-		<if test="deptId != null and deptId != 0">
-			AND dept_id = #{deptId}
-		</if>
-        <if test="parentId != null and parentId != 0">
-			AND parent_id = #{parentId}
-		</if>
-		<if test="deptName != null and deptName != ''">
-			AND dept_name like concat('%', #{deptName}, '%')
-		</if>
-		<if test="status != null and status != ''">
-			AND status = #{status}
-		</if>
+		<include refid="selectDeptVo" /> where d.del_flag = '0' <if
+			test="deptId != null and deptId != 0"> AND dept_id = #{deptId} </if>
+        <if
+			test="parentId != null and parentId != 0"> AND parent_id = #{parentId} </if>
+		<if
+			test="deptName != null and deptName != ''"> AND dept_name like concat('%', #{deptName},
+		'%') </if>
+		<if test="status != null and status != ''"> AND status = #{status} </if>
 		<!-- 数据范围过滤 -->
-		${params.dataScope}
-		order by d.parent_id, d.order_num
-    </select>
-    
+		${params.dataScope} order by d.parent_id, d.order_num </select>
+
 	<!-- 根据角色ID查询已分配的部门ID列表；deptCheckStrictly为true时排除父节点（父子关联选择不互串） -->
-    <select id="selectDeptListByRoleId" resultType="Long">
-		select d.dept_id
-		from sys_dept d
-            left join sys_role_dept rd on d.dept_id = rd.dept_id
-        where rd.role_id = #{roleId}
-            <if test="deptCheckStrictly">
-              and d.dept_id not in (select d.parent_id from sys_dept d inner join sys_role_dept rd on d.dept_id = rd.dept_id and rd.role_id = #{roleId})
-            </if>
-		order by d.parent_id, d.order_num
-	</select>
-    
+	<select id="selectDeptListByRoleId" resultType="Long"> select d.dept_id from sys_dept d left
+		join sys_role_dept rd on d.dept_id = rd.dept_id where rd.role_id = #{roleId} <if
+			test="deptCheckStrictly"> and d.dept_id not in (select d.parent_id from sys_dept d inner
+		join sys_role_dept rd on d.dept_id = rd.dept_id and rd.role_id = #{roleId}) </if> order by
+		d.parent_id, d.order_num </select>
+
 	<!-- 按部门ID查询单条，并通过子查询附带父部门名称（parent_name）便于前端回显 -->
-    <select id="selectDeptById" parameterType="Long" resultMap="SysDeptResult">
-		select d.dept_id, d.parent_id, d.ancestors, d.dept_name, d.order_num, d.leader, d.phone, d.email, d.status,
-			(select dept_name from sys_dept where dept_id = d.parent_id) parent_name
-		from sys_dept d
-		where d.dept_id = #{deptId}
-	</select>
-    
-    <!-- 检查该部门下是否存在未删除用户（删除部门前调用，返回 0 表示无用户可安全删除） -->
-    <select id="checkDeptExistUser" parameterType="Long" resultType="int">
-		select count(1) from sys_user where dept_id = #{deptId} and del_flag = '0'
-	</select>
-	
+	<select id="selectDeptById" parameterType="Long" resultMap="SysDeptResult"> select d.dept_id,
+		d.parent_id, d.ancestors, d.dept_name, d.order_num, d.leader, d.phone, d.email, d.status,
+		(select dept_name from sys_dept where dept_id = d.parent_id) parent_name from sys_dept d
+		where d.dept_id = #{deptId} </select>
+
+	<!-- 检查该部门下是否存在未删除用户（删除部门前调用，返回 0 表示无用户可安全删除） -->
+	<select id="checkDeptExistUser" parameterType="Long" resultType="int"> select count(1) from
+		sys_user where dept_id = #{deptId} and del_flag = '0' </select>
+
 	<!-- 检查是否有未删除的子部门（limit 1 短路查询，返回 >0 表示有子节点不可删除） -->
-	<select id="hasChildByDeptId" parameterType="Long" resultType="int">
-		select count(1) from sys_dept
-		where del_flag = '0' and parent_id = #{deptId} limit 1
-	</select>
-	
+	<select id="hasChildByDeptId" parameterType="Long" resultType="int"> select count(1) from
+		sys_dept where del_flag = '0' and parent_id = #{deptId} limit 1 </select>
+
 	<!-- 通过 ancestors 字段 find_in_set 递归查询所有子孙部门（不只直系子级） -->
-	<select id="selectChildrenDeptById" parameterType="Long" resultMap="SysDeptResult">
-		select * from sys_dept where find_in_set(#{deptId}, ancestors)
-	</select>
-	
+	<select id="selectChildrenDeptById" parameterType="Long" resultMap="SysDeptResult"> select *
+		from sys_dept where find_in_set(#{deptId}, ancestors) </select>
+
 	<!-- 统计所有正常状态(status=0)且未删除的子孙部门数量（用于停用前判断是否有活跃下级） -->
-	<select id="selectNormalChildrenDeptById" parameterType="Long" resultType="int">
-		select count(*) from sys_dept where status = 0 and del_flag = '0' and find_in_set(#{deptId}, ancestors)
-	</select>
-	
+	<select id="selectNormalChildrenDeptById" parameterType="Long" resultType="int"> select count(*)
+		from sys_dept where status = 0 and del_flag = '0' and find_in_set(#{deptId}, ancestors) </select>
+
 	<!-- 校验同一父部门下部门名称是否已存在（用于新增/修改时的唯一性检查，排除软删记录） -->
 	<select id="checkDeptNameUnique" resultMap="SysDeptResult">
-	    <include refid="selectDeptVo"/>
-		where dept_name=#{deptName} and parent_id = #{parentId} and del_flag = '0' limit 1
-	</select>
-    
+		<include refid="selectDeptVo" /> where dept_name=#{deptName} and parent_id = #{parentId} and
+		del_flag = '0' limit 1 </select>
+
 	<!-- 新增部门：动态列拼接，仅插入非空字段；create_time 用 sysdate() 填充；deptId 可由调用方指定或自增 -->
-    <insert id="insertDept" parameterType="SysDept">
- 		insert into sys_dept(
- 			<if test="deptId != null and deptId != 0">dept_id,</if>
- 			<if test="parentId != null and parentId != 0">parent_id,</if>
- 			<if test="deptName != null and deptName != ''">dept_name,</if>
- 			<if test="ancestors != null and ancestors != ''">ancestors,</if>
- 			<if test="orderNum != null">order_num,</if>
+	<insert id="insertDept" parameterType="SysDept"> insert into sys_dept( <if
+			test="deptId != null and deptId != 0">dept_id,</if>
+ 			<if
+			test="parentId != null and parentId != 0">parent_id,</if>
+ 			<if
+			test="deptName != null and deptName != ''">dept_name,</if>
+ 			<if
+			test="ancestors != null and ancestors != ''">ancestors,</if>
+ 			<if test="orderNum != null">
+		order_num,</if>
  			<if test="leader != null and leader != ''">leader,</if>
- 			<if test="phone != null and phone != ''">phone,</if>
- 			<if test="email != null and email != ''">email,</if>
+ 			<if
+			test="phone != null and phone != ''">phone,</if>
+ 			<if test="email != null and email != ''">
+		email,</if>
  			<if test="status != null">status,</if>
- 			<if test="createBy != null and createBy != ''">create_by,</if>
- 			create_time
- 		)values(
- 			<if test="deptId != null and deptId != 0">#{deptId},</if>
- 			<if test="parentId != null and parentId != 0">#{parentId},</if>
- 			<if test="deptName != null and deptName != ''">#{deptName},</if>
- 			<if test="ancestors != null and ancestors != ''">#{ancestors},</if>
- 			<if test="orderNum != null">#{orderNum},</if>
- 			<if test="leader != null and leader != ''">#{leader},</if>
+ 			<if
+			test="createBy != null and createBy != ''">create_by,</if> create_time )values( <if
+			test="deptId != null and deptId != 0">#{deptId},</if>
+ 			<if
+			test="parentId != null and parentId != 0">#{parentId},</if>
+ 			<if
+			test="deptName != null and deptName != ''">#{deptName},</if>
+ 			<if
+			test="ancestors != null and ancestors != ''">#{ancestors},</if>
+ 			<if
+			test="orderNum != null">#{orderNum},</if>
+ 			<if test="leader != null and leader != ''">
+		#{leader},</if>
  			<if test="phone != null and phone != ''">#{phone},</if>
- 			<if test="email != null and email != ''">#{email},</if>
+ 			<if
+			test="email != null and email != ''">#{email},</if>
  			<if test="status != null">#{status},</if>
- 			<if test="createBy != null and createBy != ''">#{createBy},</if>
- 			sysdate()
- 		)
-	</insert>
-	
+ 			<if
+			test="createBy != null and createBy != ''">#{createBy},</if> sysdate() ) </insert>
+
 	<!-- 修改部门信息：动态 SET，只更新传入的非空字段；update_time 始终刷新 -->
-	<update id="updateDept" parameterType="SysDept">
- 		update sys_dept
- 		<set>
- 			<if test="parentId != null and parentId != 0">parent_id = #{parentId},</if>
- 			<if test="deptName != null and deptName != ''">dept_name = #{deptName},</if>
- 			<if test="ancestors != null and ancestors != ''">ancestors = #{ancestors},</if>
- 			<if test="orderNum != null">order_num = #{orderNum},</if>
- 			<if test="leader != null">leader = #{leader},</if>
+	<update id="updateDept" parameterType="SysDept"> update sys_dept <set>
+			<if test="parentId != null and parentId != 0">parent_id = #{parentId},</if>
+ 			<if
+				test="deptName != null and deptName != ''">dept_name = #{deptName},</if>
+ 			<if
+				test="ancestors != null and ancestors != ''">ancestors = #{ancestors},</if>
+ 			<if
+				test="orderNum != null">order_num = #{orderNum},</if>
+ 			<if test="leader != null">leader
+		= #{leader},</if>
  			<if test="phone != null">phone = #{phone},</if>
- 			<if test="email != null">email = #{email},</if>
+ 			<if test="email != null">email
+		= #{email},</if>
  			<if test="status != null and status != ''">status = #{status},</if>
- 			<if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
- 			update_time = sysdate()
- 		</set>
- 		where dept_id = #{deptId}
-	</update>
-	
+ 			<if
+				test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if> update_time
+		= sysdate() </set> where dept_id = #{deptId} </update>
+
 	<!-- 批量修改子孙部门的 ancestors 字段（CASE WHEN 模式）：部门移动时重新计算祖级路径 -->
-	<update id="updateDeptChildren" parameterType="java.util.List">
-	    update sys_dept set ancestors =
-	    <foreach collection="depts" item="item" index="index"
-	        separator=" " open="case dept_id" close="end">
-	        when #{item.deptId} then #{item.ancestors}
-	    </foreach>
-	    where dept_id in
-	    <foreach collection="depts" item="item" index="index"
-	        separator="," open="(" close=")">
-	        #{item.deptId}
-	    </foreach>
+	<update id="updateDeptChildren" parameterType="java.util.List"> update sys_dept set ancestors = <foreach
+			collection="depts" item="item" index="index"
+			separator=" " open="case dept_id" close="end"> when #{item.deptId} then
+		#{item.ancestors} </foreach> where dept_id in <foreach collection="depts" item="item"
+			index="index"
+			separator="," open="(" close=")"> #{item.deptId} </foreach>
 	</update>
-	 
+
 	<!-- 批量将部门状态设为正常(0)：用于上级部门恢复时联动下级 -->
-	<update id="updateDeptStatusNormal" parameterType="Long">
- 	    update sys_dept set status = '0' where dept_id in 
- 	    <foreach collection="array" item="deptId" open="(" separator="," close=")">
-        	#{deptId}
-        </foreach>
+	<update id="updateDeptStatusNormal" parameterType="Long"> update sys_dept set status = '0' where
+		dept_id in <foreach collection="array" item="deptId" open="(" separator="," close=")">
+		#{deptId} </foreach>
 	</update>
-	
+
 	<!-- 单条排序更新（保留用于单个部门拖动场景；批量场景用 updateDeptSortBatch） -->
-	<update id="updateDeptSort" parameterType="SysDept">
-		update sys_dept set order_num = #{orderNum} where dept_id = #{deptId}
-	</update>
-	
+	<update id="updateDeptSort" parameterType="SysDept"> update sys_dept set order_num = #{orderNum}
+		where dept_id = #{deptId} </update>
+
 	<!-- 批量更新部门排序（CASE WHEN 模式）：将 N 次单行 UPDATE 合并为 1 次网络往返，
 	         set order_num = case dept_id when id1 then val1 ... else order_num end where dept_id in (...) -->
-		<update id="updateDeptSortBatch" parameterType="java.util.List">
-		update sys_dept
-		set order_num = case dept_id
-		<foreach collection="list" item="item">
-			when #{item.deptId} then #{item.orderNum}
-		</foreach>
-		else order_num
-		end
-		where dept_id in
-		<foreach collection="list" item="item" open="(" separator="," close=")">
-			#{item.deptId}
-		</foreach>
+	<update id="updateDeptSortBatch" parameterType="java.util.List"> update sys_dept set order_num =
+		case dept_id <foreach collection="list" item="item"> when #{item.deptId} then
+		#{item.orderNum} </foreach> else order_num end where dept_id in <foreach collection="list"
+			item="item" open="(" separator="," close=")"> #{item.deptId} </foreach>
 	</update>
-	
+
 	<!-- 逻辑删除（软删除）：将 del_flag 置为 '2'，不物理删除数据 -->
-	<delete id="deleteDeptById" parameterType="Long">
-		update sys_dept set del_flag = '2' where dept_id = #{deptId}
-	</delete>
+	<delete id="deleteDeptById" parameterType="Long"> update sys_dept set del_flag = '2' where
+		dept_id = #{deptId} </delete>
 
 </mapper>

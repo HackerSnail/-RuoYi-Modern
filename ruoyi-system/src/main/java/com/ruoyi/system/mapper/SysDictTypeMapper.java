@@ -8,8 +8,7 @@ import com.ruoyi.common.core.domain.entity.SysDictType;
  * 
  * @author ruoyi
  */
-public interface SysDictTypeMapper
-{
+public interface SysDictTypeMapper {
     /**
      * 根据条件分页查询字典类型
      * 

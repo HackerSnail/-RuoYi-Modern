@@ -1,50 +1,37 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper
-PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.ruoyi.system.mapper.SysUserRoleMapper">
 
 	<resultMap type="SysUserRole" id="SysUserRoleResult">
-		<result property="userId"     column="user_id"      />
-		<result property="roleId"     column="role_id"      />
+		<result property="userId" column="user_id" />
+		<result property="roleId" column="role_id" />
 	</resultMap>
 
 	<!-- 清除单个用户的所有角色关联（用户编辑时先删后插） -->
-	<delete id="deleteUserRoleByUserId" parameterType="Long">
-		delete from sys_user_role where user_id=#{userId}
-	</delete>
-	
+	<delete id="deleteUserRoleByUserId" parameterType="Long"> delete from sys_user_role where
+		user_id=#{userId} </delete>
+
 	<!-- 检查指定角色是否有用户关联（删除角色前检查，返回>0表示不可删） -->
-	<select id="countUserRoleByRoleId" resultType="Integer">
-	    select count(1) from sys_user_role where role_id=#{roleId}  
-	</select>
-	
+	<select id="countUserRoleByRoleId" resultType="Integer"> select count(1) from sys_user_role
+		where role_id=#{roleId} </select>
+
 	<!-- 批量清除多个用户的角色关联（批量删除用户时级联清理） -->
-	<delete id="deleteUserRole" parameterType="Long">
- 		delete from sys_user_role where user_id in
- 		<foreach collection="array" item="userId" open="(" separator="," close=")">
- 			#{userId}
-        </foreach> 
- 	</delete>
-	
-	<!-- 批量插入用户-角色关联（用户保存角色分配时写入） -->
-	<insert id="batchUserRole">
-		insert into sys_user_role(user_id, role_id) values
-		<foreach item="item" index="index" collection="list" separator=",">
-			(#{item.userId},#{item.roleId})
-		</foreach>
-	</insert>
-	
-	<!-- 删除单个用户-角色关联对（用户取消某个角色时精确删除） -->
-	<delete id="deleteUserRoleInfo" parameterType="SysUserRole">
-		delete from sys_user_role where user_id=#{userId} and role_id=#{roleId}
+	<delete id="deleteUserRole" parameterType="Long"> delete from sys_user_role where user_id in <foreach
+			collection="array" item="userId" open="(" separator="," close=")"> #{userId} </foreach>
 	</delete>
-	
+
+	<!-- 批量插入用户-角色关联（用户保存角色分配时写入） -->
+	<insert id="batchUserRole"> insert into sys_user_role(user_id, role_id) values <foreach
+			item="item" index="index" collection="list" separator=",">
+		(#{item.userId},#{item.roleId}) </foreach>
+	</insert>
+
+	<!-- 删除单个用户-角色关联对（用户取消某个角色时精确删除） -->
+	<delete id="deleteUserRoleInfo" parameterType="SysUserRole"> delete from sys_user_role where
+		user_id=#{userId} and role_id=#{roleId} </delete>
+
 	<!-- 批量删除某角色下的多个用户关联（角色授权管理取消用户时用） -->
-	<delete id="deleteUserRoleInfos">
-	    delete from sys_user_role where role_id=#{roleId} and user_id in
- 	    <foreach collection="userIds" item="userId" open="(" separator="," close=")">
- 	        #{userId}
-            </foreach> 
+	<delete id="deleteUserRoleInfos"> delete from sys_user_role where role_id=#{roleId} and user_id
+		in <foreach collection="userIds" item="userId" open="(" separator="," close=")"> #{userId} </foreach>
 	</delete>
 </mapper> 

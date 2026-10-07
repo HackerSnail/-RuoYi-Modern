@@ -10,8 +10,7 @@ import org.apache.commons.lang3.builder.ToStringStyle;
  *
  * @author ruoyi
  */
-public class SysNoticeRead
-{
+public class SysNoticeRead {
     /** 主键 */
     private Long readId;
 
@@ -25,54 +24,45 @@ public class SysNoticeRead
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime readTime;
 
-    public Long getReadId()
-    {
+    public Long getReadId() {
         return readId;
     }
 
-    public void setReadId(Long readId)
-    {
+    public void setReadId(Long readId) {
         this.readId = readId;
     }
 
-    public Long getNoticeId()
-    {
+    public Long getNoticeId() {
         return noticeId;
     }
 
-    public void setNoticeId(Long noticeId)
-    {
+    public void setNoticeId(Long noticeId) {
         this.noticeId = noticeId;
     }
 
-    public Long getUserId()
-    {
+    public Long getUserId() {
         return userId;
     }
 
-    public void setUserId(Long userId)
-    {
+    public void setUserId(Long userId) {
         this.userId = userId;
     }
 
-    public LocalDateTime getReadTime()
-    {
+    public LocalDateTime getReadTime() {
         return readTime;
     }
 
-    public void setReadTime(LocalDateTime readTime)
-    {
+    public void setReadTime(LocalDateTime readTime) {
         this.readTime = readTime;
     }
 
     @Override
-    public String toString()
-    {
+    public String toString() {
         return new ToStringBuilder(this, ToStringStyle.MULTI_LINE_STYLE)
-            .append("readId", getReadId())
-            .append("noticeId", getNoticeId())
-            .append("userId", getUserId())
-            .append("readTime", getReadTime())
-            .toString();
+                .append("readId", getReadId())
+                .append("noticeId", getNoticeId())
+                .append("userId", getUserId())
+                .append("readTime", getReadTime())
+                .toString();
     }
 }

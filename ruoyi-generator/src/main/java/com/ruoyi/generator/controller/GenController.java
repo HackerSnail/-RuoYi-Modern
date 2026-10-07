@@ -43,14 +43,12 @@ import com.ruoyi.generator.service.IGenTableService;
  */
 @RestController
 @RequestMapping("/tool/gen")
-public class GenController extends BaseController
-{
+public class GenController extends BaseController {
     private final IGenTableService genTableService;
 
     private final IGenTableColumnService genTableColumnService;
 
-    public GenController(IGenTableService genTableService, IGenTableColumnService genTableColumnService)
-    {
+    public GenController(IGenTableService genTableService, IGenTableColumnService genTableColumnService) {
         this.genTableService = genTableService;
         this.genTableColumnService = genTableColumnService;
     }
@@ -60,8 +58,7 @@ public class GenController extends BaseController
      */
     @PreAuthorize("@ss.hasPermi('tool:gen:list')")
     @GetMapping("/list")
-    public TableDataInfo genList(GenTable genTable)
-    {
+    public TableDataInfo genList(GenTable genTable) {
         startPage();
         List<GenTable> list = genTableService.selectGenTableList(genTable);
         return getDataTable(list);
@@ -72,8 +69,7 @@ public class GenController extends BaseController
      */
     @PreAuthorize("@ss.hasPermi('tool:gen:query')")
     @GetMapping(value = "/{tableId}")
-    public AjaxResult getInfo(@PathVariable Long tableId)
-    {
+    public AjaxResult getInfo(@PathVariable Long tableId) {
         GenTable table = genTableService.selectGenTableById(tableId);
         List<GenTable> tables = genTableService.selectGenTableAll();
         List<GenTableColumn> list = genTableColumnService.selectGenTableColumnListByTableId(tableId);
@@ -90,8 +86,7 @@ public class GenController extends BaseController
      */
     @PreAuthorize("@ss.hasPermi('tool:gen:list')")
     @GetMapping("/db/list")
-    public TableDataInfo dataList(GenTable genTable)
-    {
+    public TableDataInfo dataList(GenTable genTable) {
         startPage();
         List<GenTable> list = genTableService.selectDbTableList(genTable);
         return getDataTable(list);
@@ -102,8 +97,7 @@ public class GenController extends BaseController
      */
     @PreAuthorize("@ss.hasPermi('tool:gen:list')")
     @GetMapping(value = "/column/{tableId}")
-    public TableDataInfo columnList(Long tableId)
-    {
+    public TableDataInfo columnList(Long tableId) {
         TableDataInfo dataInfo = new TableDataInfo();
         List<GenTableColumn> list = genTableColumnService.selectGenTableColumnListByTableId(tableId);
         dataInfo.setRows(list);
@@ -117,8 +111,8 @@ public class GenController extends BaseController
     @PreAuthorize("@ss.hasPermi('tool:gen:import')")
     @Log(title = "代码生成", businessType = BusinessType.IMPORT)
     @PostMapping("/importTable")
-    public AjaxResult importTableSave(@RequestParam("tables") String tables, @RequestParam("tplWebType") String tplWebType)
-    {
+    public AjaxResult importTableSave(@RequestParam("tables") String tables,
+            @RequestParam("tplWebType") String tplWebType) {
         String[] tableNames = Convert.toStrArray(tables);
         // 查询表信息
         List<GenTable> tableList = genTableService.selectDbTableListByNames(tableNames);
@@ -132,22 +126,17 @@ public class GenController extends BaseController
     @PreAuthorize("@ss.hasRole('admin')")
     @Log(title = "创建表", businessType = BusinessType.OTHER)
     @PostMapping("/createTable")
-    public AjaxResult createTableSave(@RequestParam("sql") String sql, @RequestParam("tplWebType") String tplWebType)
-    {
-        try
-        {
+    public AjaxResult createTableSave(@RequestParam("sql") String sql, @RequestParam("tplWebType") String tplWebType) {
+        try {
             // 安全前置：过滤 DROP/TRUNCATE 等危险关键字，防止拼接恶意语句
             SqlUtil.filterKeyword(sql);
             // 用 Druid 按 MySQL 方言解析出语句列表
             List<SQLStatement> sqlStatements = SQLUtils.parseStatements(sql, DbType.mysql);
             List<String> tableNames = new ArrayList<>();
-            for (SQLStatement sqlStatement : sqlStatements)
-            {
+            for (SQLStatement sqlStatement : sqlStatements) {
                 // 仅处理 CREATE TABLE 语句，其余忽略
-                if (sqlStatement instanceof MySqlCreateTableStatement createTableStatement)
-                {
-                    if (genTableService.createTable(createTableStatement.toString()))
-                    {
+                if (sqlStatement instanceof MySqlCreateTableStatement createTableStatement) {
+                    if (genTableService.createTable(createTableStatement.toString())) {
                         // 建表成功则记录表名（剔除反引号）用于后续自动导入
                         String tableName = createTableStatement.getTableName().replaceAll("`", "");
                         tableNames.add(tableName);
@@ -159,9 +148,7 @@ public class GenController extends BaseController
             String operName = SecurityUtils.getUsername();
             genTableService.importGenTable(tableList, tplWebType, operName);
             return AjaxResult.success();
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             // 建表涉及 DDL 执行，任何异常统一兑底为友好提示，避免暴露 SQL 细节
             logger.error(e.getMessage(), e);
             return AjaxResult.error("创建表结构异常");
@@ -174,8 +161,7 @@ public class GenController extends BaseController
     @PreAuthorize("@ss.hasPermi('tool:gen:edit')")
     @Log(title = "代码生成", businessType = BusinessType.UPDATE)
     @PutMapping
-    public AjaxResult editSave(@Validated @RequestBody GenTable genTable)
-    {
+    public AjaxResult editSave(@Validated @RequestBody GenTable genTable) {
         genTableService.validateEdit(genTable);
         genTableService.updateGenTable(genTable);
         return success();
@@ -187,8 +173,7 @@ public class GenController extends BaseController
     @PreAuthorize("@ss.hasPermi('tool:gen:remove')")
     @Log(title = "代码生成", businessType = BusinessType.DELETE)
     @DeleteMapping("/{tableIds}")
-    public AjaxResult remove(@PathVariable Long[] tableIds)
-    {
+    public AjaxResult remove(@PathVariable Long[] tableIds) {
         genTableService.deleteGenTableByIds(tableIds);
         return success();
     }
@@ -198,8 +183,7 @@ public class GenController extends BaseController
      */
     @PreAuthorize("@ss.hasPermi('tool:gen:preview')")
     @GetMapping("/preview/{tableId}")
-    public AjaxResult preview(@PathVariable("tableId") Long tableId) throws IOException
-    {
+    public AjaxResult preview(@PathVariable("tableId") Long tableId) throws IOException {
         Map<String, String> dataMap = genTableService.previewCode(tableId);
         return success(dataMap);
     }
@@ -210,8 +194,7 @@ public class GenController extends BaseController
     @PreAuthorize("@ss.hasPermi('tool:gen:code')")
     @Log(title = "代码生成", businessType = BusinessType.GENCODE)
     @GetMapping("/download/{tableName}")
-    public void download(HttpServletResponse response, @PathVariable("tableName") String tableName) throws IOException
-    {
+    public void download(HttpServletResponse response, @PathVariable("tableName") String tableName) throws IOException {
         byte[] data = genTableService.downloadCode(tableName);
         genCode(response, data);
     }
@@ -222,10 +205,8 @@ public class GenController extends BaseController
     @PreAuthorize("@ss.hasPermi('tool:gen:code')")
     @Log(title = "代码生成", businessType = BusinessType.GENCODE)
     @GetMapping("/genCode/{tableName}")
-    public AjaxResult genCode(@PathVariable("tableName") String tableName)
-    {
-        if (!GenConfig.isAllowOverwrite())
-        {
+    public AjaxResult genCode(@PathVariable("tableName") String tableName) {
+        if (!GenConfig.isAllowOverwrite()) {
             return AjaxResult.error("【系统预设】不允许生成文件覆盖到本地");
         }
         genTableService.generatorCode(tableName);
@@ -238,8 +219,7 @@ public class GenController extends BaseController
     @PreAuthorize("@ss.hasPermi('tool:gen:edit')")
     @Log(title = "代码生成", businessType = BusinessType.UPDATE)
     @GetMapping("/synchDb/{tableName}")
-    public AjaxResult synchDb(@PathVariable("tableName") String tableName)
-    {
+    public AjaxResult synchDb(@PathVariable("tableName") String tableName) {
         genTableService.synchDb(tableName);
         return success();
     }
@@ -250,8 +230,7 @@ public class GenController extends BaseController
     @PreAuthorize("@ss.hasPermi('tool:gen:code')")
     @Log(title = "代码生成", businessType = BusinessType.GENCODE)
     @GetMapping("/batchGenCode")
-    public void batchGenCode(HttpServletResponse response, String tables) throws IOException
-    {
+    public void batchGenCode(HttpServletResponse response, String tables) throws IOException {
         String[] tableNames = Convert.toStrArray(tables);
         byte[] data = genTableService.downloadCode(tableNames);
         genCode(response, data);
@@ -264,8 +243,7 @@ public class GenController extends BaseController
      * @param data     已打包的 zip 字节数组
      * @throws IOException 写响应流失败时抛出
      */
-    private void genCode(HttpServletResponse response, byte[] data) throws IOException
-    {
+    private void genCode(HttpServletResponse response, byte[] data) throws IOException {
         // 重置响应，清除可能的缓存/已提交头，保证下载头干净
         response.reset();
         // 允许跨域读取，并暴露 Content-Disposition 供前端取文件名

@@ -18,31 +18,24 @@ import com.ruoyi.common.utils.SecurityUtils;
  *
  * @author ruoyi
  */
-public class SensitiveJsonSerializer extends StdSerializer<String>
-{
+public class SensitiveJsonSerializer extends StdSerializer<String> {
     private final DesensitizedType desensitizedType;
 
-    public SensitiveJsonSerializer()
-    {
+    public SensitiveJsonSerializer() {
         super(String.class);
         this.desensitizedType = null;
     }
 
-    public SensitiveJsonSerializer(DesensitizedType desensitizedType)
-    {
+    public SensitiveJsonSerializer(DesensitizedType desensitizedType) {
         super(String.class);
         this.desensitizedType = desensitizedType;
     }
 
     @Override
-    public void serialize(String value, JsonGenerator gen, SerializationContext ctxt) throws JacksonException
-    {
-        if (desensitizedType != null && desensitization())
-        {
+    public void serialize(String value, JsonGenerator gen, SerializationContext ctxt) throws JacksonException {
+        if (desensitizedType != null && desensitization()) {
             gen.writeString(desensitizedType.desensitizer().apply(value));
-        }
-        else
-        {
+        } else {
             gen.writeString(value);
         }
     }
@@ -52,11 +45,10 @@ public class SensitiveJsonSerializer extends StdSerializer<String>
      * 则返回携带对应脱敏类型的序列化器，否则回退默认序列化器
      */
     @Override
-    public ValueSerializer<?> createContextual(SerializationContext ctxt, BeanProperty property) throws DatabindException
-    {
+    public ValueSerializer<?> createContextual(SerializationContext ctxt, BeanProperty property)
+            throws DatabindException {
         Sensitive annotation = property.getAnnotation(Sensitive.class);
-        if (Objects.nonNull(annotation) && Objects.equals(String.class, property.getType().getRawClass()))
-        {
+        if (Objects.nonNull(annotation) && Objects.equals(String.class, property.getType().getRawClass())) {
             return new SensitiveJsonSerializer(annotation.desensitizedType());
         }
         return ctxt.findValueSerializer(property.getType());
@@ -65,16 +57,12 @@ public class SensitiveJsonSerializer extends StdSerializer<String>
     /**
      * 是否需要脱敏处理
      */
-    private boolean desensitization()
-    {
-        try
-        {
+    private boolean desensitization() {
+        try {
             LoginUser securityUser = SecurityUtils.getLoginUser();
             // 管理员不脱敏
             return !securityUser.getUser().isAdmin();
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             return true;
         }
     }

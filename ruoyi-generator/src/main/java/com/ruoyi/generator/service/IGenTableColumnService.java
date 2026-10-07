@@ -8,8 +8,7 @@ import com.ruoyi.generator.domain.GenTableColumn;
  * 
  * @author ruoyi
  */
-public interface IGenTableColumnService
-{
+public interface IGenTableColumnService {
     /**
      * 按生成表ID查询其列配置列表
      * 

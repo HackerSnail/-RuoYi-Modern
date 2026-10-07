@@ -15,14 +15,12 @@ import com.ruoyi.common.constant.Constants;
  * @author ruoyi
  */
 @Configuration
-public class I18nConfig implements WebMvcConfigurer
-{
+public class I18nConfig implements WebMvcConfigurer {
     /**
      * 本地化解析器：基于 Session 存储用户语言，默认取 Constants.DEFAULT_LOCALE
      */
     @Bean
-    public LocaleResolver localeResolver()
-    {
+    public LocaleResolver localeResolver() {
         SessionLocaleResolver slr = new SessionLocaleResolver();
         // 默认语言
         slr.setDefaultLocale(Constants.DEFAULT_LOCALE);
@@ -33,8 +31,7 @@ public class I18nConfig implements WebMvcConfigurer
      * 语言切换拦截器：根据请求参数 lang 的值切换当前 Locale
      */
     @Bean
-    public LocaleChangeInterceptor localeChangeInterceptor()
-    {
+    public LocaleChangeInterceptor localeChangeInterceptor() {
         LocaleChangeInterceptor lci = new LocaleChangeInterceptor();
         // 参数名
         lci.setParamName("lang");
@@ -45,8 +42,7 @@ public class I18nConfig implements WebMvcConfigurer
      * 注册语言切换拦截器到 MVC 拦截链
      */
     @Override
-    public void addInterceptors(InterceptorRegistry registry)
-    {
+    public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(localeChangeInterceptor());
     }
 }

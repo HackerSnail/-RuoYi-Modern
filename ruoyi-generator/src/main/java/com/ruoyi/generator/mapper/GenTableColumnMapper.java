@@ -8,10 +8,10 @@ import com.ruoyi.generator.domain.GenTableColumn;
  * 
  * @author ruoyi
  */
-public interface GenTableColumnMapper
-{
+public interface GenTableColumnMapper {
     /**
-     * 从 information_schema.columns 反向读取实表的列结构（导入表时用，CASE 推导 is_pk/is_required/is_increment）
+     * 从 information_schema.columns 反向读取实表的列结构（导入表时用，CASE 推导
+     * is_pk/is_required/is_increment）
      * 
      * @param tableName 表名称
      * @return 列信息

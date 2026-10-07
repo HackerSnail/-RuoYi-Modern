@@ -9,8 +9,7 @@ import com.ruoyi.generator.domain.GenTable;
  * 
  * @author ruoyi
  */
-public interface IGenTableService
-{
+public interface IGenTableService {
     /**
      * 查询已导入的生成表列表（数据源：gen_table 配置表）
      * 
@@ -77,9 +76,9 @@ public interface IGenTableService
     /**
      * 导入表结构：从 information_schema 读取实表元数据并写入 gen_table/gen_table_column
      *
-     * @param tableList 导入表列表
+     * @param tableList  导入表列表
      * @param tplWebType 前端模板类型
-     * @param operName 操作人员
+     * @param operName   操作人员
      */
     public void importGenTable(List<GenTable> tableList, String tplWebType, String operName);
 

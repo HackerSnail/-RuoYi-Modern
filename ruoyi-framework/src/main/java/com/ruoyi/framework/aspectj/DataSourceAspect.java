@@ -34,6 +34,9 @@ public class DataSourceAspect
 
     }
 
+    /**
+     * 环绕增强：方法执行前根据 @DataSource 注解切换数据源，执行后无论成败都清理线程上下文，防止脏数据影响后续请求
+     */
     @Around("dsPointCut()")
     public Object around(ProceedingJoinPoint point) throws Throwable
     {
@@ -56,7 +59,7 @@ public class DataSourceAspect
     }
 
     /**
-     * 获取需要切换的数据源
+     * 获取需要切换的数据源：优先取方法上的 @DataSource，未命中时回退到类上的注解
      */
     public DataSource getDataSource(ProceedingJoinPoint point)
     {

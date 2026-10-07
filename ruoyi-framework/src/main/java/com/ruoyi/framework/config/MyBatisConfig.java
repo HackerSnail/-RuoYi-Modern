@@ -41,6 +41,10 @@ public class MyBatisConfig
 
     static final String DEFAULT_RESOURCE_PATTERN = "**/*.class";
 
+    /**
+     * 将支持 * 通配的 typeAliasesPackage 展开为真实包名集合：
+     * 扫描匹配路径下的 .class 资源，取其所在包去重后回写，供 MyBatis 注册类型别名。
+     */
     public static String setTypeAliasesPackage(String typeAliasesPackage)
     {
         ResourcePatternResolver resolver = (ResourcePatternResolver) new PathMatchingResourcePatternResolver();
@@ -95,6 +99,9 @@ public class MyBatisConfig
         return typeAliasesPackage;
     }
 
+    /**
+     * 解析 mapper XML 位置：按通配模式聚合同类资源，单个路径解析失败时忽略不阻断整体启动
+     */
     public Resource[] resolveMapperLocations(String[] mapperLocations)
     {
         ResourcePatternResolver resourceResolver = new PathMatchingResourcePatternResolver();
@@ -117,6 +124,9 @@ public class MyBatisConfig
         return resources.toArray(new Resource[resources.size()]);
     }
 
+    /**
+     * 构建 SqlSessionFactory：读取 typeAliasesPackage/mapperLocations/configLocation 配置并手动装配（多数据源下需显式注入 DataSource）
+     */
     @Bean
     public SqlSessionFactory sqlSessionFactory(DataSource dataSource) throws Exception
     {

@@ -19,6 +19,10 @@ import com.ruoyi.common.utils.ServletUtils;
 @Component
 public abstract class RepeatSubmitInterceptor implements HandlerInterceptor
 {
+    /**
+     * 前置拦截：仅对标注 @RepeatSubmit 的控制器方法生效，调用子类 isRepeatSubmit 判定，
+     * 命中重复则直接回写错误 JSON 并中断请求，否则放行
+     */
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception
     {

@@ -23,6 +23,9 @@ public class ServerConfig
         return getDomain(request);
     }
 
+    /**
+     * 从当前请求推导出服务访问根地址：截掉 URL 中的请求 URI 部分，再拼上上下文路径
+     */
     public static String getDomain(HttpServletRequest request)
     {
         StringBuffer url = request.getRequestURL();

@@ -41,6 +41,10 @@ public class SysPasswordService
         return CacheConstants.PWD_ERR_CNT_KEY + username;
     }
 
+    /**
+     * 密码校验：从 AuthenticationContext 取出明文密码，先查 Redis 中的失败次数是否达上限（锁定），
+     * 再用 BCrypt 比对；失败则递增计数并回写（带 lockTime 过期），成功则清除计数
+     */
     public void validate(SysUser user)
     {
         Authentication usernamePasswordAuthenticationToken = AuthenticationContextHolder.getContext();
@@ -71,11 +75,17 @@ public class SysPasswordService
         }
     }
 
+    /**
+     * 使用 BCrypt 将明文密码与用户库中密文比对
+     */
     public boolean matches(SysUser user, String rawPassword)
     {
         return SecurityUtils.matchesPassword(rawPassword, user.getPassword());
     }
 
+    /**
+     * 登录成功后清除该用户的密码错误计数缓存
+     */
     public void clearLoginRecordCache(String loginName)
     {
         if (redisCache.hasKey(getCacheKey(loginName)))

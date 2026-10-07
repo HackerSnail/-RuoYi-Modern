@@ -51,6 +51,10 @@ public class DruidProperties
     @Value("${spring.datasource.druid.testOnReturn}")
     private boolean testOnReturn;
 
+    /**
+     * 将本类中通过 @Value 注入的连接池参数统一应用到传入的 DruidDataSource 上，
+     * 供主/从数据源 Bean 创建后复用同一套池化配置
+     */
     public DruidDataSource dataSource(DruidDataSource datasource)
     {
         /** 配置初始化大小、最小、最大 */

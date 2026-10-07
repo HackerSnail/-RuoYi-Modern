@@ -32,6 +32,9 @@ public class DataScopeAspect
      */
     public static final String DATA_SCOPE = "dataScope";
 
+    /**
+     * 前置增强：先清空可能被打入的 dataScope 参数（防注入），再根据当前用户角色拼接数据过滤 SQL
+     */
     @Before("@annotation(controllerDataScope)")
     public void doBefore(JoinPoint point, DataScope controllerDataScope) throws Throwable
     {
@@ -69,6 +72,7 @@ public class DataScopeAspect
         StringBuilder sqlString = new StringBuilder();
         List<String> conditions = new ArrayList<String>();
         List<String> scopeCustomIds = new ArrayList<String>();
+        // 预扫描：收集拥有“自定义”数据权限且匹配当前权限字符的角色 ID，后续合并为一个 IN 子句避免多次拼接
         user.getRoles().forEach(role -> {
             if (Constants.Dept.DATA_SCOPE_CUSTOM.equals(role.getDataScope()) && StringUtils.equals(role.getStatus(), UserConstants.ROLE_NORMAL) && (StringUtils.isEmpty(permission) || StringUtils.containsAny(role.getPermissions(), Convert.toStrArray(permission))))
             {
@@ -79,6 +83,7 @@ public class DataScopeAspect
         for (SysRole role : user.getRoles())
         {
             String dataScope = role.getDataScope();
+            // 同一数据权限只拼接一次（conditions 去重）；停用角色直接跳过
             if (conditions.contains(dataScope) || StringUtils.equals(role.getStatus(), UserConstants.ROLE_DISABLE))
             {
                 continue;
@@ -89,6 +94,7 @@ public class DataScopeAspect
             }
             if (Constants.Dept.DATA_SCOPE_ALL.equals(dataScope))
             {
+                // “全部数据权限”意味着不加任何过滤，清空已拼接的条件并短路退出循环
                 sqlString = new StringBuilder();
                 conditions.add(dataScope);
                 break;
@@ -140,6 +146,7 @@ public class DataScopeAspect
             if (StringUtils.isNotNull(params) && params instanceof BaseEntity)
             {
                 BaseEntity baseEntity = (BaseEntity) params;
+                // substring(4) 去掉首部多余的分隔“ OR ”，再以 AND (...) 包裹作为独立条件注入查询参数
                 baseEntity.getParams().put(DATA_SCOPE, " AND (" + sqlString.substring(4) + ")");
             }
         }

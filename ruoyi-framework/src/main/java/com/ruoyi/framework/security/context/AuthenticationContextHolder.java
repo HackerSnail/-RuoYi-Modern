@@ -9,6 +9,10 @@ import org.springframework.security.core.Authentication;
  */
 public class AuthenticationContextHolder
 {
+    /**
+     * 以 ThreadLocal 持有当前认证对象，供认证过程中（如密码校验失败计数）跨方法传递，
+     * 使用后必须 clearContext 清理以防线程复用泄漏
+     */
     private static final ThreadLocal<Authentication> contextHolder = new ThreadLocal<>();
 
     public static Authentication getContext()

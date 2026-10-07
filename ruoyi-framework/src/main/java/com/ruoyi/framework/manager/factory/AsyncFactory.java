@@ -37,6 +37,7 @@ public class AsyncFactory
     public static TimerTask recordLogininfor(final String username, final String status, final String message,
             final Object... args)
     {
+        // 必须在当前（请求）线程提前抓取 IP/UA：任务将由线程池异步执行，届时 Request 上下文已销毁
         final String userAgent = ServletUtils.getRequest().getHeader("User-Agent");
         final String ip = IpUtils.getIpAddr();
         return new TimerTask()

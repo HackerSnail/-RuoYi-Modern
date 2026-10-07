@@ -105,6 +105,9 @@ public class Server
         this.sysFiles = sysFiles;
     }
 
+    /**
+     * 采集入口：借助 oshi 读取当前服务器的硬件/系统信息，分别填充 CPU、内存、JVM、系统及磁盘列表
+     */
     public void copyTo() throws Exception
     {
         SystemInfo si = new SystemInfo();
@@ -126,7 +129,7 @@ public class Server
      */
     private void setCpuInfo(CentralProcessor processor)
     {
-        // CPU信息
+        // CPU信息：CPU 使用率无法瞬时得出，需先取一次 tick 快照，睡 1 秒后再取一次，用两次差值计算负载
         long[] prevTicks = processor.getSystemCpuLoadTicks();
         Util.sleep(OSHI_WAIT_SECOND);
         long[] ticks = processor.getSystemCpuLoadTicks();

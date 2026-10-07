@@ -46,6 +46,9 @@ public class RateLimiterAspect
         this.limitScript = limitScript;
     }
 
+    /**
+     * 前置限流：执行 Lua 脚本原子计数，超过阈值（或脚本执行异常返回 null）则拒绝请求
+     */
     @Before("@annotation(rateLimiter)")
     public void doBefore(JoinPoint point, RateLimiter rateLimiter) throws Throwable
     {
@@ -73,6 +76,9 @@ public class RateLimiterAspect
         }
     }
 
+    /**
+     * 拼接限流 key：基础 key + （LimitType.IP 时附加客户端 IP）+ 目标类名+方法名，实现按接口/按 IP 粒度隔离
+     */
     public String getCombineKey(RateLimiter rateLimiter, JoinPoint point)
     {
         StringBuffer stringBuffer = new StringBuffer(rateLimiter.key());

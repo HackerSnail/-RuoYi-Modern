@@ -37,6 +37,9 @@ public class DruidConfig
 {
     private static final Logger log = LoggerFactory.getLogger(DruidConfig.class);
 
+    /**
+     * 主数据源（始终启用），绑定 spring.datasource.druid.master 配置
+     */
     @Bean
     @ConfigurationProperties("spring.datasource.druid.master")
     public DataSource masterDataSource(DruidProperties druidProperties)
@@ -45,6 +48,9 @@ public class DruidConfig
         return druidProperties.dataSource(dataSource);
     }
 
+    /**
+     * 从数据源，仅当 spring.datasource.druid.slave.enabled=true 时才创建
+     */
     @Bean
     @ConfigurationProperties("spring.datasource.druid.slave")
     @ConditionalOnProperty(prefix = "spring.datasource.druid.slave", name = "enabled", havingValue = "true")
@@ -54,6 +60,9 @@ public class DruidConfig
         return druidProperties.dataSource(dataSource);
     }
 
+    /**
+     * 动态数据源：@Primary 作为全局默认数据源，以 master 为默认目标，聚合主/从供 DynamicDataSource 按上下文切换
+     */
     @Bean(name = "dynamicDataSource")
     @Primary
     public DynamicDataSource dataSource(DataSource masterDataSource)

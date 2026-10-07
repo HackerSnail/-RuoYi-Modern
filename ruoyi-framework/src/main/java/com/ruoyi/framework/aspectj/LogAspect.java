@@ -54,7 +54,7 @@ public class LogAspect
     private static final int PARAM_MAX_LENGTH = 2000;
 
     /**
-     * 处理请求前执行
+     * 处理请求前执行：记录起始时间戳，供 handleLog 计算本次操作耗时
      */
     @Before(value = "@annotation(controllerLog)")
     public void doBefore(JoinPoint joinPoint, Log controllerLog)
@@ -124,7 +124,7 @@ public class LogAspect
             getControllerMethodDescription(joinPoint, controllerLog, operLog, jsonResult);
             // 设置消耗时间
             operLog.setCostTime(System.currentTimeMillis() - TIME_THREADLOCAL.get());
-            // 保存数据库
+            // 异步写入数据库（不阻塞主请求），日志记录失败不影响业务响应
             AsyncManager.me().execute(AsyncFactory.recordOper(operLog));
         }
         catch (Exception exp)
@@ -176,6 +176,7 @@ public class LogAspect
     {
         String requestMethod = operLog.getRequestMethod();
         Map<?, ?> paramsMap = ServletUtils.getParamMap(ServletUtils.getRequest());
+        // GET 等参数在 query 里的请求用 paramMap；PUT/POST/DELETE 且无 query 参数时序列化方法入参
         if (StringUtils.isEmpty(paramsMap) && StringUtils.equalsAny(requestMethod, HttpMethod.PUT.name(), HttpMethod.POST.name(), HttpMethod.DELETE.name()))
         {
             String params = argsArrayToString(joinPoint.getArgs(), excludeParamNames);
@@ -227,7 +228,7 @@ public class LogAspect
     }
 
     /**
-     * 判断是否需要过滤的对象。
+     * 判断是否需要过滤的对象（文件、request/response、校验结果等不可序列化或不该入日志的对象）
      * 
      * @param o 对象信息。
      * @return 如果是需要过滤的对象，则返回true；否则返回false。

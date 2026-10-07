@@ -90,6 +90,10 @@ public class SecurityConfig
      * rememberMe          |   允许通过remember-me登录的用户访问
      * authenticated       |   用户登录后可访问
      */
+    /**
+     * 安全过滤链：禁用 CSRF 与 session（无状态 token 方案），配置端点放行/鉴权规则，
+     * 并挂载 JWT 认证、登出、跨域等过滤器。
+     */
     @Bean
     protected SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception
     {
@@ -121,9 +125,9 @@ public class SecurityConfig
             })
             // 添加Logout filter
             .logout(logout -> logout.logoutUrl("/logout").logoutSuccessHandler(logoutSuccessHandler))
-            // 添加JWT filter
+            // 添加JWT filter（置于 UsernamePasswordAuthenticationFilter 之前，先解析 token 再进入认证链）
             .addFilterBefore(authenticationTokenFilter, UsernamePasswordAuthenticationFilter.class)
-            // 添加CORS filter
+            // 添加CORS filter（需早于 JWT/Logout，保证预检请求 OPTIONS 未被鉴权拦截前先应答跨域头）
             .addFilterBefore(corsFilter, JwtAuthenticationTokenFilter.class)
             .addFilterBefore(corsFilter, LogoutFilter.class)
             .build();

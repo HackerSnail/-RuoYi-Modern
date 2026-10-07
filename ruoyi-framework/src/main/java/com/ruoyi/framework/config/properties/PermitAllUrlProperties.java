@@ -34,6 +34,10 @@ public class PermitAllUrlProperties implements InitializingBean, ApplicationCont
 
     public String ASTERISK = "*";
 
+    /**
+     * Bean 初始化完成后执行：遍历所有控制器映射，收集标有 @Anonymous（方法或类上）的接口 URL，
+     * 并把路径变量 {xxx} 替换为 * 通配，供 SecurityConfig 将其放行免鉴权
+     */
     @SuppressWarnings("deprecation")
     @Override
     public void afterPropertiesSet()

@@ -26,6 +26,9 @@ public class ResourcesConfig implements WebMvcConfigurer
     @Autowired
     private RepeatSubmitInterceptor repeatSubmitInterceptor;
 
+    /**
+     * 映射静态资源：将上传目录暴露为 HTTP 可访问路径，并挂载 swagger-ui 静态资源（缓存 5 小时）
+     */
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry)
     {
@@ -49,7 +52,8 @@ public class ResourcesConfig implements WebMvcConfigurer
     }
 
     /**
-     * 跨域配置
+     * 跨域配置：允许任意源/头/方法（用 allowedOriginPattern 而非 allowedOrigins，以便与 allowCredentials 共存），
+     * 预检结果缓存 1800 秒减少 OPTIONS 往返
      */
     @Bean
     public CorsFilter corsFilter()

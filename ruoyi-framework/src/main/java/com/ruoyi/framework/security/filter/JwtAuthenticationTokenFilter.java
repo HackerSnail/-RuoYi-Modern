@@ -27,6 +27,10 @@ public class JwtAuthenticationTokenFilter extends OncePerRequestFilter
     @Autowired
     private TokenService tokenService;
 
+    /**
+     * 每请求执行一次：从 token 解析登录用户，仅当解析成功且当前尚未认证时，
+     * 顺便刷新 token 有效期并将认证信息写入 SecurityContext（已认证则不覆盖）
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException

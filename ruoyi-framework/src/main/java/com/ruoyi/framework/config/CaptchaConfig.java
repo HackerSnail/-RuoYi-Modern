@@ -15,6 +15,9 @@ import static com.google.code.kaptcha.Constants.*;
 @Configuration
 public class CaptchaConfig
 {
+    /**
+     * 字符型验证码生成器：4 位文本 + 阴影干扰样式，用于普通登录验证码
+     */
     @Bean(name = "captchaProducer")
     public DefaultKaptcha getKaptchaBean()
     {
@@ -43,6 +46,10 @@ public class CaptchaConfig
         return defaultKaptcha;
     }
 
+    /**
+     * 算术型验证码生成器：文本由 KaptchaTextCreator 生成为加减乘除算式（无噪点），
+     * 用户需计算结果，比纯字符识别更能抵御 OCR 打码
+     */
     @Bean(name = "captchaProducerMath")
     public DefaultKaptcha getKaptchaBeanMath()
     {

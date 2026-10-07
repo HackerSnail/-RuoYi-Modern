@@ -34,6 +34,10 @@ public class UserDetailsServiceImpl implements UserDetailsService
     @Autowired
     private SysPermissionService permissionService;
 
+    /**
+     * Spring Security 认证回调：按用户名校查用户，依次拦截不存在/已删除/已停用，
+     * 再交由 SysPasswordService.validate 校验密码（含重试锁定），通过后装配带权限的 LoginUser
+     */
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException
     {
@@ -59,6 +63,9 @@ public class UserDetailsServiceImpl implements UserDetailsService
         return createLoginUser(user);
     }
 
+    /**
+     * 将 SysUser 包装为 Spring Security 可用的 LoginUser，并携带其菜单权限集合
+     */
     public UserDetails createLoginUser(SysUser user)
     {
         return new LoginUser(user.getUserId(), user.getDeptId(), user, permissionService.getMenuPermission(user));

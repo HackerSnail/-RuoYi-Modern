@@ -49,6 +49,9 @@ public class Cpu
         this.cpuNum = cpuNum;
     }
 
+    /**
+     * CPU 总 tick 数（放大为百分比量纲返回，供其余比率计算作分母）
+     */
     public double getTotal()
     {
         return Arith.round(Arith.mul(total, 100), 2);
@@ -59,6 +62,9 @@ public class Cpu
         this.total = total;
     }
 
+    /**
+     * 系统态占比（sys/total，百分比，保留 2 位）
+     */
     public double getSys()
     {
         return Arith.round(Arith.mul(sys / total, 100), 2);
@@ -69,6 +75,9 @@ public class Cpu
         this.sys = sys;
     }
 
+    /**
+     * 用户态占比（used/total，百分比）
+     */
     public double getUsed()
     {
         return Arith.round(Arith.mul(used / total, 100), 2);
@@ -79,6 +88,9 @@ public class Cpu
         this.used = used;
     }
 
+    /**
+     * IO 等待占比（wait/total，百分比）
+     */
     public double getWait()
     {
         return Arith.round(Arith.mul(wait / total, 100), 2);
@@ -89,6 +101,9 @@ public class Cpu
         this.wait = wait;
     }
 
+    /**
+     * 空闲占比（free/total，百分比）
+     */
     public double getFree()
     {
         return Arith.round(Arith.mul(free / total, 100), 2);

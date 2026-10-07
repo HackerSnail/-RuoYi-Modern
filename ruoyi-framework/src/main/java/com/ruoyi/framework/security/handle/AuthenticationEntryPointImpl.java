@@ -23,6 +23,9 @@ public class AuthenticationEntryPointImpl implements AuthenticationEntryPoint, S
 {
     private static final long serialVersionUID = -8970718410437077606L;
 
+    /**
+     * 未登录/无凭证访问受保护资源时触发：统一返回 401 的 JSON 错误体，而非重定向到登录页
+     */
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException e)
             throws IOException

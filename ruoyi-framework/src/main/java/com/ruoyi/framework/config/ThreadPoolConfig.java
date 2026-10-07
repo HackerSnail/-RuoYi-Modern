@@ -29,6 +29,9 @@ public class ThreadPoolConfig
     // 线程池维护线程所允许的空闲时间
     private int keepAliveSeconds = 300;
 
+    /**
+     * 普通异步任务线程池（供 AsyncManager 等提交一次性任务）
+     */
     @Bean(name = "threadPoolTaskExecutor")
     public ThreadPoolTaskExecutor threadPoolTaskExecutor()
     {
@@ -43,7 +46,8 @@ public class ThreadPoolConfig
     }
 
     /**
-     * 执行周期性或定时任务
+     * 执行周期性或定时任务（守护线程，重启时不阻塞 JVM 退出）；
+     * 重写 afterExecute 统一打印任务抛出的异常，避免定时任务静默失败
      */
     @Bean(name = "scheduledExecutorService")
     protected ScheduledExecutorService scheduledExecutorService()

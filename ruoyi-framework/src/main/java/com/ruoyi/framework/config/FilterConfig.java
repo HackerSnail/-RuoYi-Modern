@@ -31,6 +31,9 @@ public class FilterConfig
     @Value("${referer.allowed-domains}")
     private String allowedDomains;
 
+    /**
+     * 注册 XSS 过滤（仅 xss.enabled=true 时生效），最高优先级，对配置的 url 范围过滤脚本参数，excludes 为豁免项
+     */
     @SuppressWarnings({ "rawtypes", "unchecked" })
     @Bean
     @ConditionalOnProperty(value = "xss.enabled", havingValue = "true")
@@ -48,6 +51,9 @@ public class FilterConfig
         return registration;
     }
 
+    /**
+     * 注册 Referer 防盗链过滤（仅 referer.enabled=true 时生效），仅拦截本地资源路径，校验 Referer 是否在允许域名内
+     */
     @SuppressWarnings({ "rawtypes", "unchecked" })
     @Bean
     @ConditionalOnProperty(value = "referer.enabled", havingValue = "true")
@@ -65,6 +71,9 @@ public class FilterConfig
         return registration;
     }
 
+    /**
+     * 注册可重复读过滤器：包装 request 使 body 可多次读取（供日志/防重提交等拦截器消费），最低优先级最后包装
+     */
     @SuppressWarnings({ "rawtypes", "unchecked" })
     @Bean
     public FilterRegistrationBean someFilterRegistration()

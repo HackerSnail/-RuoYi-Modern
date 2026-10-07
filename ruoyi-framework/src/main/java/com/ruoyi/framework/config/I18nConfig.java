@@ -17,6 +17,9 @@ import com.ruoyi.common.constant.Constants;
 @Configuration
 public class I18nConfig implements WebMvcConfigurer
 {
+    /**
+     * 本地化解析器：基于 Session 存储用户语言，默认取 Constants.DEFAULT_LOCALE
+     */
     @Bean
     public LocaleResolver localeResolver()
     {
@@ -26,6 +29,9 @@ public class I18nConfig implements WebMvcConfigurer
         return slr;
     }
 
+    /**
+     * 语言切换拦截器：根据请求参数 lang 的值切换当前 Locale
+     */
     @Bean
     public LocaleChangeInterceptor localeChangeInterceptor()
     {
@@ -35,6 +41,9 @@ public class I18nConfig implements WebMvcConfigurer
         return lci;
     }
 
+    /**
+     * 注册语言切换拦截器到 MVC 拦截链
+     */
     @Override
     public void addInterceptors(InterceptorRegistry registry)
     {

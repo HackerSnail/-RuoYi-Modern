@@ -36,6 +36,10 @@ public class SameUrlDataInterceptor extends RepeatSubmitInterceptor
     @Autowired
     private RedisCache redisCache;
 
+    /**
+     * 基于 Redis 的重复提交判定：以 key(前缀+url+令牌) 缓存本次“参数+时间戳”，
+     * 若与上次缓存参数相同且间隔小于 annotation.interval 则判为重复；否则刷新缓存并放行
+     */
     @SuppressWarnings("unchecked")
     @Override
     public boolean isRepeatSubmit(HttpServletRequest request, RepeatSubmit annotation)

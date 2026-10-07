@@ -36,6 +36,9 @@ public class Jvm
      */
     private String home;
 
+    /**
+     * 字节转 MB 保留 2 位（下列 total/max/free 同此换算）
+     */
     public double getTotal()
     {
         return Arith.div(total, (1024 * 1024), 2);
@@ -66,11 +69,17 @@ public class Jvm
         this.free = free;
     }
 
+    /**
+     * 已用内存 = total - free，换算为 MB
+     */
     public double getUsed()
     {
         return Arith.div(total - free, (1024 * 1024), 2);
     }
 
+    /**
+     * JVM 内存使用率百分比
+     */
     public double getUsage()
     {
         return Arith.mul(Arith.div(total - free, total, 4), 100);

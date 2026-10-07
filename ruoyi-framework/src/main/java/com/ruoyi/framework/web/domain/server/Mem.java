@@ -24,6 +24,9 @@ public class Mem
      */
     private double free;
 
+    /**
+     * 字节转 GB 保留 2 位（下列 total/used/free 同此换算）
+     */
     public double getTotal()
     {
         return Arith.div(total, (1024 * 1024 * 1024), 2);
@@ -54,6 +57,9 @@ public class Mem
         this.free = free;
     }
 
+    /**
+     * 内存使用率百分比
+     */
     public double getUsage()
     {
         return Arith.mul(Arith.div(used, total, 4), 100);

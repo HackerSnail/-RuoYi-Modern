@@ -3,7 +3,6 @@ package com.ruoyi.quartz.controller;
 import java.util.List;
 import jakarta.servlet.http.HttpServletResponse;
 import org.quartz.SchedulerException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,8 +35,12 @@ import com.ruoyi.quartz.util.ScheduleUtils;
 @RequestMapping("/monitor/job")
 public class SysJobController extends BaseController
 {
-    @Autowired
-    private ISysJobService jobService;
+    private final ISysJobService jobService;
+
+    public SysJobController(ISysJobService jobService)
+    {
+        this.jobService = jobService;
+    }
 
     /**
      * 查询定时任务列表

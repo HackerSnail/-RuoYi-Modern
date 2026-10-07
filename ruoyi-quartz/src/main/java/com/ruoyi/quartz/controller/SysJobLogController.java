@@ -2,7 +2,6 @@ package com.ruoyi.quartz.controller;
 
 import java.util.List;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,8 +27,12 @@ import com.ruoyi.quartz.service.ISysJobLogService;
 @RequestMapping("/monitor/jobLog")
 public class SysJobLogController extends BaseController
 {
-    @Autowired
-    private ISysJobLogService jobLogService;
+    private final ISysJobLogService jobLogService;
+
+    public SysJobLogController(ISysJobLogService jobLogService)
+    {
+        this.jobLogService = jobLogService;
+    }
 
     /**
      * 查询定时任务调度日志列表

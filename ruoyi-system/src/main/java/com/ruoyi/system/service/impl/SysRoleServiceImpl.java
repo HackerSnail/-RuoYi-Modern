@@ -72,6 +72,7 @@ public class SysRoleServiceImpl implements ISysRoleService
         {
             for (SysRole userRole : userRoles)
             {
+                // 命中的角色置 flag=true，供前端用户分配页“已拥有角色”回显勾选
                 if (role.getRoleId().longValue() == userRole.getRoleId().longValue())
                 {
                     role.setFlag(true);
@@ -365,6 +366,7 @@ public class SysRoleServiceImpl implements ISysRoleService
             checkRoleAllowed(new SysRole(roleId));
             checkRoleDataScope(roleId);
             SysRole role = selectRoleById(roleId);
+            // 已分配给用户的角色不允许删除，避免用户权限失效，需先取消授权
             if (countUserRoleByRoleId(roleId) > 0)
             {
                 throw new ServiceException(String.format("%1$s已分配,不能删除", role.getRoleName()));

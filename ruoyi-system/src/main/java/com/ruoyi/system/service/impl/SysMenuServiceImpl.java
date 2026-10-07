@@ -185,12 +185,14 @@ public class SysMenuServiceImpl implements ISysMenuService
             List<SysMenu> cMenus = menu.getChildren();
             if (StringUtils.isNotEmpty(cMenus) && UserConstants.TYPE_DIR.equals(menu.getMenuType()))
             {
+                // 目录且含子菜单：作为父路由展开，alwaysShow+noRedirect 保证多级菜单常驻展示
                 router.setAlwaysShow(true);
                 router.setRedirect("noRedirect");
                 router.setChildren(buildMenus(cMenus));
             }
             else if (isMenuFrame(menu))
             {
+                // 一级普通菜单（非目录非外链）：包一层虚拟子路由，使其在 Layout 下正确渲染
                 router.setMeta(null);
                 List<RouterVo> childrenList = new ArrayList<RouterVo>();
                 RouterVo children = new RouterVo();
@@ -204,6 +206,7 @@ public class SysMenuServiceImpl implements ISysMenuService
             }
             else if (menu.getParentId().intValue() == MENU_ROOT_ID && isInnerLink(menu))
             {
+                // 根级内链菜单：用 InnerLink 组件包裹外部 http 地址，路径中的协议/域名特殊字符先替换为合法路由段
                 router.setMeta(new MetaVo(menu.getMenuName(), menu.getIcon()));
                 router.setPath("/");
                 List<RouterVo> childrenList = new ArrayList<RouterVo>();

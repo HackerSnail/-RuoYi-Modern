@@ -85,6 +85,7 @@ public class SysDictDataServiceImpl implements ISysDictDataService
         int row = dictDataMapper.insertDictData(data);
         if (row > 0)
         {
+            // 写库后按字典类型重拉全量并刷新缓存，保证前端下拉与新增项一致
             List<SysDictData> dictDatas = dictDataMapper.selectDictDataByType(data.getDictType());
             DictUtils.setDictCache(data.getDictType(), dictDatas);
         }

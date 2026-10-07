@@ -61,6 +61,7 @@ public class SysConfigServiceImpl implements ISysConfigService
     @Override
     public String selectConfigByKey(String configKey)
     {
+        // 读穿式缓存（cache-aside）：优先取 Redis，为空时回源 DB 并回填缓存
         String configValue = Convert.toStr(redisCache.getCacheObject(getCacheKey(configKey)));
         if (StringUtils.isNotEmpty(configValue))
         {
@@ -134,6 +135,7 @@ public class SysConfigServiceImpl implements ISysConfigService
         SysConfig temp = configMapper.selectConfigById(config.getConfigId());
         if (!StringUtils.equals(temp.getConfigKey(), config.getConfigKey()))
         {
+            // 参数键名被修改时，需删除旧键对应的缓存，避免旧键值残留
             redisCache.deleteObject(getCacheKey(temp.getConfigKey()));
         }
 

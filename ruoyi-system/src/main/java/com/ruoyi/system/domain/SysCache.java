@@ -32,6 +32,10 @@ public class SysCache
         this.remark = remark;
     }
 
+    /**
+     * 以完整 redis key 构建展示行：cacheName 去掉冒号作为分组名，
+     * cacheKey 再去掉该前缀只保留区分部分，便于监控页面按名称分组展示
+     */
     public SysCache(String cacheName, String cacheKey, String cacheValue)
     {
         this.cacheName = StringUtils.replace(cacheName, ":", "");

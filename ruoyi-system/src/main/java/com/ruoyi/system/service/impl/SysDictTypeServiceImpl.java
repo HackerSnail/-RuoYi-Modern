@@ -74,6 +74,7 @@ public class SysDictTypeServiceImpl implements ISysDictTypeService
     @Override
     public List<SysDictData> selectDictDataByType(String dictType)
     {
+        // 读穿式缓存（cache-aside）：先查缓存，未命中回源 DB 并回写，后续命中缓存
         List<SysDictData> dictDatas = DictUtils.getDictCache(dictType);
         if (StringUtils.isNotEmpty(dictDatas))
         {
@@ -194,6 +195,7 @@ public class SysDictTypeServiceImpl implements ISysDictTypeService
         int row = dictTypeMapper.insertDictType(dict);
         if (row > 0)
         {
+            // 新类型尚无字典数据，先写入空缓存占位，避免每次查询都回源未命中的 DB
             DictUtils.setDictCache(dict.getDictType(), null);
         }
         return row;
@@ -210,6 +212,7 @@ public class SysDictTypeServiceImpl implements ISysDictTypeService
     public int updateDictType(SysDictType dict)
     {
         SysDictType oldDict = dictTypeMapper.selectDictTypeById(dict.getDictId());
+        // 类型标识可能被改名，需级联更新已归属字典数据的 dictType，再按新类型刷新缓存
         dictDataMapper.updateDictDataType(oldDict.getDictType(), dict.getDictType());
         int row = dictTypeMapper.updateDictType(dict);
         if (row > 0)

@@ -74,7 +74,7 @@ public class SysDeptServiceImpl implements ISysDeptService
         List<Long> tempList = depts.stream().map(SysDept::getDeptId).collect(Collectors.toList());
         for (SysDept dept : depts)
         {
-            // 如果是顶级节点, 遍历该父节点的所有子节点
+            // 如果是顶级节点, 遍历该父节点的所有子节点（其 parentId 不在本次结果集内即视为顶级）
             if (!tempList.contains(dept.getParentId()))
             {
                 recursionFn(depts, dept);
@@ -273,6 +273,7 @@ public class SysDeptServiceImpl implements ISysDeptService
         List<SysDept> children = deptMapper.selectChildrenDeptById(deptId);
         for (SysDept child : children)
         {
+            // 后代部门的 ancestors 前缀整体从旧路径换为新路径（仅替换首个匹配），保证祖级链与新父节点一致
             child.setAncestors(child.getAncestors().replaceFirst(oldAncestors, newAncestors));
         }
         if (children.size() > 0)

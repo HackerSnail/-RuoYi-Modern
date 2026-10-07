@@ -53,6 +53,9 @@ public class MetaVo
         this.link = link;
     }
 
+    /**
+     * 全参构造：仅当 link 为 http(s) 地址时才赋值，避免将普通内部路径误当作内链
+     */
     public MetaVo(String title, String icon, boolean noCache, String link)
     {
         this.title = title;

@@ -293,6 +293,7 @@ public class SysUserServiceImpl implements ISysUserService
     public int updateUser(SysUser user)
     {
         Long userId = user.getUserId();
+        // 角色/岗位关联采用“先全删再批量重建”策略，简化 diff 逻辑，依赖 @Transactional 保证中间态不外泄
         // 删除用户与角色关联
         userRoleMapper.deleteUserRoleByUserId(userId);
         // 新增用户与角色管理
@@ -478,6 +479,7 @@ public class SysUserServiceImpl implements ISysUserService
     {
         for (Long userId : userIds)
         {
+            // 逐个校验：既不能动超管，也要确保当前用户对该用户有数据权限，防止越权批量删除
             checkUserAllowed(new SysUser(userId));
             checkUserDataScope(userId);
         }

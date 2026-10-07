@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.BoundSetOperations;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -23,8 +22,12 @@ import org.springframework.stereotype.Component;
 @Component
 public class RedisCache
 {
-    @Autowired
-    public RedisTemplate redisTemplate;
+    public final RedisTemplate redisTemplate;
+
+    public RedisCache(RedisTemplate redisTemplate)
+    {
+        this.redisTemplate = redisTemplate;
+    }
 
     /**
      * 缓存基本的对象，Integer、String、实体类等

@@ -3,7 +3,6 @@ package com.ruoyi.framework.config;
 import org.redisson.Redisson;
 import org.redisson.api.RedissonClient;
 import org.redisson.config.Config;
-import org.redisson.config.SingleServerConfig;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -32,16 +31,19 @@ public class RedissonConfig {
     /**
      * RedissonClient：destroyMethod=shutdown 保证应用关闭时释放 Netty 线程与连接。
      * 密码为空时不设置（对应无鉴权的本地/测试 Redis）。
+     *
+     * 注：Redisson 4.x 已将 BaseConfig#setPassword/setUsername 标记为 @Deprecated，
+     * 官方提示 "Use password setting in Config instead"，因此密码统一设在 Config 顶层。
      */
     @Bean(destroyMethod = "shutdown")
     public RedissonClient redissonClient() {
         Config config = new Config();
-        SingleServerConfig singleServer = config.useSingleServer()
+        if (StringUtils.isNotEmpty(password)) {
+            config.setPassword(password);
+        }
+        config.useSingleServer()
                 .setAddress("redis://" + host + ":" + port)
                 .setDatabase(database);
-        if (StringUtils.isNotEmpty(password)) {
-            singleServer.setPassword(password);
-        }
         return Redisson.create(config);
     }
 }

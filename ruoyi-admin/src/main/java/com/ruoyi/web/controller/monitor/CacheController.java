@@ -1,7 +1,6 @@
 package com.ruoyi.web.controller.monitor;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.common.constant.CacheConstants;
 import com.ruoyi.common.core.domain.AjaxResult;
+import com.ruoyi.common.core.redis.RedisCache;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.system.domain.SysCache;
 
@@ -30,9 +30,14 @@ import com.ruoyi.system.domain.SysCache;
 @RequestMapping("/monitor/cache")
 public class CacheController {
     private final RedisTemplate<String, String> redisTemplate;
+    /**
+     * 工具层的 SCAN 实现：监控页列 键/清理 统一走 RedisCache，不再直提 redisTemplate.keys()
+     */
+    private final RedisCache redisCache;
 
-    public CacheController(RedisTemplate<String, String> redisTemplate) {
+    public CacheController(RedisTemplate<String, String> redisTemplate, RedisCache redisCache) {
         this.redisTemplate = redisTemplate;
+        this.redisCache = redisCache;
     }
 
     private static final List<SysCache> caches = new ArrayList<>();
@@ -83,12 +88,13 @@ public class CacheController {
     }
 
     /**
-     * 按缓存名前缀列出对应的所有缓存键（用 TreeSet 去重并排序）
+     * 按缓存名前缀列出对应的所有缓存键（已去重排序）。
+     * 实现从 KEYS 换为 SCAN，避免大库主线程阻塞。
      */
     @PreAuthorize("@ss.hasPermi('monitor:cache:list')")
     @GetMapping("/getKeys/{cacheName}")
     public AjaxResult getCacheKeys(@PathVariable String cacheName) {
-        Set<String> cacheKeys = redisTemplate.keys(cacheName + "*");
+        Set<String> cacheKeys = redisCache.keys(cacheName + "*");
         return AjaxResult.success(new TreeSet<>(cacheKeys));
     }
 
@@ -101,14 +107,13 @@ public class CacheController {
     }
 
     /**
-     * 清空指定缓存名下的所有键（按前缀匹配批量删除）
+     * 清空指定缓存名下的所有键：SCAN 拉键 + 分批 UNLINK，对 Redis 主线程无阻塞。
      */
     @PreAuthorize("@ss.hasPermi('monitor:cache:list')")
     @DeleteMapping("/clearCacheName/{cacheName}")
     public AjaxResult clearCacheName(@PathVariable String cacheName) {
-        Collection<String> cacheKeys = redisTemplate.keys(cacheName + "*");
-        redisTemplate.delete(cacheKeys);
-        return AjaxResult.success();
+        long removed = redisCache.deleteKeysByPattern(cacheName + "*");
+        return AjaxResult.success("已清理 " + removed + " 个键");
     }
 
     @PreAuthorize("@ss.hasPermi('monitor:cache:list')")
@@ -119,13 +124,13 @@ public class CacheController {
     }
 
     /**
-     * 清空所有缓存（keys * 扫描全部键后删除，仅用于监控页手动清理）
+     * 清空所有缓存：SCAN + 分批 UNLINK。仅用于监控页手动清理（历史上 "keys *" 直接扫全库，
+     * 在 key 数量上台阶后会直接卡死 Redis 实例甚至触发哨兵切换）。
      */
     @PreAuthorize("@ss.hasPermi('monitor:cache:list')")
     @DeleteMapping("/clearCacheAll")
     public AjaxResult clearCacheAll() {
-        Collection<String> cacheKeys = redisTemplate.keys("*");
-        redisTemplate.delete(cacheKeys);
-        return AjaxResult.success();
+        long removed = redisCache.deleteKeysByPattern("*");
+        return AjaxResult.success("已清理 " + removed + " 个键");
     }
 }

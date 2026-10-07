@@ -1,14 +1,21 @@
 package com.ruoyi.common.core.redis;
 
+import java.io.Closeable;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.springframework.data.redis.core.BoundSetOperations;
+import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.HashOperations;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Component;
 
@@ -258,13 +265,118 @@ public class RedisCache
     }
 
     /**
-     * 获得缓存的基本对象列表
-     *
-     * @param pattern 字符串前缀
-     * @return 对象列表
+     * 每轮 SCAN 服务端建议扫描的桶数（非硬上限）；500 是 Redis 官方推荐的起点，
+     * 单轮扫描量小时不阶 Redis 主线程，多轮扫描累计时兼顾吞吐。
      */
-    public Collection<String> keys(final String pattern)
+    private static final int SCAN_BATCH_SIZE = 500;
+
+    /**
+     * {@link #keys(String)} 单次调用累计上限：防止误用宽 pattern（如 {@code "*"}）
+     * 把海量键全部拉到 JVM 堆，命中上限会直接截断游标迭代。
+     */
+    private static final int SCAN_HARD_CAP = 100_000;
+
+    /**
+     * UNLINK 分批大小：一次传入过多键同样会占用主线程与网络单包，500 个一批很安全。
+     */
+    private static final int UNLINK_BATCH_SIZE = 500;
+
+    /**
+     * 按 pattern 列出所有匹配的键。
+     * <p>
+     * 实现已从旧的 {@code KEYS pattern}（O(N) 且会阻塞 Redis 主线程，海量 key 场景下
+     * 可直接引发哨兵切换）重写为 SCAN 游标分批拉取：服务端一次只扫 {@value #SCAN_BATCH_SIZE}
+     * 个桶，主线程不长时间阻塞；客户端累计上限 {@value #SCAN_HARD_CAP} 作为兵层隔离。
+     *
+     * @param pattern glob 风格匹配串，例如 {@code "login_tokens:*"}
+     * @return 命中的键集合（已去重）
+     */
+    public Set<String> keys(final String pattern)
     {
-        return (Collection<String>) (Collection) redisTemplate.keys(pattern);
+        return redisTemplate.execute((RedisCallback<Set<String>>) connection ->
+        {
+            Set<String> keys = new HashSet<>();
+            ScanOptions options = ScanOptions.scanOptions().match(pattern).count(SCAN_BATCH_SIZE).build();
+            Cursor<byte[]> cursor = connection.keyCommands().scan(options);
+            try
+            {
+                while (cursor.hasNext())
+                {
+                    keys.add(new String(cursor.next(), StandardCharsets.UTF_8));
+                    if (keys.size() >= SCAN_HARD_CAP)
+                    {
+                        break;
+                    }
+                }
+            }
+            finally
+            {
+                closeQuietly(cursor);
+            }
+            return keys;
+        });
+    }
+
+    /**
+     * 按 pattern 扫描并分批 UNLINK（SCAN 保证查询非阻塞 + UNLINK 把内存回收交给 Redis 后台线程）。
+     * 相比旧的 “keys + DEL” 两步，对 Redis 主线程和网络单包都更友好。
+     *
+     * @param pattern glob 匹配串
+     * @return 实际删除的键数量
+     */
+    public long deleteKeysByPattern(final String pattern)
+    {
+        return unlinkObjects(keys(pattern));
+    }
+
+    /**
+     * 分批 UNLINK 集合键（每批 {@value #UNLINK_BATCH_SIZE} 个）。
+     * <p>
+     * DEL 同步行释内存，大 value / 大集合时容易拖主线程；UNLINK 只从 keyspace 摘除，
+     * 实际回收交给 Redis 后台 IO 线程。本方法不区分 key 存在与否，返回实际删除数。
+     */
+    public long unlinkObjects(final Collection<?> collection)
+    {
+        if (collection == null || collection.isEmpty())
+        {
+            return 0L;
+        }
+        long total = 0L;
+        List<Object> batch = new ArrayList<>(UNLINK_BATCH_SIZE);
+        for (Object k : collection)
+        {
+            batch.add(k);
+            if (batch.size() >= UNLINK_BATCH_SIZE)
+            {
+                total += nullToZero(redisTemplate.unlink(batch));
+                batch.clear();
+            }
+        }
+        if (!batch.isEmpty())
+        {
+            total += nullToZero(redisTemplate.unlink(batch));
+        }
+        return total;
+    }
+
+    private static long nullToZero(Long n)
+    {
+        return n == null ? 0L : n;
+    }
+
+    private static void closeQuietly(Closeable c)
+    {
+        if (c == null)
+        {
+            return;
+        }
+        try
+        {
+            c.close();
+        }
+        catch (Exception ignore)
+        {
+            // Cursor 关闭失败无功能影响，吞掉以免污染 Redis 调用栈
+        }
     }
 }

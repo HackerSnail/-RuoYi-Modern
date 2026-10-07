@@ -1,6 +1,5 @@
 package com.ruoyi.system.service.impl;
 
-import java.util.Collection;
 import java.util.List;
 import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Service;
@@ -168,8 +167,8 @@ public class SysConfigServiceImpl implements ISysConfigService {
      */
     @Override
     public void clearConfigCache() {
-        Collection<String> keys = redisCache.keys(CacheConstants.SYS_CONFIG_KEY + "*");
-        redisCache.deleteObject(keys);
+        // SCAN + 分批 UNLINK：历史写法 keys(SYS_CONFIG_KEY + "*") + DEL 在大库上会阻塞 Redis 主线程
+        redisCache.deleteKeysByPattern(CacheConstants.SYS_CONFIG_KEY + "*");
     }
 
     /**

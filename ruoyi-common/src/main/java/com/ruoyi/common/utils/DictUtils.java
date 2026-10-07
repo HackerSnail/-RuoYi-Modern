@@ -1,6 +1,5 @@
 package com.ruoyi.common.utils;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -196,12 +195,11 @@ public class DictUtils
     }
 
     /**
-     * 清空字典缓存
+     * 清空字典缓存：SCAN + 分批 UNLINK，历史写法 keys + DEL 在大库上会阻塞 Redis 主线程
      */
     public static void clearDictCache()
     {
-        Collection<String> keys = SpringUtils.getBean(RedisCache.class).keys(CacheConstants.SYS_DICT_KEY + "*");
-        SpringUtils.getBean(RedisCache.class).deleteObject(keys);
+        SpringUtils.getBean(RedisCache.class).deleteKeysByPattern(CacheConstants.SYS_DICT_KEY + "*");
     }
 
     /**

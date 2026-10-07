@@ -1,6 +1,5 @@
 package com.ruoyi.framework.web.service;
 
-import jakarta.annotation.Resource;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -37,8 +36,7 @@ public class SysLoginService
 {
     private final TokenService tokenService;
 
-    @Resource
-    private AuthenticationManager authenticationManager;
+    private final AuthenticationManager authenticationManager;
 
     private final RedisCache redisCache;
 
@@ -46,10 +44,11 @@ public class SysLoginService
 
     private final ISysConfigService configService;
 
-    public SysLoginService(TokenService tokenService, RedisCache redisCache, ISysUserService userService,
-            ISysConfigService configService)
+    public SysLoginService(TokenService tokenService, AuthenticationManager authenticationManager,
+            RedisCache redisCache, ISysUserService userService, ISysConfigService configService)
     {
         this.tokenService = tokenService;
+        this.authenticationManager = authenticationManager;
         this.redisCache = redisCache;
         this.userService = userService;
         this.configService = configService;

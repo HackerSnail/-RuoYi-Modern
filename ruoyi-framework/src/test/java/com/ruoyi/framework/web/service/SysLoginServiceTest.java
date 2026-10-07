@@ -89,8 +89,7 @@ public class SysLoginServiceTest
         userService = mock(ISysUserService.class);
         configService = mock(ISysConfigService.class);
 
-        loginService = new SysLoginService(tokenService, redisCache, userService, configService);
-        ReflectionTestUtils.setField(loginService, "authenticationManager", authenticationManager);
+        loginService = new SysLoginService(tokenService, authenticationManager, redisCache, userService, configService);
     }
 
     private LoginUser adminLoginUser()

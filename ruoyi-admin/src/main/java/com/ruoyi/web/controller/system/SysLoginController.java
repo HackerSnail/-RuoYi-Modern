@@ -3,7 +3,6 @@ package com.ruoyi.web.controller.system;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -32,20 +31,25 @@ import com.ruoyi.system.service.ISysMenuService;
 @RestController
 public class SysLoginController
 {
-    @Autowired
-    private SysLoginService loginService;
+    private final SysLoginService loginService;
 
-    @Autowired
-    private ISysMenuService menuService;
+    private final ISysMenuService menuService;
 
-    @Autowired
-    private SysPermissionService permissionService;
+    private final SysPermissionService permissionService;
 
-    @Autowired
-    private TokenService tokenService;
+    private final TokenService tokenService;
 
-    @Autowired
-    private ISysConfigService configService;
+    private final ISysConfigService configService;
+
+    public SysLoginController(SysLoginService loginService, ISysMenuService menuService,
+            SysPermissionService permissionService, TokenService tokenService, ISysConfigService configService)
+    {
+        this.loginService = loginService;
+        this.menuService = menuService;
+        this.permissionService = permissionService;
+        this.tokenService = tokenService;
+        this.configService = configService;
+    }
 
     /**
      * 登录方法

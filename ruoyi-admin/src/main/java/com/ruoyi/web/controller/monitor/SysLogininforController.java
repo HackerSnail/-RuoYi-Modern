@@ -2,7 +2,6 @@ package com.ruoyi.web.controller.monitor;
 
 import java.util.List;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,11 +28,15 @@ import com.ruoyi.system.service.ISysLogininforService;
 @RequestMapping("/monitor/logininfor")
 public class SysLogininforController extends BaseController
 {
-    @Autowired
-    private ISysLogininforService logininforService;
+    private final ISysLogininforService logininforService;
 
-    @Autowired
-    private SysPasswordService passwordService;
+    private final SysPasswordService passwordService;
+
+    public SysLogininforController(ISysLogininforService logininforService, SysPasswordService passwordService)
+    {
+        this.logininforService = logininforService;
+        this.passwordService = passwordService;
+    }
 
     /**
      * 获取登录日志列表

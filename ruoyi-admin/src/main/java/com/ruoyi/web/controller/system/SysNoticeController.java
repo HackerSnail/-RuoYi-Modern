@@ -1,7 +1,6 @@
 package com.ruoyi.web.controller.system;
 
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -32,11 +31,15 @@ import com.ruoyi.system.service.ISysNoticeService;
 @RequestMapping("/system/notice")
 public class SysNoticeController extends BaseController
 {
-    @Autowired
-    private ISysNoticeService noticeService;
+    private final ISysNoticeService noticeService;
 
-    @Autowired
-    private ISysNoticeReadService noticeReadService;
+    private final ISysNoticeReadService noticeReadService;
+
+    public SysNoticeController(ISysNoticeService noticeService, ISysNoticeReadService noticeReadService)
+    {
+        this.noticeService = noticeService;
+        this.noticeReadService = noticeReadService;
+    }
 
     /**
      * 获取通知公告列表

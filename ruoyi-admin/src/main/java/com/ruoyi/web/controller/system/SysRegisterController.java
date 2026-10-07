@@ -1,6 +1,5 @@
 package com.ruoyi.web.controller.system;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,11 +18,15 @@ import com.ruoyi.system.service.ISysConfigService;
 @RestController
 public class SysRegisterController extends BaseController
 {
-    @Autowired
-    private SysRegisterService registerService;
+    private final SysRegisterService registerService;
 
-    @Autowired
-    private ISysConfigService configService;
+    private final ISysConfigService configService;
+
+    public SysRegisterController(SysRegisterService registerService, ISysConfigService configService)
+    {
+        this.registerService = registerService;
+        this.configService = configService;
+    }
 
     /**
      * 用户注册

@@ -3,7 +3,6 @@ package com.ruoyi.web.controller.system;
 import java.util.ArrayList;
 import java.util.List;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -34,11 +33,15 @@ import com.ruoyi.system.service.ISysDictTypeService;
 @RequestMapping("/system/dict/data")
 public class SysDictDataController extends BaseController
 {
-    @Autowired
-    private ISysDictDataService dictDataService;
+    private final ISysDictDataService dictDataService;
 
-    @Autowired
-    private ISysDictTypeService dictTypeService;
+    private final ISysDictTypeService dictTypeService;
+
+    public SysDictDataController(ISysDictDataService dictDataService, ISysDictTypeService dictTypeService)
+    {
+        this.dictDataService = dictDataService;
+        this.dictTypeService = dictTypeService;
+    }
 
     /**
      * 获取字典数据列表

@@ -2,7 +2,6 @@ package com.ruoyi.web.controller.system;
 
 import java.util.List;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -31,8 +30,12 @@ import com.ruoyi.system.service.ISysPostService;
 @RequestMapping("/system/post")
 public class SysPostController extends BaseController
 {
-    @Autowired
-    private ISysPostService postService;
+    private final ISysPostService postService;
+
+    public SysPostController(ISysPostService postService)
+    {
+        this.postService = postService;
+    }
 
     /**
      * 获取岗位列表

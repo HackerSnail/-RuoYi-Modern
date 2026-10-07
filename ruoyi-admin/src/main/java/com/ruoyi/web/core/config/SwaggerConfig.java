@@ -1,6 +1,5 @@
 package com.ruoyi.web.core.config;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import com.ruoyi.common.config.RuoYiConfig;
@@ -20,8 +19,12 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
 public class SwaggerConfig
 {
     /** 系统基础配置 */
-    @Autowired
-    private RuoYiConfig ruoyiConfig;
+    private final RuoYiConfig ruoyiConfig;
+
+    public SwaggerConfig(RuoYiConfig ruoyiConfig)
+    {
+        this.ruoyiConfig = ruoyiConfig;
+    }
     
     /**
      * 自定义的 OpenAPI 对象

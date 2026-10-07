@@ -37,7 +37,7 @@ public class CacheController
         this.redisTemplate = redisTemplate;
     }
 
-    private final static List<SysCache> caches = new ArrayList<>();
+    private static final List<SysCache> caches = new ArrayList<>();
     static {
         // 预置缓存名称与中文说明的映射，供前端监控页下拉框展示（key 前缀 -> 业务含义）
         caches.add(new SysCache(CacheConstants.LOGIN_TOKEN_KEY, "用户信息"));

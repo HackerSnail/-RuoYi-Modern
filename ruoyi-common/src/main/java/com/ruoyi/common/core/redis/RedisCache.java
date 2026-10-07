@@ -2,7 +2,6 @@ package com.ruoyi.common.core.redis;
 
 import java.time.Duration;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -167,10 +166,9 @@ public class RedisCache
     public <T> BoundSetOperations<String, T> setCacheSet(final String key, final Set<T> dataSet)
     {
         BoundSetOperations<String, T> setOperation = (BoundSetOperations<String, T>) (BoundSetOperations) redisTemplate.boundSetOps(key);
-        Iterator<T> it = dataSet.iterator();
-        while (it.hasNext())
+        for (T t : dataSet)
         {
-            setOperation.add(it.next());
+            setOperation.add(t);
         }
         return setOperation;
     }

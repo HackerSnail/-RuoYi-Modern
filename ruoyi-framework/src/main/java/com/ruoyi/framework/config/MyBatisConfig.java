@@ -52,12 +52,12 @@ public class MyBatisConfig
     {
         ResourcePatternResolver resolver = (ResourcePatternResolver) new PathMatchingResourcePatternResolver();
         MetadataReaderFactory metadataReaderFactory = new CachingMetadataReaderFactory(resolver);
-        List<String> allResult = new ArrayList<String>();
+        List<String> allResult = new ArrayList<>();
         try
         {
             for (String aliasesPackage : typeAliasesPackage.split(","))
             {
-                List<String> result = new ArrayList<String>();
+                List<String> result = new ArrayList<>();
                 aliasesPackage = ResourcePatternResolver.CLASSPATH_ALL_URL_PREFIX
                         + ClassUtils.convertClassNameToResourcePath(aliasesPackage.trim()) + "/" + DEFAULT_RESOURCE_PATTERN;
                 Resource[] resources = resolver.getResources(aliasesPackage);
@@ -82,7 +82,7 @@ public class MyBatisConfig
                 }
                 if (result.size() > 0)
                 {
-                    HashSet<String> hashResult = new HashSet<String>(result);
+                    HashSet<String> hashResult = new HashSet<>(result);
                     allResult.addAll(hashResult);
                 }
             }
@@ -108,7 +108,7 @@ public class MyBatisConfig
     public Resource[] resolveMapperLocations(String[] mapperLocations)
     {
         ResourcePatternResolver resourceResolver = new PathMatchingResourcePatternResolver();
-        List<Resource> resources = new ArrayList<Resource>();
+        List<Resource> resources = new ArrayList<>();
         if (mapperLocations != null)
         {
             for (String mapperLocation : mapperLocations)

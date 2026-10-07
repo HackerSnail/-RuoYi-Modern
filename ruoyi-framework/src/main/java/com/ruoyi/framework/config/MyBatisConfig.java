@@ -124,7 +124,7 @@ public class MyBatisConfig
                 }
             }
         }
-        return resources.toArray(new Resource[resources.size()]);
+        return resources.toArray(new Resource[0]);
     }
 
     /**

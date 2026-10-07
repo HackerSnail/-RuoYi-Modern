@@ -155,7 +155,7 @@ public class GenController extends BaseController
                 }
             }
             // 回读刚建好的表元数据，立即导入为生成配置（建表与导入一步完成）
-            List<GenTable> tableList = genTableService.selectDbTableListByNames(tableNames.toArray(new String[tableNames.size()]));
+            List<GenTable> tableList = genTableService.selectDbTableListByNames(tableNames.toArray(new String[0]));
             String operName = SecurityUtils.getUsername();
             genTableService.importGenTable(tableList, tplWebType, operName);
             return AjaxResult.success();

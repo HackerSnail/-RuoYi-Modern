@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.ruoyi.common.annotation.DataScope;
@@ -29,11 +28,15 @@ import com.ruoyi.system.service.ISysDeptService;
 @Service
 public class SysDeptServiceImpl implements ISysDeptService
 {
-    @Autowired
-    private SysDeptMapper deptMapper;
+    private final SysDeptMapper deptMapper;
 
-    @Autowired
-    private SysRoleMapper roleMapper;
+    private final SysRoleMapper roleMapper;
+
+    public SysDeptServiceImpl(SysDeptMapper deptMapper, SysRoleMapper roleMapper)
+    {
+        this.deptMapper = deptMapper;
+        this.roleMapper = roleMapper;
+    }
 
     /**
      * 查询部门管理数据

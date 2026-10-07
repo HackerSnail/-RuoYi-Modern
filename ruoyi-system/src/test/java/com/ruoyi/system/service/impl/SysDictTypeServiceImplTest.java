@@ -18,7 +18,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import com.ruoyi.common.core.domain.entity.SysDictType;
 import com.ruoyi.common.exception.ServiceException;
@@ -45,11 +44,9 @@ public class SysDictTypeServiceImplTest
     @BeforeEach
     void setUp()
     {
-        dictTypeService = new SysDictTypeServiceImpl();
         dictTypeMapper = mock(SysDictTypeMapper.class);
         dictDataMapper = mock(SysDictDataMapper.class);
-        ReflectionTestUtils.setField(dictTypeService, "dictTypeMapper", dictTypeMapper);
-        ReflectionTestUtils.setField(dictTypeService, "dictDataMapper", dictDataMapper);
+        dictTypeService = new SysDictTypeServiceImpl(dictTypeMapper, dictDataMapper);
     }
 
     private static SysDictType type(Long id, String dictType, String dictName)

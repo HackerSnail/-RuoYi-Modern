@@ -1,7 +1,6 @@
 package com.ruoyi.system.service.impl;
 
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.ruoyi.common.core.domain.entity.SysDictData;
 import com.ruoyi.common.utils.DictUtils;
@@ -16,8 +15,12 @@ import com.ruoyi.system.service.ISysDictDataService;
 @Service
 public class SysDictDataServiceImpl implements ISysDictDataService
 {
-    @Autowired
-    private SysDictDataMapper dictDataMapper;
+    private final SysDictDataMapper dictDataMapper;
+
+    public SysDictDataServiceImpl(SysDictDataMapper dictDataMapper)
+    {
+        this.dictDataMapper = dictDataMapper;
+    }
 
     /**
      * 根据条件分页查询字典数据

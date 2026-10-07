@@ -3,7 +3,6 @@ package com.ruoyi.system.service.impl;
 import java.util.Collection;
 import java.util.List;
 import jakarta.annotation.PostConstruct;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.ruoyi.common.constant.CacheConstants;
 import com.ruoyi.common.constant.UserConstants;
@@ -23,11 +22,15 @@ import com.ruoyi.system.service.ISysConfigService;
 @Service
 public class SysConfigServiceImpl implements ISysConfigService
 {
-    @Autowired
-    private SysConfigMapper configMapper;
+    private final SysConfigMapper configMapper;
 
-    @Autowired
-    private RedisCache redisCache;
+    private final RedisCache redisCache;
+
+    public SysConfigServiceImpl(SysConfigMapper configMapper, RedisCache redisCache)
+    {
+        this.configMapper = configMapper;
+        this.redisCache = redisCache;
+    }
 
     /**
      * 项目启动时，初始化参数到缓存

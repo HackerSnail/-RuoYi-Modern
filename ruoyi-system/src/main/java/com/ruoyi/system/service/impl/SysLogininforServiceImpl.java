@@ -1,7 +1,6 @@
 package com.ruoyi.system.service.impl;
 
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.ruoyi.system.domain.SysLogininfor;
 import com.ruoyi.system.mapper.SysLogininforMapper;
@@ -16,8 +15,12 @@ import com.ruoyi.system.service.ISysLogininforService;
 public class SysLogininforServiceImpl implements ISysLogininforService
 {
 
-    @Autowired
-    private SysLogininforMapper logininforMapper;
+    private final SysLogininforMapper logininforMapper;
+
+    public SysLogininforServiceImpl(SysLogininforMapper logininforMapper)
+    {
+        this.logininforMapper = logininforMapper;
+    }
 
     /**
      * 新增系统登录日志

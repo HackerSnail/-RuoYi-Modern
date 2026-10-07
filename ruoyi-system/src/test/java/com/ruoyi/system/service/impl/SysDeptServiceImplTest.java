@@ -15,11 +15,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import com.ruoyi.common.core.domain.entity.SysDept;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.system.mapper.SysDeptMapper;
+import com.ruoyi.system.mapper.SysRoleMapper;
 
 /**
  * SysDeptServiceImpl.updateDeptSort 批量排序测试。
@@ -38,9 +38,8 @@ public class SysDeptServiceImplTest
     @BeforeEach
     void setUp()
     {
-        deptService = new SysDeptServiceImpl();
         deptMapper = mock(SysDeptMapper.class);
-        ReflectionTestUtils.setField(deptService, "deptMapper", deptMapper);
+        deptService = new SysDeptServiceImpl(deptMapper, mock(SysRoleMapper.class));
     }
 
     @Test

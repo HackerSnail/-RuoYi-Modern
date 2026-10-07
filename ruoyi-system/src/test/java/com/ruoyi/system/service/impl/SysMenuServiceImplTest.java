@@ -15,11 +15,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import com.ruoyi.common.core.domain.entity.SysMenu;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.system.mapper.SysMenuMapper;
+import com.ruoyi.system.mapper.SysRoleMapper;
+import com.ruoyi.system.mapper.SysRoleMenuMapper;
 
 /**
  * SysMenuServiceImpl.updateMenuSort 批量排序测试。
@@ -38,9 +39,8 @@ public class SysMenuServiceImplTest
     @BeforeEach
     void setUp()
     {
-        menuService = new SysMenuServiceImpl();
         menuMapper = mock(SysMenuMapper.class);
-        ReflectionTestUtils.setField(menuService, "menuMapper", menuMapper);
+        menuService = new SysMenuServiceImpl(menuMapper, mock(SysRoleMapper.class), mock(SysRoleMenuMapper.class));
     }
 
     @Test

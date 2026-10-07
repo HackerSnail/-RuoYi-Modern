@@ -7,7 +7,6 @@ import java.util.stream.Collectors;
 import jakarta.validation.Validator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -42,29 +41,35 @@ public class SysUserServiceImpl implements ISysUserService
 {
     private static final Logger log = LoggerFactory.getLogger(SysUserServiceImpl.class);
 
-    @Autowired
-    private SysUserMapper userMapper;
+    private final SysUserMapper userMapper;
 
-    @Autowired
-    private SysRoleMapper roleMapper;
+    private final SysRoleMapper roleMapper;
 
-    @Autowired
-    private SysPostMapper postMapper;
+    private final SysPostMapper postMapper;
 
-    @Autowired
-    private SysUserRoleMapper userRoleMapper;
+    private final SysUserRoleMapper userRoleMapper;
 
-    @Autowired
-    private SysUserPostMapper userPostMapper;
+    private final SysUserPostMapper userPostMapper;
 
-    @Autowired
-    private ISysConfigService configService;
+    private final ISysConfigService configService;
 
-    @Autowired
-    private ISysDeptService deptService;
+    private final ISysDeptService deptService;
 
-    @Autowired
-    protected Validator validator;
+    protected final Validator validator;
+
+    public SysUserServiceImpl(SysUserMapper userMapper, SysRoleMapper roleMapper, SysPostMapper postMapper,
+            SysUserRoleMapper userRoleMapper, SysUserPostMapper userPostMapper, ISysConfigService configService,
+            ISysDeptService deptService, Validator validator)
+    {
+        this.userMapper = userMapper;
+        this.roleMapper = roleMapper;
+        this.postMapper = postMapper;
+        this.userRoleMapper = userRoleMapper;
+        this.userPostMapper = userPostMapper;
+        this.configService = configService;
+        this.deptService = deptService;
+        this.validator = validator;
+    }
 
     /**
      * 根据条件分页查询用户列表

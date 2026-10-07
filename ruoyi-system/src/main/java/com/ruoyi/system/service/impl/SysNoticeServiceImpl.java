@@ -1,7 +1,6 @@
 package com.ruoyi.system.service.impl;
 
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.ruoyi.system.domain.SysNotice;
 import com.ruoyi.system.mapper.SysNoticeMapper;
@@ -15,8 +14,12 @@ import com.ruoyi.system.service.ISysNoticeService;
 @Service
 public class SysNoticeServiceImpl implements ISysNoticeService
 {
-    @Autowired
-    private SysNoticeMapper noticeMapper;
+    private final SysNoticeMapper noticeMapper;
+
+    public SysNoticeServiceImpl(SysNoticeMapper noticeMapper)
+    {
+        this.noticeMapper = noticeMapper;
+    }
 
     /**
      * 查询公告信息

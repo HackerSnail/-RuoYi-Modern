@@ -181,7 +181,7 @@ public class FileUtils
         else if (agent.contains("Firefox"))
         {
             // 火狐浏览器
-            filename = new String(fileName.getBytes(), "ISO8859-1");
+            filename = new String(fileName.getBytes(StandardCharsets.UTF_8), "ISO8859-1");
         }
         else if (agent.contains("Chrome"))
         {

@@ -168,6 +168,10 @@ public class FileUploadUtils
         return desc;
     }
 
+    /**
+     * 返回可供前端访问的虚拟资源路径：去掉本地绝对目录中属于 profile 磁盘路径的前缀，
+     * 换成统一的任务前缀 RESOURCE_PREFIX，拼接为 /profile/日期目录/文件名 形式
+     */
     public static final String getPathFileName(String uploadDir, String fileName) throws IOException
     {
         int dirLastIndex = RuoYiConfig.getProfile().length() + 1;

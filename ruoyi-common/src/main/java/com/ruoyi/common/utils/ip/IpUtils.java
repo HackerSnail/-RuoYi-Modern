@@ -137,7 +137,9 @@ public class IpUtils
         }
 
         byte[] bytes = new byte[4];
+        // 按点分十进制拆分，-1 保留末尾空段以便校验段数非法的输入
         String[] elements = text.split("\\.", -1);
+        // 元素个数为 1~4 对应点分 IP 的简写形式（省略高位段），分别按不同位宽拆包写入 4 字节
         try
         {
             long l;
@@ -145,6 +147,7 @@ public class IpUtils
             switch (elements.length)
             {
                 case 1:
+                    // 单段：整体视为 32 位无符号数，依次右移取出高到低的 4 个字节
                     l = Long.parseLong(elements[0]);
                     if ((l < 0L) || (l > 4294967295L))
                     {
@@ -333,12 +336,14 @@ public class IpUtils
         String[] sipe = iparea.substring(idx + 1).split("\\.");
         String[] sipt = ip.split("\\.");
         long ips = 0L, ipe = 0L, ipt = 0L;
+        // 将四段 IP 各自左移拼接成一个 long，从而可用整数大小比较判断是否落在区间内
         for (int i = 0; i < 4; ++i)
         {
             ips = ips << 8 | Integer.parseInt(sips[i]);
             ipe = ipe << 8 | Integer.parseInt(sipe[i]);
             ipt = ipt << 8 | Integer.parseInt(sipt[i]);
         }
+        // 区间可能写成「大-小」，先交换保证 ips 为下界、ipe为上界
         if (ips > ipe)
         {
             long t = ips;

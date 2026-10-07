@@ -47,6 +47,10 @@ public class SensitiveJsonSerializer extends StdSerializer<String>
         }
     }
 
+    /**
+     * 序列化前绑定上下文：读取字段上的 @Sensitive 注解，若命中且为 String 类型，
+     * 则返回携带对应脱敏类型的序列化器，否则回退默认序列化器
+     */
     @Override
     public ValueSerializer<?> createContextual(SerializationContext ctxt, BeanProperty property) throws DatabindException
     {

@@ -239,6 +239,7 @@ public class FileUtils
      */
     public static String getFileExtendName(byte[] photoByte)
     {
+        // 下面各分支均为比对图片文件头（magic number）的字节值，如 71/73/70/56 对应 “GIF8”、66/77 对应 “BM”、80/78/71 对应 “PNG”
         String strFileExtendName = "jpg";
         if ((photoByte[0] == 71) && (photoByte[1] == 73) && (photoByte[2] == 70) && (photoByte[3] == 56)
                 && ((photoByte[4] == 55) || (photoByte[4] == 57)) && (photoByte[5] == 97))

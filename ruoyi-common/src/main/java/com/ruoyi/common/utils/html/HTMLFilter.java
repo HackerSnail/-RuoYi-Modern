@@ -197,9 +197,11 @@ public final class HTMLFilter
      */
     public String filter(final String input)
     {
+        // 每次过滤前重置标签计数，避免多次调用互相干扰
         reset();
         String s = input;
 
+        // 转义注释 -> 平衡尖括号 -> 白名单校验标签 -> 剔除空标签，逐步净化不可信 HTML
         s = escapeComments(s);
 
         s = balanceHTML(s);
@@ -323,6 +325,10 @@ public final class HTMLFilter
         return m.replaceAll(replacement);
     }
 
+    /**
+     * 处理单个标签：依次匹配结束标签/开始标签/注释，仅保留白名单内的标签及其合法属性，
+     * 其余（含未知标签、非白名单属性）一律丢弃；开始标签会累加 vTagCounts 以便末尾自动补齐闭合
+     */
     private String processTag(final String s)
     {
         // ending tags
@@ -434,6 +440,10 @@ public final class HTMLFilter
         return "";
     }
 
+    /**
+     * 校验 src/href 等协议类属性：解码实体后提取协议，若不在允许协议（http/https/mailto）内，
+     * 则降级为本地锚点链接（#开头），从而阻断 javascript:、data: 等危险协议
+     */
     private String processParamProtocol(String s)
     {
         s = decodeEntities(s);

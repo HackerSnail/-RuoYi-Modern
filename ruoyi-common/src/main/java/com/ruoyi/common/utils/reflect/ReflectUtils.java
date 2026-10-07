@@ -374,6 +374,10 @@ public class ReflectUtils
         return (Class) params[index];
     }
 
+    /**
+     * 获取用户真实的 class，若实例被 CGLIB 代理（类名含 $$ 增强标识）则返回其父类，
+     * 以便拿到被代理前的原始类型进行注解、字段等反射操作。
+     */
     public static Class<?> getUserClass(Object instance)
     {
         if (instance == null)

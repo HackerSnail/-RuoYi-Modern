@@ -3,6 +3,7 @@ package com.ruoyi.framework.config;
 import java.util.concurrent.TimeUnit;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 import org.springframework.http.CacheControl;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -12,6 +13,7 @@ import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import com.ruoyi.common.config.RuoYiConfig;
 import com.ruoyi.common.constant.Constants;
+import com.ruoyi.framework.interceptor.PageCleanInterceptor;
 import com.ruoyi.framework.interceptor.RepeatSubmitInterceptor;
 
 /**
@@ -22,9 +24,12 @@ import com.ruoyi.framework.interceptor.RepeatSubmitInterceptor;
 @Configuration
 public class ResourcesConfig implements WebMvcConfigurer {
     private final RepeatSubmitInterceptor repeatSubmitInterceptor;
+    private final PageCleanInterceptor pageCleanInterceptor;
 
-    public ResourcesConfig(RepeatSubmitInterceptor repeatSubmitInterceptor) {
+    public ResourcesConfig(RepeatSubmitInterceptor repeatSubmitInterceptor,
+            PageCleanInterceptor pageCleanInterceptor) {
         this.repeatSubmitInterceptor = repeatSubmitInterceptor;
+        this.pageCleanInterceptor = pageCleanInterceptor;
     }
 
     /**
@@ -47,6 +52,9 @@ public class ResourcesConfig implements WebMvcConfigurer {
      */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        // 分页 ThreadLocal 的清理放最外层（HIGHEST_PRECEDENCE）：
+        // 保证即便后续拦截器中断请求，afterCompletion 也一定会回调过来
+        registry.addInterceptor(pageCleanInterceptor).addPathPatterns("/**").order(Ordered.HIGHEST_PRECEDENCE);
         registry.addInterceptor(repeatSubmitInterceptor).addPathPatterns("/**");
     }
 

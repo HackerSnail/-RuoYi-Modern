@@ -53,7 +53,7 @@ public class SysDictTypeController extends BaseController {
     @PreAuthorize("@ss.hasPermi('system:dict:export')")
     @PostMapping("/export")
     public void export(HttpServletResponse response, SysDictType dictType) {
-        List<SysDictType> list = dictTypeService.selectDictTypeList(dictType);
+        List<SysDictType> list = exportLimit(() -> dictTypeService.selectDictTypeList(dictType));
         ExcelUtil<SysDictType> util = new ExcelUtil<>(SysDictType.class);
         util.exportExcel(response, list, "字典类型");
     }

@@ -73,7 +73,7 @@ public class SysUserController extends BaseController {
     @PreAuthorize("@ss.hasPermi('system:user:export')")
     @PostMapping("/export")
     public void export(HttpServletResponse response, SysUser user) {
-        List<SysUser> list = userService.selectUserList(user);
+        List<SysUser> list = exportLimit(() -> userService.selectUserList(user));
         ExcelUtil<SysUser> util = new ExcelUtil<>(SysUser.class);
         util.exportExcel(response, list, "用户数据");
     }

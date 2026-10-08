@@ -50,7 +50,7 @@ public class SysJobLogController extends BaseController {
     @Log(title = "任务调度日志", businessType = BusinessType.EXPORT)
     @PostMapping("/export")
     public void export(HttpServletResponse response, SysJobLog sysJobLog) {
-        List<SysJobLog> list = jobLogService.selectJobLogList(sysJobLog);
+        List<SysJobLog> list = exportLimit(() -> jobLogService.selectJobLogList(sysJobLog));
         ExcelUtil<SysJobLog> util = new ExcelUtil<SysJobLog>(SysJobLog.class);
         util.exportExcel(response, list, "调度日志");
     }

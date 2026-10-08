@@ -76,7 +76,9 @@ import com.ruoyi.common.annotation.Excel.Type;
 import com.ruoyi.common.annotation.Excels;
 import com.ruoyi.common.config.RuoYiConfig;
 import com.ruoyi.common.core.domain.AjaxResult;
+import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.core.text.Convert;
+import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.exception.UtilException;
 import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.DictUtils;
@@ -236,6 +238,11 @@ public class ExcelUtil<T> {
         if (list == null) {
             list = new ArrayList<>();
         }
+        // 导出条数硬上限：所有导出入口（写到 response / 写到文件）最终都汇聚到 init，
+        // 在这里兜底，避免超大集合进入 POI 生成阶段（写入耗时与文件体积都不可控）
+        if (Type.EXPORT.equals(type)) {
+            checkExportSize(list);
+        }
         this.list = list;
         this.sheetName = sheetName;
         this.type = type;
@@ -244,6 +251,19 @@ public class ExcelUtil<T> {
         createWorkbook();
         createTitle();
         createSubHead();
+    }
+
+    /**
+     * 导出条数上限校验：超过配置值（yml: ruoyi.exportMaxRows）直接抛业务异常，
+     * 由 GlobalExceptionHandler 转成友好提示，而不是硬着头皮生成一个超大文件
+     *
+     * @param list 待导出数据
+     */
+    private void checkExportSize(List<T> list) {
+        int maxRows = RuoYiConfig.getExportMaxRows();
+        if (list.size() > maxRows) {
+            throw new ServiceException("导出数据量 " + list.size() + " 条，超过单次导出上限 " + maxRows + " 条，请缩小查询条件后重试");
+        }
     }
 
     /**
@@ -598,6 +618,7 @@ public class ExcelUtil<T> {
         if (list == null) {
             list = new ArrayList<>();
         }
+        checkExportSize(list);
         this.list = list;
         this.sheetName = sheetName;
         this.title = title != null ? title : "";

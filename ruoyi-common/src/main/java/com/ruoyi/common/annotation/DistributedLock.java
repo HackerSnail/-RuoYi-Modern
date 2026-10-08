@@ -10,9 +10,11 @@ import java.util.concurrent.TimeUnit;
 /**
  * 分布式锁注解：标注在方法上，方法执行前获取 Redisson 可重入锁，执行后释放。
  *
- * <p>key 支持 SpEL，例如 {@code #userId}、{@code #order.id}，利用编译期 -parameters
+ * <p>
+ * key 支持 SpEL，例如 {@code #userId}、{@code #order.id}，利用编译期 -parameters
  * 反射获取形参名；不含 {@code #} 时按字面量处理。leaseTime 为 -1 时启用 Redisson 看门狗
- * 自动续期（业务未执行完不会因过期而失锁）。</p>
+ * 自动续期（业务未执行完不会因过期而失锁）。
+ * </p>
  *
  * @author ruoyi
  */

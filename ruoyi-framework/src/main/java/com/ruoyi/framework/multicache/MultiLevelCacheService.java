@@ -11,9 +11,11 @@ import org.springframework.stereotype.Service;
 /**
  * 二级缓存服务：L1 本地 Caffeine（进程内、纳秒级、无网络开销）+ L2 分布式 Redis（跨进程共享）。
  *
- * <p>读路径：L1 命中直接返回 → 未命中查 L2，命中则回填 L1 → 仍未命中回源 DB，同时写 L2 与 L1。
+ * <p>
+ * 读路径：L1 命中直接返回 → 未命中查 L2，命中则回填 L1 → 仍未命中回源 DB，同时写 L2 与 L1。
  * 写/失效路径：同时处理两级缓存，并通过 Redis 发布订阅广播 key 失效，使<b>其它节点</b>丢弃其本地 L1，
- * 解决"每台机器各有独立 L1、改一处不影响他处"的一致性难题；本节点 L1 直接同步失效。</p>
+ * 解决"每台机器各有独立 L1、改一处不影响他处"的一致性难题；本节点 L1 直接同步失效。
+ * </p>
  *
  * @author ruoyi
  */
@@ -42,7 +44,8 @@ public class MultiLevelCacheService {
 
     private final StringRedisTemplate stringRedisTemplate;
 
-    public MultiLevelCacheService(RedisTemplate<Object, Object> redisTemplate, StringRedisTemplate stringRedisTemplate) {
+    public MultiLevelCacheService(RedisTemplate<Object, Object> redisTemplate,
+            StringRedisTemplate stringRedisTemplate) {
         this.redisTemplate = redisTemplate;
         this.stringRedisTemplate = stringRedisTemplate;
     }
@@ -50,9 +53,9 @@ public class MultiLevelCacheService {
     /**
      * 读多：L1 → L2 → DB 逐级查找并回填。
      *
-     * @param key       逻辑缓存键
-     * @param l2Ttl     L2 存活时间
-     * @param dbLoader  回源加载器
+     * @param key      逻辑缓存键
+     * @param l2Ttl    L2 存活时间
+     * @param dbLoader 回源加载器
      * @return 值（DB 也不存在时返回 null，不缓存）
      */
     @SuppressWarnings("unchecked")

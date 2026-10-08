@@ -18,9 +18,11 @@ import com.ruoyi.common.exception.ServiceException;
 /**
  * 分布式锁切面：环绕 {@link DistributedLock} 方法，基于 Redisson 可重入锁实现互斥。
  *
- * <p>leaseTime &lt; 0 走 {@code tryLock(waitTime, unit)} 由看门狗自动续期；否则走
+ * <p>
+ * leaseTime &lt; 0 走 {@code tryLock(waitTime, unit)} 由看门狗自动续期；否则走
  * {@code tryLock(waitTime, leaseTime, unit)} 固定持有。仅由当前线程持锁时才解锁，
- * 避免误释放他人锁；获取失败抛出业务异常提示重试。</p>
+ * 避免误释放他人锁；获取失败抛出业务异常提示重试。
+ * </p>
  *
  * @author ruoyi
  */

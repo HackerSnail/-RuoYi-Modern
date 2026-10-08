@@ -9,8 +9,10 @@ import org.springframework.stereotype.Component;
  * 快速判定"某 key 绝对不存在"，从而拦截缓存穿透。存在假阳性（说"在"可能在），但无假阴性
  * （说"不在"一定不在），因此适合作为"拦截不存在"的前置闸门；删除单个元素不支持（整体 reset 后可重建）。
  *
- * <p>哈希采用 Kirsch-Mitzenmacher 二次哈希技巧：由一个 64 位种子哈希派生两个基值 h1/h2，
- * 第 i 个哈希位置 = floorMod(h1 + i*h2, bitSize)，用 O(1) 个基哈希近似 k 个独立哈希函数。</p>
+ * <p>
+ * 哈希采用 Kirsch-Mitzenmacher 二次哈希技巧：由一个 64 位种子哈希派生两个基值 h1/h2，
+ * 第 i 个哈希位置 = floorMod(h1 + i*h2, bitSize)，用 O(1) 个基哈希近似 k 个独立哈希函数。
+ * </p>
  *
  * @author ruoyi
  */

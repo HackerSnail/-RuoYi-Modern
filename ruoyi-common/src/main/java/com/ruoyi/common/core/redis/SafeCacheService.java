@@ -11,12 +11,12 @@ import org.springframework.stereotype.Component;
  * 系统性防御缓存穿透、缓存击穿、缓存雪崩三类问题。
  *
  * <ul>
- *   <li><b>穿透</b>（查不存在的 key 反复打到 DB）：对"确实不存在"的结果写入空值哨兵 {@link #NULL_SENTINEL}
- *       并配较短 TTL，使后续同一 key 命中哨兵直接返回 null；也可配合 {@link RedisBloomFilter} 提前拦截。</li>
- *   <li><b>击穿</b>（热点 key 过期瞬间大量请求同时回源）：回源前用 {@code SETNX} 抢"重建锁"，
- *       仅抢到锁的线程查 DB 并回填，其余线程短暂自旋等待读回填结果，等待超时才降级各自回源，避免惊群。</li>
- *   <li><b>雪崩</b>（大批 key 同一时刻集中过期）：写入 TTL 时按 {@code jitterRatio} 叠加随机抖动，
- *       把过期时间点打散，避免同一时刻集中失效。</li>
+ * <li><b>穿透</b>（查不存在的 key 反复打到 DB）：对"确实不存在"的结果写入空值哨兵 {@link #NULL_SENTINEL}
+ * 并配较短 TTL，使后续同一 key 命中哨兵直接返回 null；也可配合 {@link RedisBloomFilter} 提前拦截。</li>
+ * <li><b>击穿</b>（热点 key 过期瞬间大量请求同时回源）：回源前用 {@code SETNX} 抢"重建锁"，
+ * 仅抢到锁的线程查 DB 并回填，其余线程短暂自旋等待读回填结果，等待超时才降级各自回源，避免惊群。</li>
+ * <li><b>雪崩</b>（大批 key 同一时刻集中过期）：写入 TTL 时按 {@code jitterRatio} 叠加随机抖动，
+ * 把过期时间点打散，避免同一时刻集中失效。</li>
  * </ul>
  *
  * @author ruoyi
@@ -50,11 +50,11 @@ public class SafeCacheService {
     /**
      * 读取缓存，未命中则按"三防"流程回源并回填。
      *
-     * @param key        缓存键
-     * @param baseTtl    基础存活时间（会叠加抖动以打散过期点）
+     * @param key         缓存键
+     * @param baseTtl     基础存活时间（会叠加抖动以打散过期点）
      * @param jitterRatio 抖动比例（0~1），实际 TTL = baseTtl * (1 ± jitterRatio 内的随机值)
-     * @param dbLoader   回源加载器（返回 null 表示 DB 中确实不存在，将缓存空值哨兵）
-     * @param <T>        值类型
+     * @param dbLoader    回源加载器（返回 null 表示 DB 中确实不存在，将缓存空值哨兵）
+     * @param <T>         值类型
      * @return 缓存或回源得到的值；DB 不存在时返回 null
      */
     @SuppressWarnings("unchecked")
@@ -75,7 +75,8 @@ public class SafeCacheService {
      * 互斥重建：仅一个线程回源并回填，其余线程等待读回填结果。
      */
     @SuppressWarnings("unchecked")
-    private <T> T rebuildWithMutex(final String key, final Duration baseTtl, final double jitterRatio, final Supplier<T> dbLoader) {
+    private <T> T rebuildWithMutex(final String key, final Duration baseTtl, final double jitterRatio,
+            final Supplier<T> dbLoader) {
         String lockKey = key + LOCK_SUFFIX;
         Boolean locked = redisTemplate.opsForValue().setIfAbsent(lockKey, "1", LOCK_TTL);
         if (Boolean.TRUE.equals(locked)) {

@@ -77,7 +77,8 @@ public class CacheDemoController {
     /** 布隆演示：op=put 写入，op=check 判定可能存在/一定不存在 */
     @GetMapping("/bloom")
     public AjaxResult bloom(@RequestParam String value, @RequestParam(defaultValue = "check") String op) {
-        int hashCount = RedisBloomFilter.optimalHashCount(BLOOM_EXPECT, RedisBloomFilter.optimalBitSize(BLOOM_EXPECT, 0.01));
+        int hashCount = RedisBloomFilter.optimalHashCount(BLOOM_EXPECT,
+                RedisBloomFilter.optimalBitSize(BLOOM_EXPECT, 0.01));
         long bitSize = RedisBloomFilter.optimalBitSize(BLOOM_EXPECT, 0.01);
         if ("put".equalsIgnoreCase(op)) {
             redisBloomFilter.put(BLOOM_KEY, bitSize, hashCount, value);

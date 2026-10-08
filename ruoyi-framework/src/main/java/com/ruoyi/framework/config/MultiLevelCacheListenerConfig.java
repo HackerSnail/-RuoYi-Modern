@@ -34,7 +34,8 @@ public class MultiLevelCacheListenerConfig {
             MessageListener cacheInvalidateListener) {
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
-        container.addMessageListener(cacheInvalidateListener, new ChannelTopic(MultiLevelCacheService.INVALIDATE_CHANNEL));
+        container.addMessageListener(cacheInvalidateListener,
+                new ChannelTopic(MultiLevelCacheService.INVALIDATE_CHANNEL));
         return container;
     }
 }

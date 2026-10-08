@@ -60,7 +60,8 @@ public class XssHttpServletRequestWrapper extends HttpServletRequestWrapper {
         return new ServletInputStream() {
             @Override
             public boolean isFinished() {
-                return true;
+                // 内存流读尽（无剩余可读字节）即为完成，符合 Servlet 规范（原恒返回 true 不反映真实流状态）
+                return bis.available() == 0;
             }
 
             @Override
@@ -70,7 +71,8 @@ public class XssHttpServletRequestWrapper extends HttpServletRequestWrapper {
 
             @Override
             public int available() throws IOException {
-                return jsonBytes.length;
+                // 返回剩余可读字节而非总长 jsonBytes.length，与 ServletInputStream 语义一致
+                return bis.available();
             }
 
             @Override

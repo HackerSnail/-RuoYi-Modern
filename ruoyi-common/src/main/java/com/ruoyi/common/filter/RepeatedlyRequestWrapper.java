@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletInputStream;
-import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
 import com.ruoyi.common.utils.http.HttpHelper;
@@ -20,11 +19,9 @@ import com.ruoyi.common.constant.Constants;
 public class RepeatedlyRequestWrapper extends HttpServletRequestWrapper {
     private final byte[] body;
 
-    public RepeatedlyRequestWrapper(HttpServletRequest request, ServletResponse response) throws IOException {
+    public RepeatedlyRequestWrapper(HttpServletRequest request) throws IOException {
         super(request);
         request.setCharacterEncoding(Constants.UTF8);
-        response.setCharacterEncoding(Constants.UTF8);
-
         body = HttpHelper.getBodyString(request).getBytes(Constants.UTF8);
     }
 
@@ -44,7 +41,7 @@ public class RepeatedlyRequestWrapper extends HttpServletRequestWrapper {
 
             @Override
             public int available() throws IOException {
-                return body.length;
+                return bais.available();
             }
 
             @Override

@@ -1,5 +1,8 @@
 package com.ruoyi.common.utils.html;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.safety.Safelist;
 import com.ruoyi.common.utils.StringUtils;
 
 /**
@@ -8,13 +11,29 @@ import com.ruoyi.common.utils.StringUtils;
  * 注意分工：{@link #escape(String)} / {@link #unescape(String)} 实现的是 JavaScript
  * {@code escape()} 风格的 {@code %xx} / {@code %uxxxx} 百分号编码，<b>不是</b> HTML 实体转义，
  * 也不能当作 XSS 防护手段——编码后的串放进 HTML 上下文并不因此安全。真正的 HTML 白名单清洗是
- * {@link #clean(String)}（转发到 {@link HTMLFilter}），HTML/属性/URL 等上下文需要各自的编码策略，
- * 不能靠本类的 escape 一概而论。
+ * {@link #clean(String)}（委托给 jsoup 的 {@link Safelist} 白名单净化），HTML/属性/URL 等上下文需要
+ * 各自的编码策略，不能靠本类的 escape 一概而论。
  *
  * @author ruoyi
  */
 public final class EscapeUtil {
     public static final String RE_HTML_MARK = "(<[^<]*?>)|(<[\\s]*?/[^<]*?>)|(<[^<]*?/[\\s]*?>)";
+
+    /**
+     * XSS 清洗白名单：采用 jsoup relaxed 策略，保留常见富文本标签（p/ul/ol/li/h1-6/span/br 等），
+     * 同时剔除脚本标签、事件属性(on*)与危险协议(javascript:/data: 等)，由 jsoup 的 HTML 解析器执行。
+     * <p>
+     * preserveRelativeLinks(true)：保留相对路径的 href/src（如 /profile/upload/x.png），否则 relaxed
+     * 默认会把无协议的相对链接剥掉，破坏富文本中的相对资源；该开关不影响对 javascript:/data: 等
+     * 危险协议的过滤。
+     */
+    private static final Safelist SAFELIST = Safelist.relaxed().preserveRelativeLinks(true);
+
+    /**
+     * jsoup 解析基准 URI：配合 preserveRelativeLinks(true)，它仅用于判定 href/src 是否为相对链接，
+     * 不会写进清洗结果。必须非空——实测 baseUri 为空时 jsoup 会把相对链接一并剥掉。
+     */
+    private static final String CLEAN_BASE_URI = "http://localhost";
 
     private EscapeUtil() {
     }
@@ -45,16 +64,22 @@ public final class EscapeUtil {
     }
 
     /**
-     * 清除所有HTML标签，但是不删除标签内的内容
+     * 清除所有非法/危险 HTML，仅保留白名单内的标签及其安全属性，且不删除标签内的正文内容
      * <p>
-     * 真正的 HTML 白名单过滤逻辑在 {@link HTMLFilter}，本方法是其转发入口，也是本类唯一面向
-     * 安全场景（XSS 清洗）应被调用的方法。
+     * 由 jsoup 的 {@link Jsoup#clean(String, String, Safelist, Document.OutputSettings)} 基于真正的
+     * HTML 解析器执行（非正则匹配），从根本上避免了旧 {@code HTMLFilter} 以正则解析 HTML 带来的标签/属性
+     * 边界误判。这是本类唯一面向安全场景（XSS 清洗）应被调用的方法。
      *
      * @param content 文本
-     * @return 清除标签后的文本
+     * @return 清洗后的文本；入参为 null 时返回空串，绝不抛异常
      */
     public static String clean(String content) {
-        return new HTMLFilter().filter(content);
+        if (content == null) {
+            return StringUtils.EMPTY;
+        }
+        // prettyPrint(false)：关闭 jsoup 默认格式化，避免往输出里注入换行/缩进（本方法用于请求参数/JSON 清洗，
+        // 需要尽量保持紧凑原样）；CLEAN_BASE_URI 非空以保障相对链接不被误剥
+        return Jsoup.clean(content, CLEAN_BASE_URI, SAFELIST, new Document.OutputSettings().prettyPrint(false));
     }
 
     /**

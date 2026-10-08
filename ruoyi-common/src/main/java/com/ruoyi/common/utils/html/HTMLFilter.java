@@ -14,7 +14,12 @@ import java.util.regex.Pattern;
  * HTML过滤器，用于去除XSS漏洞隐患。
  *
  * @author ruoyi
+ * @deprecated 本类以正则解析 HTML，存在根本性缺陷（标签/属性边界误判、核心实体校验被注释、
+ *             属性输出带字面反斜杠、畸形实体抛异常等），已被 jsoup 的真正 HTML 解析器取代。
+ *             {@code EscapeUtil.clean()} 现走 jsoup {@code Safelist}，不再调用本类。保留仅为兼容
+ *             可能存在的外部引用，请勿再用于新的安全场景。
  */
+@Deprecated
 public final class HTMLFilter {
     /**
      * regex flag union representing /si modifiers in php

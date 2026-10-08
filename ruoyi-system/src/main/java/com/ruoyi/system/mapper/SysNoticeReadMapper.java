@@ -66,6 +66,15 @@ public interface SysNoticeReadMapper
     public List<Map<String, Object>> selectReadUsersByNoticeId(@Param("noticeId") Long noticeId, @Param("searchValue") String searchValue);
 
     /**
+     * 查询某公告的未读用户列表（催读：启用且未删除的用户中，不存在该公告已读记录者）
+     *
+     * @param noticeId  公告ID
+     * @param searchValue 搜索值（按登录名/昵称模糊匹配）
+     * @return 未读用户列表
+     */
+    public List<Map<String, Object>> selectUnreadUsersByNoticeId(@Param("noticeId") Long noticeId, @Param("searchValue") String searchValue);
+
+    /**
      * 公告删除时清理对应已读记录
      *
      * @param noticeIds 公告ID数组

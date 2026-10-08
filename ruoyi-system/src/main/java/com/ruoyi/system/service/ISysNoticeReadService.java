@@ -54,6 +54,15 @@ public interface ISysNoticeReadService
     public List<Map<String, Object>> selectReadUsersByNoticeId(Long noticeId, String searchValue);
 
     /**
+     * 查询某公告的未读用户列表（催读，仅负责“查出未读用户”；实际推送需接入推送通道）
+     *
+     * @param noticeId  公告ID
+     * @param searchValue 搜索值
+     * @return 未读用户列表
+     */
+    public List<Map<String, Object>> selectUnreadUsersByNoticeId(Long noticeId, String searchValue);
+
+    /**
      * 删除公告时清理对应已读记录
      *
      * @param noticeIds 公告ID数组

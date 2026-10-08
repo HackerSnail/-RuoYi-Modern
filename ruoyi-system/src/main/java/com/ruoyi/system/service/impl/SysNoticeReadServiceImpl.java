@@ -68,6 +68,14 @@ public class SysNoticeReadServiceImpl implements ISysNoticeReadService {
     }
 
     /**
+     * 查询某公告的未读用户列表（催读）
+     */
+    @Override
+    public List<Map<String, Object>> selectUnreadUsersByNoticeId(Long noticeId, String searchValue) {
+        return noticeReadMapper.selectUnreadUsersByNoticeId(noticeId, searchValue);
+    }
+
+    /**
      * 删除公告时清理对应已读记录
      */
     @Override

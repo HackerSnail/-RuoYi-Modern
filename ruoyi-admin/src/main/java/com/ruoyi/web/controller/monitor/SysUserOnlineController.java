@@ -49,9 +49,11 @@ public class SysUserOnlineController extends BaseController {
     public TableDataInfo list(String ipaddr, String userName) {
         // 扫描 LOGIN_TOKEN_KEY 前缀的全部缓存键，即当前持有的有效会话
         Collection<String> keys = redisCache.keys(CacheConstants.LOGIN_TOKEN_KEY + "*");
+        // 一次 MGET 分批取回全部会话（500/批），替代"逐 key GET"的 N+1 往返：
+        // 在线用户上千时，原来是上千次 RTT，现在降到 N/500
+        List<LoginUser> userList = redisCache.multiGetObject(keys);
         List<SysUserOnline> userOnlineList = new ArrayList<>();
-        for (String key : keys) {
-            LoginUser user = redisCache.getCacheObject(key);
+        for (LoginUser user : userList) {
             if (StringUtils.isNotEmpty(ipaddr) && StringUtils.isNotEmpty(userName)) {
                 userOnlineList.add(userOnlineService.selectOnlineByInfo(ipaddr, userName, user));
             } else if (StringUtils.isNotEmpty(ipaddr)) {

@@ -3,6 +3,7 @@ package com.ruoyi.framework.web.service;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
@@ -245,9 +246,11 @@ public class TokenService {
         if (keys == null || keys.isEmpty()) {
             return;
         }
-        for (String key : keys) {
-            LoginUser loginUser = redisCache.getCacheObject(key);
-            if (loginUser == null || loginUser.getUser() == null || loginUser.getUser().isAdmin()) {
+        // 一次 MGET 分批取回全部在线会话（500/批），替代逐 key GET 的 N+1 往返；
+        // multiGetObject 已剔除过期/不存在的键返回的 null
+        List<LoginUser> loginUsers = redisCache.multiGetObject(keys);
+        for (LoginUser loginUser : loginUsers) {
+            if (loginUser.getUser() == null || loginUser.getUser().isAdmin()) {
                 // 管理员拥有所有权限，跳过
                 continue;
             }

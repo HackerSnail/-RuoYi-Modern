@@ -26,61 +26,55 @@ import org.springframework.stereotype.Component;
  **/
 @SuppressWarnings(value = { "unchecked", "rawtypes" })
 @Component
-public class RedisCache
-{
+public class RedisCache {
     public final RedisTemplate<Object, Object> redisTemplate;
 
-    public RedisCache(RedisTemplate<Object, Object> redisTemplate)
-    {
+    public RedisCache(RedisTemplate<Object, Object> redisTemplate) {
         this.redisTemplate = redisTemplate;
     }
 
     /**
      * 缓存基本的对象，Integer、String、实体类等
      *
-     * @param key 缓存的键值
+     * @param key   缓存的键值
      * @param value 缓存的值
      */
-    public <T> void setCacheObject(final String key, final T value)
-    {
+    public <T> void setCacheObject(final String key, final T value) {
         redisTemplate.opsForValue().set(key, value);
     }
 
     /**
      * 缓存基本的对象，Integer、String、实体类等
      *
-     * @param key 缓存的键值
-     * @param value 缓存的值
-     * @param timeout 时间
+     * @param key      缓存的键值
+     * @param value    缓存的值
+     * @param timeout  时间
      * @param timeUnit 时间颗粒度
      */
-    public <T> void setCacheObject(final String key, final T value, final Integer timeout, final TimeUnit timeUnit)
-    {
+    public <T> void setCacheObject(final String key, final T value, final Integer timeout, final TimeUnit timeUnit) {
         redisTemplate.opsForValue().set(key, value, Duration.of(timeout, timeUnit.toChronoUnit()));
     }
 
     /**
      * 设置有效时间
      *
-     * @param key Redis键
+     * @param key     Redis键
      * @param timeout 超时时间
      * @return true=设置成功；false=设置失败
      */
-    public boolean expire(final String key, final long timeout)
-    {
+    public boolean expire(final String key, final long timeout) {
         return expire(key, timeout, TimeUnit.SECONDS);
     }
 
     /**
      * 设置有效时间
      *
-     * @param key Redis键
+     * @param key     Redis键
      * @param timeout 超时时间
-     * @param unit 时间单位
+     * @param unit    时间单位
      * @return true=设置成功；false=设置失败
      */
-    public boolean expire(final String key, final long timeout, final TimeUnit unit)
-    {
+    public boolean expire(final String key, final long timeout, final TimeUnit unit) {
         return redisTemplate.expire(key, Duration.of(timeout, unit.toChronoUnit()));
     }
 
@@ -90,8 +84,7 @@ public class RedisCache
      * @param key Redis键
      * @return 有效时间
      */
-    public long getExpire(final String key)
-    {
+    public long getExpire(final String key) {
         return redisTemplate.getExpire(key);
     }
 
@@ -101,8 +94,7 @@ public class RedisCache
      * @param key 键
      * @return true 存在 false不存在
      */
-    public Boolean hasKey(String key)
-    {
+    public Boolean hasKey(String key) {
         return redisTemplate.hasKey(key);
     }
 
@@ -112,8 +104,7 @@ public class RedisCache
      * @param key 缓存键值
      * @return 缓存键值对应的数据
      */
-    public <T> T getCacheObject(final String key)
-    {
+    public <T> T getCacheObject(final String key) {
         ValueOperations<Object, Object> operation = redisTemplate.opsForValue();
         return (T) operation.get(key);
     }
@@ -129,8 +120,7 @@ public class RedisCache
      * @param key 缓存键
      * @return true=确实删除了一个 key；false=key 不存在
      */
-    public boolean deleteObject(final String key)
-    {
+    public boolean deleteObject(final String key) {
         // SDR 4.x: RedisTemplate.unlink(K) 返回 Boolean（true=key 实际被删），
         // RedisTemplate.unlink(Collection<K>) 返回 Long（实际删除个数），两者签名不同
         return Boolean.TRUE.equals(redisTemplate.unlink(key));
@@ -145,20 +135,18 @@ public class RedisCache
      * @param collection 多个对象
      * @return 至少删除一个则 true
      */
-    public boolean deleteObject(final Collection collection)
-    {
+    public boolean deleteObject(final Collection collection) {
         return unlinkObjects(collection) > 0;
     }
 
     /**
      * 缓存List数据
      *
-     * @param key 缓存的键值
+     * @param key      缓存的键值
      * @param dataList 待缓存的List数据
      * @return 缓存的对象
      */
-    public <T> long setCacheList(final String key, final List<T> dataList)
-    {
+    public <T> long setCacheList(final String key, final List<T> dataList) {
         Long count = redisTemplate.opsForList().rightPushAll(key, (Collection) dataList);
         return count == null ? 0 : count;
     }
@@ -169,23 +157,21 @@ public class RedisCache
      * @param key 缓存的键值
      * @return 缓存键值对应的数据
      */
-    public <T> List<T> getCacheList(final String key)
-    {
+    public <T> List<T> getCacheList(final String key) {
         return (List<T>) redisTemplate.opsForList().range(key, 0, -1);
     }
 
     /**
      * 缓存Set
      *
-     * @param key 缓存键值
+     * @param key     缓存键值
      * @param dataSet 缓存的数据
      * @return 缓存数据的对象
      */
-    public <T> BoundSetOperations<String, T> setCacheSet(final String key, final Set<T> dataSet)
-    {
-        BoundSetOperations<String, T> setOperation = (BoundSetOperations<String, T>) (BoundSetOperations) redisTemplate.boundSetOps(key);
-        for (T t : dataSet)
-        {
+    public <T> BoundSetOperations<String, T> setCacheSet(final String key, final Set<T> dataSet) {
+        BoundSetOperations<String, T> setOperation = (BoundSetOperations<String, T>) (BoundSetOperations) redisTemplate
+                .boundSetOps(key);
+        for (T t : dataSet) {
             setOperation.add(t);
         }
         return setOperation;
@@ -197,8 +183,7 @@ public class RedisCache
      * @param key
      * @return
      */
-    public <T> Set<T> getCacheSet(final String key)
-    {
+    public <T> Set<T> getCacheSet(final String key) {
         return (Set<T>) redisTemplate.opsForSet().members(key);
     }
 
@@ -208,8 +193,7 @@ public class RedisCache
      * @param key
      * @param dataMap
      */
-    public <T> void setCacheMap(final String key, final Map<String, T> dataMap)
-    {
+    public <T> void setCacheMap(final String key, final Map<String, T> dataMap) {
         if (dataMap != null) {
             redisTemplate.opsForHash().putAll(key, dataMap);
         }
@@ -221,32 +205,29 @@ public class RedisCache
      * @param key
      * @return
      */
-    public <T> Map<String, T> getCacheMap(final String key)
-    {
+    public <T> Map<String, T> getCacheMap(final String key) {
         return (Map<String, T>) (Map) redisTemplate.opsForHash().entries(key);
     }
 
     /**
      * 往Hash中存入数据
      *
-     * @param key Redis键
-     * @param hKey Hash键
+     * @param key   Redis键
+     * @param hKey  Hash键
      * @param value 值
      */
-    public <T> void setCacheMapValue(final String key, final String hKey, final T value)
-    {
+    public <T> void setCacheMapValue(final String key, final String hKey, final T value) {
         redisTemplate.opsForHash().put(key, hKey, value);
     }
 
     /**
      * 获取Hash中的数据
      *
-     * @param key Redis键
+     * @param key  Redis键
      * @param hKey Hash键
      * @return Hash中的对象
      */
-    public <T> T getCacheMapValue(final String key, final String hKey)
-    {
+    public <T> T getCacheMapValue(final String key, final String hKey) {
         HashOperations<Object, Object, Object> opsForHash = redisTemplate.opsForHash();
         return (T) opsForHash.get(key, hKey);
     }
@@ -254,24 +235,22 @@ public class RedisCache
     /**
      * 获取多个Hash中的数据
      *
-     * @param key Redis键
+     * @param key   Redis键
      * @param hKeys Hash键集合
      * @return Hash对象集合
      */
-    public <T> List<T> getMultiCacheMapValue(final String key, final Collection<Object> hKeys)
-    {
+    public <T> List<T> getMultiCacheMapValue(final String key, final Collection<Object> hKeys) {
         return (List<T>) redisTemplate.opsForHash().multiGet(key, hKeys);
     }
 
     /**
      * 删除Hash中的某条数据
      *
-     * @param key Redis键
+     * @param key  Redis键
      * @param hKey Hash键
      * @return 是否成功
      */
-    public boolean deleteCacheMapValue(final String key, final String hKey)
-    {
+    public boolean deleteCacheMapValue(final String key, final String hKey) {
         return redisTemplate.opsForHash().delete(key, hKey) > 0;
     }
 
@@ -293,6 +272,11 @@ public class RedisCache
     private static final int UNLINK_BATCH_SIZE = 500;
 
     /**
+     * MGET 分批大小：单条 MGET 一次取太多键同样是大命令，500 个一批兼顾往返次数与单包大小。
+     */
+    private static final int MGET_BATCH_SIZE = 500;
+
+    /**
      * 按 pattern 列出所有匹配的键。
      * <p>
      * 实现已从旧的 {@code KEYS pattern}（O(N) 且会阻塞 Redis 主线程，海量 key 场景下
@@ -302,26 +286,19 @@ public class RedisCache
      * @param pattern glob 风格匹配串，例如 {@code "login_tokens:*"}
      * @return 命中的键集合（已去重）
      */
-    public Set<String> keys(final String pattern)
-    {
-        return redisTemplate.execute((RedisCallback<Set<String>>) connection ->
-        {
+    public Set<String> keys(final String pattern) {
+        return redisTemplate.execute((RedisCallback<Set<String>>) connection -> {
             Set<String> keys = new HashSet<>();
             ScanOptions options = ScanOptions.scanOptions().match(pattern).count(SCAN_BATCH_SIZE).build();
             Cursor<byte[]> cursor = connection.keyCommands().scan(options);
-            try
-            {
-                while (cursor.hasNext())
-                {
+            try {
+                while (cursor.hasNext()) {
                     keys.add(new String(cursor.next(), StandardCharsets.UTF_8));
-                    if (keys.size() >= SCAN_HARD_CAP)
-                    {
+                    if (keys.size() >= SCAN_HARD_CAP) {
                         break;
                     }
                 }
-            }
-            finally
-            {
+            } finally {
                 closeQuietly(cursor);
             }
             return keys;
@@ -330,14 +307,82 @@ public class RedisCache
 
     /**
      * 按 pattern 扫描并分批 UNLINK（SCAN 保证查询非阻塞 + UNLINK 把内存回收交给 Redis 后台线程）。
-     * 相比旧的 “keys + DEL” 两步，对 Redis 主线程和网络单包都更友好。
+     * <p>
+     * 流式处理：SCAN 每攒满 {@value #UNLINK_BATCH_SIZE} 个键就立刻在这一条连接上 UNLINK，
+     * 不再像旧实现那样先把全部键攒进 JVM 堆再删——内存恒定，也没有
+     * {@value #SCAN_HARD_CAP} 的截断问题（键再多也能清干净）。
      *
      * @param pattern glob 匹配串
      * @return 实际删除的键数量
      */
-    public long deleteKeysByPattern(final String pattern)
-    {
-        return unlinkObjects(keys(pattern));
+    public long deleteKeysByPattern(final String pattern) {
+        Long removed = redisTemplate.execute((RedisCallback<Long>) connection -> {
+            ScanOptions options = ScanOptions.scanOptions().match(pattern).count(SCAN_BATCH_SIZE).build();
+            long total = 0L;
+            List<byte[]> batch = new ArrayList<>(UNLINK_BATCH_SIZE);
+            // 复用回调里的这条连接直接 UNLINK，避免再去连接池借连接（大库扫描时借不到会卡死）
+            Cursor<byte[]> cursor = connection.keyCommands().scan(options);
+            try {
+                while (cursor.hasNext()) {
+                    batch.add(cursor.next());
+                    if (batch.size() >= UNLINK_BATCH_SIZE) {
+                        total += nullToZero(connection.keyCommands().unlink(batch.toArray(new byte[0][])));
+                        batch.clear();
+                    }
+                }
+                if (!batch.isEmpty()) {
+                    total += nullToZero(connection.keyCommands().unlink(batch.toArray(new byte[0][])));
+                }
+            } finally {
+                closeQuietly(cursor);
+            }
+            return total;
+        });
+        return removed == null ? 0L : removed;
+    }
+
+    /**
+     * 批量获取缓存对象（MGET 分批）
+     * <p>
+     * 替代"先 SCAN 出 N 个 key、再逐个 GET"的 N+1 往返：在线用户几千时，一次列表查询
+     * 就是几千次 RTT，接口慢且连接池吃紧。MGET 一次取 {@value #MGET_BATCH_SIZE} 个，
+     * 往返数降到 N/500。
+     * <p>
+     * 返回顺序与入参的迭代顺序一致；MGET 对已过期或不存在的键返回 null，这里直接剔除，
+     * 调用方拿到的都是有效值。
+     *
+     * @param keys 缓存键集合
+     * @return 对应的缓存值（已去除 null），顺序与入参一致
+     */
+    public <T> List<T> multiGetObject(final Collection<String> keys) {
+        List<T> values = new ArrayList<>();
+        if (keys == null || keys.isEmpty()) {
+            return values;
+        }
+        List<Object> batch = new ArrayList<>(MGET_BATCH_SIZE);
+        for (String key : keys) {
+            batch.add(key);
+            if (batch.size() >= MGET_BATCH_SIZE) {
+                collectNonNull(values, redisTemplate.opsForValue().multiGet(batch));
+                batch.clear();
+            }
+        }
+        if (!batch.isEmpty()) {
+            collectNonNull(values, redisTemplate.opsForValue().multiGet(batch));
+        }
+        return values;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> void collectNonNull(List<T> values, List<Object> batchValues) {
+        if (batchValues == null) {
+            return;
+        }
+        for (Object value : batchValues) {
+            if (value != null) {
+                values.add((T) value);
+            }
+        }
     }
 
     /**
@@ -346,47 +391,36 @@ public class RedisCache
      * DEL 同步行释内存，大 value / 大集合时容易拖主线程；UNLINK 只从 keyspace 摘除，
      * 实际回收交给 Redis 后台 IO 线程。本方法不区分 key 存在与否，返回实际删除数。
      */
-    public long unlinkObjects(final Collection<?> collection)
-    {
-        if (collection == null || collection.isEmpty())
-        {
+    public long unlinkObjects(final Collection<?> collection) {
+        if (collection == null || collection.isEmpty()) {
             return 0L;
         }
         long total = 0L;
         List<Object> batch = new ArrayList<>(UNLINK_BATCH_SIZE);
-        for (Object k : collection)
-        {
+        for (Object k : collection) {
             batch.add(k);
-            if (batch.size() >= UNLINK_BATCH_SIZE)
-            {
+            if (batch.size() >= UNLINK_BATCH_SIZE) {
                 total += nullToZero(redisTemplate.unlink(batch));
                 batch.clear();
             }
         }
-        if (!batch.isEmpty())
-        {
+        if (!batch.isEmpty()) {
             total += nullToZero(redisTemplate.unlink(batch));
         }
         return total;
     }
 
-    private static long nullToZero(Long n)
-    {
+    private static long nullToZero(Long n) {
         return n == null ? 0L : n;
     }
 
-    private static void closeQuietly(Closeable c)
-    {
-        if (c == null)
-        {
+    private static void closeQuietly(Closeable c) {
+        if (c == null) {
             return;
         }
-        try
-        {
+        try {
             c.close();
-        }
-        catch (Exception ignore)
-        {
+        } catch (Exception ignore) {
             // Cursor 关闭失败无功能影响，吞掉以免污染 Redis 调用栈
         }
     }

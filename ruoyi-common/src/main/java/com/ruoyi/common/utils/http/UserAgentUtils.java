@@ -180,7 +180,13 @@ public class UserAgentUtils {
         if (StringUtils.isEmpty(fullVersion)) {
             return StringUtils.EMPTY;
         }
-        String first = fullVersion.split("[._]")[0];
+        // 只需首段：取首个 "." 或 "_" 之前的子串，避免 split() 每次分配整个数组。
+        int idx = fullVersion.indexOf('_');
+        int dot = fullVersion.indexOf('.');
+        if (dot >= 0 && (idx < 0 || dot < idx)) {
+            idx = dot;
+        }
+        String first = idx >= 0 ? fullVersion.substring(0, idx) : fullVersion;
         return first.matches("\\d+") ? first : fullVersion;
     }
 

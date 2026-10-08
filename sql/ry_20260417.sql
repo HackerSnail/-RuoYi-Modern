@@ -221,6 +221,8 @@ insert into sys_menu values('1026', '字典新增', '105', '2', '#', '', '', '',
 insert into sys_menu values('1027', '字典修改', '105', '3', '#', '', '', '', 1, 0, 'F', '0', '0', 'system:dict:edit',           '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('1028', '字典删除', '105', '4', '#', '', '', '', 1, 0, 'F', '0', '0', 'system:dict:remove',         '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('1029', '字典导出', '105', '5', '#', '', '', '', 1, 0, 'F', '0', '0', 'system:dict:export',         '#', 'admin', sysdate(), '', null, '');
+-- 刷新缓存：与删除拆分，避免"只需刷新的运维角色"顺带拿到删除权限
+insert into sys_menu values('1062', '刷新缓存', '105', '6', '#', '', '', '', 1, 0, 'F', '0', '0', 'system:dict:refresh',        '#', 'admin', sysdate(), '', null, '');
 -- 参数设置按钮
 insert into sys_menu values('1030', '参数查询', '106', '1', '#', '', '', '', 1, 0, 'F', '0', '0', 'system:config:query',        '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('1031', '参数新增', '106', '2', '#', '', '', '', 1, 0, 'F', '0', '0', 'system:config:add',          '#', 'admin', sysdate(), '', null, '');
@@ -379,6 +381,7 @@ insert into sys_role_menu values ('2', '1058');
 insert into sys_role_menu values ('2', '1059');
 insert into sys_role_menu values ('2', '1060');
 insert into sys_role_menu values ('2', '1061');
+insert into sys_role_menu values ('2', '1062');
 
 -- ----------------------------
 -- 8、角色和部门关联表  角色1-N部门

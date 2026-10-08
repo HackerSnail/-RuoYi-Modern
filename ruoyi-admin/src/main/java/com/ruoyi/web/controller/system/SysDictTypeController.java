@@ -108,8 +108,12 @@ public class SysDictTypeController extends BaseController {
 
     /**
      * 刷新字典缓存
+     * <p>
+     * 刷新只重建缓存、不改动数据，是高频运维操作；删除是不可恢复的高危操作。
+     * 二者共用 system:dict:remove 会让"只需刷新的运维角色"顺带拿到删除权限，
+     * 因此拆出独立的 system:dict:refresh（需配套 sys_menu 按钮权限与角色授权）。
      */
-    @PreAuthorize("@ss.hasPermi('system:dict:remove')")
+    @PreAuthorize("@ss.hasPermi('system:dict:refresh')")
     @Log(title = "字典类型", businessType = BusinessType.CLEAN)
     @DeleteMapping("/refreshCache")
     public AjaxResult refreshCache() {

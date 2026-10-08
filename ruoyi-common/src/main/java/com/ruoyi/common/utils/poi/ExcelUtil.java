@@ -91,6 +91,10 @@ import com.ruoyi.common.utils.reflect.ReflectUtils;
 /**
  * Excel相关处理
  * 
+ * 线程安全：本实例持有大量可变状态（sysDictMap/cellStyleCache/styles/sheet/rownum/statistics 等），
+ * 非线程安全，必须每个请求 new 一个新实例，禁止跨请求共享或复用同一 ExcelUtil。
+ * （多 Sheet 导出中若干 ExcelUtil 共享同一个 Workbook 属单线程顺序写入，安全。）
+ * 
  * @author ruoyi
  */
 public class ExcelUtil<T> {
@@ -105,7 +109,7 @@ public class ExcelUtil<T> {
     /**
      * 用于dictType属性数据存储，避免重复查缓存
      */
-    public Map<String, String> sysDictMap = new HashMap<>();
+    private Map<String, String> sysDictMap = new HashMap<>();
 
     /**
      * 单元格样式缓存
@@ -360,6 +364,19 @@ public class ExcelUtil<T> {
     public List<T> importExcel(String sheetName, InputStream is, int titleNum) throws Exception {
         this.type = Type.IMPORT;
         this.wb = WorkbookFactory.create(is);
+        // Workbook 持有底层包句柄，须显式关闭；异常路径由 finally 兜底，故解析主体拆到 readSheetToList
+        try {
+            return readSheetToList(sheetName, titleNum);
+        } finally {
+            IOUtils.closeQuietly(this.wb);
+        }
+    }
+
+    /**
+     * 解析已打开的 this.wb 中指定 sheet 到实体列表。由 importExcel 在 try/finally 中调用，
+     * 确保 Workbook 无论正常返回还是抛异常都会被关闭。
+     */
+    private List<T> readSheetToList(String sheetName, int titleNum) throws Exception {
         List<T> list = new ArrayList<>();
         // 如果指定sheet名,则取指定sheet中的内容 否则默认指向第1个sheet
         Sheet sheet = StringUtils.isNotEmpty(sheetName) ? wb.getSheet(sheetName) : wb.getSheetAt(0);
@@ -1004,6 +1021,18 @@ public class ExcelUtil<T> {
     }
 
     /**
+     * 公式/CSV 注入转义：任何以 = - + @ 触发的字符串前面加 tab，防止 Excel 当公式执行。
+     * 从 setCellVo 抽出，供所有直接写字符串的导出分支（日期/转换器/字典/handler）统一复用，
+     * 避免将来用户自由文本接入这些路径时重复踩坑。
+     */
+    private String escapeFormulaCell(String cellValue) {
+        if (StringUtils.startsWithAny(cellValue, FORMULA_STR)) {
+            return RegExUtils.replaceFirst(cellValue, FORMULA_REGEX_STR, "\t$0");
+        }
+        return cellValue;
+    }
+
+    /**
      * 设置单元格信息
      * 
      * @param value 单元格值
@@ -1012,11 +1041,7 @@ public class ExcelUtil<T> {
      */
     public void setCellVo(Object value, Excel attr, Cell cell) {
         if (ColumnType.STRING == attr.cellType() || ColumnType.TEXT == attr.cellType()) {
-            String cellValue = Convert.toStr(value);
-            // 对于任何以表达式触发字符 =-+@开头的单元格，直接使用tab字符作为前缀，防止CSV注入。
-            if (StringUtils.startsWithAny(cellValue, FORMULA_STR)) {
-                cellValue = RegExUtils.replaceFirst(cellValue, FORMULA_REGEX_STR, "\t$0");
-            }
+            String cellValue = escapeFormulaCell(Convert.toStr(value));
             if (value instanceof Collection && StringUtils.equals("[]", cellValue)) {
                 cellValue = StringUtils.EMPTY;
             }
@@ -1129,19 +1154,19 @@ public class ExcelUtil<T> {
                 String dictType = attr.dictType();
                 if (StringUtils.isNotEmpty(dateFormat) && StringUtils.isNotNull(value)) {
                     cell.setCellStyle(createCellStyle(cell.getCellStyle(), dateFormat));
-                    cell.setCellValue(parseDateToStr(dateFormat, value));
+                    cell.setCellValue(escapeFormulaCell(parseDateToStr(dateFormat, value)));
                 } else if (StringUtils.isNotEmpty(readConverterExp) && StringUtils.isNotNull(value)) {
-                    cell.setCellValue(convertByExp(Convert.toStr(value), readConverterExp, separator));
+                    cell.setCellValue(escapeFormulaCell(convertByExp(Convert.toStr(value), readConverterExp, separator)));
                 } else if (StringUtils.isNotEmpty(dictType) && StringUtils.isNotNull(value)) {
                     if (!sysDictMap.containsKey(dictType + value)) {
                         String lable = convertDictByExp(Convert.toStr(value), dictType, separator);
                         sysDictMap.put(dictType + value, lable);
                     }
-                    cell.setCellValue(sysDictMap.get(dictType + value));
+                    cell.setCellValue(escapeFormulaCell(sysDictMap.get(dictType + value)));
                 } else if (value instanceof BigDecimal && -1 != attr.scale()) {
                     cell.setCellValue((((BigDecimal) value).setScale(attr.scale(), attr.roundingMode())).doubleValue());
                 } else if (!attr.handler().equals(ExcelHandlerAdapter.class)) {
-                    cell.setCellValue(dataFormatHandlerAdapter(value, attr, cell));
+                    cell.setCellValue(escapeFormulaCell(dataFormatHandlerAdapter(value, attr, cell)));
                 } else {
                     // 设置列类型
                     setCellVo(value, attr, cell);
@@ -1408,10 +1433,32 @@ public class ExcelUtil<T> {
     }
 
     /**
-     * 编码文件名
+     * 编码文件名：UUID_净化后词干.xlsx。对传入名做文件名级净化，剥离目录成分与 ..，
+     * 防止含路径分隔的原始名（如来自前端的 sheetName）拼进下载目录后写到目录之外。
      */
     public String encodingFilename(String filename) {
-        return UUID.randomUUID() + "_" + filename + ".xlsx";
+        return UUID.randomUUID() + "_" + sanitizeFilename(filename) + ".xlsx";
+    }
+
+    /**
+     * 文件名净化（非 sheet 名，故不做 31 长度截断）：只保留最后一段词干，去掉上跳、null 字节、
+     * 控制字符及 Windows 非法文件名字符 &lt; &gt; " | :，避免路径穿越与非法文件名。
+     */
+    private String sanitizeFilename(String raw) {
+        if (StringUtils.isEmpty(raw)) {
+            return "";
+        }
+        // 去掉任何目录成分：统一分隔符后取最后一段
+        String name = raw.replace('\\', '/');
+        int slash = name.lastIndexOf('/');
+        if (slash >= 0) {
+            name = name.substring(slash + 1);
+        }
+        // 去上跳与 null 字节
+        name = name.replace("..", "").replace("\0", "");
+        // 去控制字符(<0x20)与 Windows 非法文件名字符 < > " | :
+        name = name.replaceAll("[\\x00-\\x1F<>\"|:]", "");
+        return name;
     }
 
     /**
@@ -1420,8 +1467,18 @@ public class ExcelUtil<T> {
      * @param filename 文件名称
      */
     public String getAbsoluteFile(String filename) {
-        String downloadPath = RuoYiConfig.getDownloadPath() + filename;
+        String downloadDir = RuoYiConfig.getDownloadPath();
+        String downloadPath = downloadDir + filename;
         File desc = new File(downloadPath);
+        // 落盘锚定：规范化后的目标必须仍位于下载目录内，兜住 sanitizeFilename 之外的一切逃逸写法
+        try {
+            String base = new File(downloadDir).getCanonicalPath();
+            if (!desc.getCanonicalPath().startsWith(base + File.separator)) {
+                throw new ServiceException("非法文件路径: " + filename);
+            }
+        } catch (IOException e) {
+            throw new ServiceException("文件路径校验失败: " + filename);
+        }
         if (!desc.getParentFile().exists()) {
             desc.getParentFile().mkdirs();
         }

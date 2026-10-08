@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
@@ -27,6 +28,12 @@ import com.ruoyi.system.service.ISysLogininforService;
 @RestController
 @RequestMapping("/monitor/logininfor")
 public class SysLogininforController extends BaseController {
+    /**
+     * 清空登录日志的二次确认口令：与操作日志同理——清空和批量删除共用 remove 权限，
+     * 但清空是全表删除且不可恢复，必须在服务端再校验一次确认口令。
+     */
+    private static final String CLEAN_CONFIRM_TOKEN = "CLEAN_ALL_LOGININFOR";
+
     private final ISysLogininforService logininforService;
 
     private final SysPasswordService passwordService;
@@ -54,7 +61,7 @@ public class SysLogininforController extends BaseController {
     @PreAuthorize("@ss.hasPermi('monitor:logininfor:export')")
     @PostMapping("/export")
     public void export(HttpServletResponse response, SysLogininfor logininfor) {
-        List<SysLogininfor> list = logininforService.selectLogininforList(logininfor);
+        List<SysLogininfor> list = exportLimit(() -> logininforService.selectLogininforList(logininfor));
         ExcelUtil<SysLogininfor> util = new ExcelUtil<>(SysLogininfor.class);
         util.exportExcel(response, list, "登录日志");
     }
@@ -70,14 +77,21 @@ public class SysLogininforController extends BaseController {
     }
 
     /**
-     * 清空登录日志
+     * 清空登录日志（高危，全表删除且不可恢复）
+     *
+     * @param confirm 前端二次确认口令，必须等于 {@value #CLEAN_CONFIRM_TOKEN}，否则直接拒绝
      */
     @PreAuthorize("@ss.hasPermi('monitor:logininfor:remove')")
     @Log(title = "登录日志", businessType = BusinessType.CLEAN)
     @DeleteMapping("/clean")
-    public AjaxResult clean() {
-        logininforService.cleanLogininfor();
-        return success();
+    public AjaxResult clean(@RequestParam(name = "confirm", required = false, defaultValue = "") String confirm) {
+        if (!CLEAN_CONFIRM_TOKEN.equals(confirm)) {
+            return AjaxResult.error("清空登录日志需要二次确认，已拒绝执行");
+        }
+        int rows = logininforService.cleanLogininfor();
+        // 同操作日志：条数随 msg 进入 @Log 记录的 jsonResult，便于审计
+        logger.warn("【高危】用户[{}]清空了全部登录日志，共 {} 条", getUsername(), rows);
+        return success("已清空 " + rows + " 条登录日志");
     }
 
     /**

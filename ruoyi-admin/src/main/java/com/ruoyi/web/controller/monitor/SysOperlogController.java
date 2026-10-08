@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
@@ -26,6 +27,15 @@ import com.ruoyi.system.service.ISysOperLogService;
 @RestController
 @RequestMapping("/monitor/operlog")
 public class SysOperlogController extends BaseController {
+    /**
+     * 清空操作日志的二次确认口令：前端弹窗要求用户确认后随请求回传，后端强校验后才执行。
+     * <p>
+     * 清空与批量删除共用 monitor:operlog:remove 权限（若依默认设计），但风险不对等：
+     * 批量删除只影响勾选的若干条，清空是全表删除且不可恢复。只靠前端弹窗拦不住
+     * 脚本误调、请求重试、抓包重放，所以服务端必须再校验一次。
+     */
+    private static final String CLEAN_CONFIRM_TOKEN = "CLEAN_ALL_OPERLOG";
+
     private final ISysOperLogService operLogService;
 
     public SysOperlogController(ISysOperLogService operLogService) {
@@ -50,7 +60,7 @@ public class SysOperlogController extends BaseController {
     @PreAuthorize("@ss.hasPermi('monitor:operlog:export')")
     @PostMapping("/export")
     public void export(HttpServletResponse response, SysOperLog operLog) {
-        List<SysOperLog> list = operLogService.selectOperLogList(operLog);
+        List<SysOperLog> list = exportLimit(() -> operLogService.selectOperLogList(operLog));
         ExcelUtil<SysOperLog> util = new ExcelUtil<>(SysOperLog.class);
         util.exportExcel(response, list, "操作日志");
     }
@@ -66,13 +76,21 @@ public class SysOperlogController extends BaseController {
     }
 
     /**
-     * 清空操作日志
+     * 清空操作日志（高危，全表删除且不可恢复）
+     *
+     * @param confirm 前端二次确认口令，必须等于 {@value #CLEAN_CONFIRM_TOKEN}，否则直接拒绝
      */
     @Log(title = "操作日志", businessType = BusinessType.CLEAN)
     @PreAuthorize("@ss.hasPermi('monitor:operlog:remove')")
     @DeleteMapping("/clean")
-    public AjaxResult clean() {
-        operLogService.cleanOperLog();
-        return success();
+    public AjaxResult clean(@RequestParam(name = "confirm", required = false, defaultValue = "") String confirm) {
+        if (!CLEAN_CONFIRM_TOKEN.equals(confirm)) {
+            return AjaxResult.error("清空操作日志需要二次确认，已拒绝执行");
+        }
+        int rows = operLogService.cleanOperLog();
+        // @Log(BusinessType.CLEAN) 会把返回的 AjaxResult 记入 sys_oper_log，
+        // 把条数放进 msg，审计时"谁在什么时候清空了多少条"三个要素就齐了
+        logger.warn("【高危】用户[{}]清空了全部操作日志，共 {} 条", getUsername(), rows);
+        return success("已清空 " + rows + " 条操作日志");
     }
 }

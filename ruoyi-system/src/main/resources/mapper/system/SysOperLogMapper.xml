@@ -70,6 +70,16 @@
 	<select id="selectOperLogById" parameterType="Long" resultMap="SysOperLogResult">
 		<include refid="selectOperLogVo" /> where oper_id = #{operId} </select>
 
+	<!-- 清空前统计行数：truncate 属于 DDL 式操作、不返回影响行数，
+		 只能先 count 才能把“清了多少条”记进操作日志备查 -->
+	<select id="countOperLog" resultType="java.lang.Integer"> select count(*) from sys_oper_log </select>
+
+	<!-- 按过期时间分批删除（定期清理任务用）：命中 idx_sys_oper_log_ot 索引，
+		 单批限 5000 条，避免长事务与主从延迟 -->
+	<delete id="deleteOperLogBefore">
+		delete from sys_oper_log where oper_time &lt; #{expireTime} limit #{limit}
+	</delete>
+
 	<!-- 清空所有操作日志（truncate，重置自增ID，系统监控页“清空”按钮用） -->
 	<update id="cleanOperLog"> truncate table sys_oper_log </update>
 

@@ -54,9 +54,14 @@ public class SysLogininforServiceImpl implements ISysLogininforService {
 
     /**
      * 清空系统登录日志
+     * <p>
+     * truncate 不返回影响行数，所以先 count 再清，把行数返回给调用方写进操作日志，
+     * 事后才能回答"谁在什么时候清空了多少条"。
      */
     @Override
-    public void cleanLogininfor() {
+    public int cleanLogininfor() {
+        int count = logininforMapper.countLogininfor();
         logininforMapper.cleanLogininfor();
+        return count;
     }
 }

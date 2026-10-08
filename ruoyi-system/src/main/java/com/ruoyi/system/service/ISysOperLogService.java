@@ -43,6 +43,16 @@ public interface ISysOperLogService
 
     /**
      * 清空操作日志
+     * 
+     * @return 清空前的日志行数，供操作日志/审计记录使用
      */
-    public void cleanOperLog();
+    public int cleanOperLog();
+
+    /**
+     * 按保留天数清理过期操作日志（分批删除，供定时任务调用）
+     * 
+     * @param retentionDays 保留天数，早于 (当前时间 - retentionDays) 的记录会被删除
+     * @return 本次实际删除的总条数
+     */
+    public int cleanOperLogBefore(int retentionDays);
 }

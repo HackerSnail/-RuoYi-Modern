@@ -35,6 +35,8 @@ public interface ISysLogininforService
 
     /**
      * 清空系统登录日志
+     * 
+     * @return 清空前的日志行数，供操作日志/审计记录使用
      */
-    public void cleanLogininfor();
+    public int cleanLogininfor();
 }

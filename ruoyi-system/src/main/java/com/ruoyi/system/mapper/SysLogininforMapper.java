@@ -34,6 +34,13 @@ public interface SysLogininforMapper
     public int deleteLogininforByIds(Long[] infoIds);
 
     /**
+     * 统计登录日志总行数（清空前调用，用于审计）
+     * 
+     * @return 当前行数
+     */
+    public int countLogininfor();
+
+    /**
      * 清空系统登录日志
      * 
      * @return 结果

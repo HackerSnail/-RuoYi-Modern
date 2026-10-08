@@ -43,6 +43,9 @@
 		#{infoId} </foreach>
 	</delete>
 
+	<!-- 清空前统计行数：truncate 不返回影响行数，先 count 才能把“清了多少条”记进操作日志备查 -->
+	<select id="countLogininfor" resultType="java.lang.Integer"> select count(*) from sys_logininfor </select>
+
 	<!-- 清空所有登录日志（truncate，重置自增ID，系统监控页“清空”按钮用） -->
 	<update id="cleanLogininfor"> truncate table sys_logininfor </update>
 

@@ -103,4 +103,40 @@ public interface SysRoleMapper {
      * @return 结果
      */
     public int deleteRoleByIds(Long[] roleIds);
+
+    /**
+     * 查询回收站（软删除）角色列表
+     * <p>
+     * 仅取 del_flag='2' 的记录，复用列表可选过滤条件与数据范围，供回收站分页展示
+     *
+     * @param role 过滤条件
+     * @return 已删除角色集合
+     */
+    public List<SysRole> selectDeletedRoleList(SysRole role);
+
+    /**
+     * 按主键查询回收站中的角色（仅 del_flag='2'），供恢复前取 role_key/role_name 做冲突校验
+     *
+     * @param roleId 角色ID
+     * @return 回收站中的角色对象，不存在则 null
+     */
+    public SysRole selectDeletedRoleById(Long roleId);
+
+    /**
+     * 恢复单个软删除角色（del_flag 由 '2' 翻回 '0'），WHERE 带 del_flag='2' 前置，幂等防误翻
+     *
+     * @param roleId 角色ID
+     * @return 影响行数
+     */
+    public int restoreRoleById(Long roleId);
+
+    /**
+     * 物理删除单个角色（回收站彻底删除，不可逆）
+     * <p>
+     * 关联 sys_role_menu/sys_role_dept 已在软删时清空，此处仅删主表行
+     *
+     * @param roleId 角色ID
+     * @return 影响行数
+     */
+    public int deleteRoleByIdPhysically(Long roleId);
 }

@@ -157,4 +157,24 @@
 	<delete id="deleteDeptById" parameterType="Long"> update sys_dept set del_flag = '2' where
 		dept_id = #{deptId} </delete>
 
+	<!-- 回收站：分页查询已软删除部门列表，镜像 selectDeptList 的可选过滤+数据范围+排序，仅将 del_flag 条件由 '0' 改为 '2' -->
+	<select id="selectDeletedDeptList" parameterType="SysDept" resultMap="SysDeptResult">
+		<include refid="selectDeptVo" /> where d.del_flag = '2' <if test="deptId != null and deptId != 0"> AND dept_id = #{deptId} </if>
+		<if test="parentId != null and parentId != 0"> AND parent_id = #{parentId} </if>
+		<if test="deptName != null and deptName != ''"> AND dept_name like concat('%', #{deptName}, '%') </if>
+		<if test="status != null and status != ''"> AND status = #{status} </if>
+		<!-- 数据范围过滤 --> ${params.dataScope} order by d.parent_id, d.order_num </select>
+
+	<!-- 回收站：按主键取软删除部门，限定 del_flag='2'，供恢复前取 parent_id/dept_name 做冲突与悬空校验 -->
+	<select id="selectDeletedDeptById" parameterType="Long" resultMap="SysDeptResult">
+		<include refid="selectDeptVo" /> where d.dept_id = #{deptId} and d.del_flag = '2' </select>
+
+	<!-- 回收站：恢复单个软删除部门，del_flag 由 '2' 翻回 '0'；WHERE 带 del_flag='2' 前置，幂等且不误翻活跃记录 -->
+	<update id="restoreDeptById" parameterType="Long"> update sys_dept set del_flag = '0' where
+		dept_id = #{deptId} and del_flag = '2' </update>
+
+	<!-- 回收站：彻底删除（真·物理 DELETE）单个部门，不可逆；部门无关联表 -->
+	<delete id="deleteDeptByIdPhysically" parameterType="Long"> delete from sys_dept where dept_id
+		= #{deptId} </delete>
+
 </mapper>

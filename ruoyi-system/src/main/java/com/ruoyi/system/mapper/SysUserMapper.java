@@ -143,4 +143,44 @@ public interface SysUserMapper {
      * @return 结果
      */
     public SysUser checkEmailUnique(String email);
+
+    /**
+     * 查询回收站（软删除）用户列表
+     * <p>
+     * 仅取 del_flag='2' 的记录，复用列表可选过滤条件与数据范围（${params.dataScope}），供回收站分页展示
+     *
+     * @param sysUser 过滤条件
+     * @return 已删除用户集合
+     */
+    public List<SysUser> selectDeletedUserList(SysUser sysUser);
+
+    /**
+     * 按主键查询回收站中的用户（仅 del_flag='2'）
+     * <p>
+     * 供恢复前取原始 user_name/dept_id 等字段做身份冲突与悬空引用校验
+     *
+     * @param userId 用户ID
+     * @return 回收站中的用户对象，不存在则 null
+     */
+    public SysUser selectDeletedUserById(Long userId);
+
+    /**
+     * 恢复单个软删除用户（del_flag 由 '2' 翻回 '0'）
+     * <p>
+     * WHERE 带 del_flag='2' 前置条件，保证幂等且不会误翻活跃记录
+     *
+     * @param userId 用户ID
+     * @return 影响行数（1 恢复成功，0 表示该 id 不在回收站）
+     */
+    public int restoreUserById(Long userId);
+
+    /**
+     * 物理删除单个用户（回收站彻底删除，不可逆）
+     * <p>
+     * 关联 sys_user_role/sys_user_post 已在软删时清空，此处仅删主表行
+     *
+     * @param userId 用户ID
+     * @return 影响行数
+     */
+    public int deleteUserByIdPhysically(Long userId);
 }

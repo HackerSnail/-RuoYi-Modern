@@ -129,4 +129,38 @@ public interface SysDeptMapper {
      * @return 结果
      */
     public int deleteDeptById(Long deptId);
+
+    /**
+     * 查询回收站（软删除）部门列表
+     * <p>
+     * 仅取 del_flag='2' 的记录，复用列表可选过滤条件与数据范围，供回收站分页展示
+     *
+     * @param dept 过滤条件
+     * @return 已删除部门集合
+     */
+    public List<SysDept> selectDeletedDeptList(SysDept dept);
+
+    /**
+     * 按主键查询回收站中的部门（仅 del_flag='2'），供恢复前取 parent_id/dept_name 做冲突与悬空校验
+     *
+     * @param deptId 部门ID
+     * @return 回收站中的部门对象，不存在则 null
+     */
+    public SysDept selectDeletedDeptById(Long deptId);
+
+    /**
+     * 恢复单个软删除部门（del_flag 由 '2' 翻回 '0'），WHERE 带 del_flag='2' 前置，幂等防误翻
+     *
+     * @param deptId 部门ID
+     * @return 影响行数
+     */
+    public int restoreDeptById(Long deptId);
+
+    /**
+     * 物理删除单个部门（回收站彻底删除，不可逆；部门无关联表）
+     *
+     * @param deptId 部门ID
+     * @return 影响行数
+     */
+    public int deleteDeptByIdPhysically(Long deptId);
 }

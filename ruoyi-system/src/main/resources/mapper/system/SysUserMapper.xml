@@ -230,4 +230,30 @@
 		#{userId} </foreach>
 	</delete>
 
+	<!-- 回收站：分页查询已软删除用户列表，镜像 selectUserList 的可选过滤+数据范围，仅将 del_flag 条件由 '0' 改为 '2' -->
+	<select id="selectDeletedUserList" parameterType="SysUser" resultMap="SysUserResult"> select
+		u.user_id, u.dept_id, u.nick_name, u.user_name, u.email, u.avatar, u.phonenumber, u.sex,
+		u.status, u.del_flag, u.login_ip, u.login_date, u.create_by, u.create_time, u.remark,
+		d.dept_name, d.leader from sys_user u left join sys_dept d on u.dept_id = d.dept_id where
+		u.del_flag = '2' <if test="userId != null and userId != 0"> AND u.user_id = #{userId} </if>
+		<if test="userName != null and userName != ''"> AND u.user_name like concat('%', #{userName}, '%') </if>
+		<if test="status != null and status != ''"> AND u.status = #{status} </if>
+		<if test="phonenumber != null and phonenumber != ''"> AND u.phonenumber like concat('%', #{phonenumber}, '%') </if>
+		<if test="params.beginTime != null and params.beginTime != ''"><!-- 开始时间检索 --> AND date_format(u.create_time,'%Y%m%d') &gt;= date_format(#{params.beginTime},'%Y%m%d') </if>
+		<if test="params.endTime != null and params.endTime != ''"><!-- 结束时间检索 --> AND date_format(u.create_time,'%Y%m%d') &lt;= date_format(#{params.endTime},'%Y%m%d') </if>
+		<if test="deptId != null and deptId != 0"> AND (u.dept_id = #{deptId} OR u.dept_id IN ( SELECT t.dept_id FROM sys_dept t WHERE find_in_set(#{deptId}, ancestors) )) </if>
+		<!-- 数据范围过滤 --> ${params.dataScope} </select>
+
+	<!-- 回收站：按主键取软删除用户（含部门+角色视图），限定 del_flag='2'，供恢复前取原始 user_name/dept_id 校验 -->
+	<select id="selectDeletedUserById" parameterType="Long" resultMap="SysUserResult">
+		<include refid="selectUserVo" /> where u.user_id = #{userId} and u.del_flag = '2' </select>
+
+	<!-- 回收站：恢复单个软删除用户，del_flag 由 '2' 翻回 '0'；WHERE 带 del_flag='2' 前置，幂等且不误翻活跃记录 -->
+	<update id="restoreUserById" parameterType="Long"> update sys_user set del_flag = '0' where
+		user_id = #{userId} and del_flag = '2' </update>
+
+	<!-- 回收站：彻底删除（真·物理 DELETE）单个用户，不可逆；关联已在软删时清空，仅删主表行 -->
+	<delete id="deleteUserByIdPhysically" parameterType="Long"> delete from sys_user where user_id
+		= #{userId} </delete>
+
 </mapper> 

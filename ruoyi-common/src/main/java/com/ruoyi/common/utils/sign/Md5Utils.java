@@ -3,6 +3,8 @@ package com.ruoyi.common.utils.sign;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
+import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.ruoyi.common.exception.ServiceException;
@@ -31,25 +33,19 @@ public class Md5Utils {
         }
     }
 
-    private static final String toHex(byte hash[]) {
-        if (hash == null) {
-            return null;
-        }
-        StringBuilder buf = new StringBuilder(hash.length * 2);
-        int i;
-
-        for (i = 0; i < hash.length; i++) {
-            if ((hash[i] & 0xff) < 0x10) {
-                buf.append("0");
-            }
-            buf.append(Long.toString(hash[i] & 0xff, 16));
-        }
-        return buf.toString();
-    }
-
+    /**
+     * 计算字符串的 MD5 十六进制摘要（32 位小写）。
+     * <p>
+     * 入参非空契约：s 为 null 时在此 fail-fast 抛 {@link NullPointerException}，
+     * 不静默返回、也不留给下游 getBytes 产生意外 NPE。
+     *
+     * @param s 待摘要的字符串，不得为 null
+     * @return 小写十六进制表示的 MD5 摘要
+     */
     public static String hash(String s) {
-        // toHex 产出的本就是纯 ASCII 十六进制串，无需再做 String->byte[]->String 的空转；
-        // 失败路径已在 md5() 里显式抛出，这里不再回退返回原文 s
-        return toHex(md5(s));
+        Objects.requireNonNull(s, "MD5 摘要入参不得为 null");
+        // md5() 恒返回非 null digest（失败即抛）；HexFormat 输出逐字节 2 位小写 hex，
+        // 与原手写 toHex 完全一致；失败路径已在 md5() 里显式抛出，这里不回退返回原文 s
+        return HexFormat.of().formatHex(md5(s));
     }
 }

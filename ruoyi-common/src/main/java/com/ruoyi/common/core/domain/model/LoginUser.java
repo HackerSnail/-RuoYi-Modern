@@ -16,8 +16,7 @@ import com.ruoyi.common.core.domain.entity.SysUser;
  * 
  * @author ruoyi
  */
-public class LoginUser implements UserDetails
-{
+public class LoginUser implements UserDetails {
     private static final long serialVersionUID = 1L;
 
     /**
@@ -75,64 +74,53 @@ public class LoginUser implements UserDetails
      */
     private SysUser user;
 
-    public LoginUser()
-    {
+    public LoginUser() {
     }
 
-    public LoginUser(SysUser user, Set<String> permissions)
-    {
+    public LoginUser(SysUser user, Set<String> permissions) {
         this.user = user;
         this.permissions = permissions;
     }
 
-    public LoginUser(Long userId, Long deptId, SysUser user, Set<String> permissions)
-    {
+    public LoginUser(Long userId, Long deptId, SysUser user, Set<String> permissions) {
         this.userId = userId;
         this.deptId = deptId;
         this.user = user;
         this.permissions = permissions;
     }
 
-    public Long getUserId()
-    {
+    public Long getUserId() {
         return userId;
     }
 
-    public void setUserId(Long userId)
-    {
+    public void setUserId(Long userId) {
         this.userId = userId;
     }
 
-    public Long getDeptId()
-    {
+    public Long getDeptId() {
         return deptId;
     }
 
-    public void setDeptId(Long deptId)
-    {
+    public void setDeptId(Long deptId) {
         this.deptId = deptId;
     }
 
-    public String getToken()
-    {
+    public String getToken() {
         return token;
     }
 
-    public void setToken(String token)
-    {
+    public void setToken(String token) {
         this.token = token;
     }
 
     @JSONField(serialize = false)
     @Override
-    public String getPassword()
-    {
+    public String getPassword() {
         return user.getPassword();
     }
 
     @Override
-    public String getUsername()
-    {
+    public String getUsername() {
         return user.getUserName();
     }
 
@@ -141,8 +129,7 @@ public class LoginUser implements UserDetails
      */
     @JSONField(serialize = false)
     @Override
-    public boolean isAccountNonExpired()
-    {
+    public boolean isAccountNonExpired() {
         return true;
     }
 
@@ -153,8 +140,7 @@ public class LoginUser implements UserDetails
      */
     @JSONField(serialize = false)
     @Override
-    public boolean isAccountNonLocked()
-    {
+    public boolean isAccountNonLocked() {
         return true;
     }
 
@@ -165,8 +151,7 @@ public class LoginUser implements UserDetails
      */
     @JSONField(serialize = false)
     @Override
-    public boolean isCredentialsNonExpired()
-    {
+    public boolean isCredentialsNonExpired() {
         return true;
     }
 
@@ -177,97 +162,78 @@ public class LoginUser implements UserDetails
      */
     @JSONField(serialize = false)
     @Override
-    public boolean isEnabled()
-    {
+    public boolean isEnabled() {
         return true;
     }
 
-    public Long getLoginTime()
-    {
+    public Long getLoginTime() {
         return loginTime;
     }
 
-    public void setLoginTime(Long loginTime)
-    {
+    public void setLoginTime(Long loginTime) {
         this.loginTime = loginTime;
     }
 
-    public String getIpaddr()
-    {
+    public String getIpaddr() {
         return ipaddr;
     }
 
-    public void setIpaddr(String ipaddr)
-    {
+    public void setIpaddr(String ipaddr) {
         this.ipaddr = ipaddr;
     }
 
-    public String getLoginLocation()
-    {
+    public String getLoginLocation() {
         return loginLocation;
     }
 
-    public void setLoginLocation(String loginLocation)
-    {
+    public void setLoginLocation(String loginLocation) {
         this.loginLocation = loginLocation;
     }
 
-    public String getBrowser()
-    {
+    public String getBrowser() {
         return browser;
     }
 
-    public void setBrowser(String browser)
-    {
+    public void setBrowser(String browser) {
         this.browser = browser;
     }
 
-    public String getOs()
-    {
+    public String getOs() {
         return os;
     }
 
-    public void setOs(String os)
-    {
+    public void setOs(String os) {
         this.os = os;
     }
 
-    public Long getExpireTime()
-    {
+    public Long getExpireTime() {
         return expireTime;
     }
 
-    public void setExpireTime(Long expireTime)
-    {
+    public void setExpireTime(Long expireTime) {
         this.expireTime = expireTime;
     }
 
-    public Set<String> getPermissions()
-    {
+    public Set<String> getPermissions() {
         return permissions;
     }
 
-    public void setPermissions(Set<String> permissions)
-    {
+    public void setPermissions(Set<String> permissions) {
         this.permissions = permissions;
     }
 
-    public SysUser getUser()
-    {
+    public SysUser getUser() {
         return user;
     }
 
-    public void setUser(SysUser user)
-    {
+    public void setUser(SysUser user) {
         this.user = user;
     }
 
     @Override
     @JSONField(serialize = false)
-    public Collection<? extends GrantedAuthority> getAuthorities()
-    {
-        if (permissions == null || permissions.isEmpty())
-        {
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        if (permissions == null || permissions.isEmpty()) {
             return Collections.emptyList();
         }
         return permissions.stream()

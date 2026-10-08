@@ -8,8 +8,7 @@ import com.ruoyi.system.domain.SysNotice;
  * 
  * @author ruoyi
  */
-public interface SysNoticeMapper
-{
+public interface SysNoticeMapper {
     /**
      * 查询公告信息
      * 

@@ -8,8 +8,7 @@ import com.ruoyi.system.domain.SysRoleDept;
  * 
  * @author ruoyi
  */
-public interface SysRoleDeptMapper
-{
+public interface SysRoleDeptMapper {
     /**
      * 通过角色ID删除角色和部门关联
      * 

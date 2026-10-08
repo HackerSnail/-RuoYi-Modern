@@ -8,8 +8,7 @@ import com.ruoyi.system.domain.SysUserOnline;
  * 
  * @author ruoyi
  */
-public interface ISysUserOnlineService
-{
+public interface ISysUserOnlineService {
     /**
      * 通过登录地址查询信息
      * 

@@ -31,8 +31,7 @@ import com.ruoyi.system.service.ISysUserService;
  */
 @RestController
 @RequestMapping("/system/user/profile")
-public class SysProfileController extends BaseController
-{
+public class SysProfileController extends BaseController {
     private final ISysUserService userService;
 
     private final TokenService tokenService;
@@ -40,8 +39,7 @@ public class SysProfileController extends BaseController
     /** 头像上传大小上限（2MB），比全局 multipart 限制更严格，超出直接给业务文案 */
     private static final long AVATAR_MAX_SIZE = 2 * 1024 * 1024L;
 
-    public SysProfileController(ISysUserService userService, TokenService tokenService)
-    {
+    public SysProfileController(ISysUserService userService, TokenService tokenService) {
         this.userService = userService;
         this.tokenService = tokenService;
     }
@@ -50,8 +48,7 @@ public class SysProfileController extends BaseController
      * 个人信息
      */
     @GetMapping
-    public AjaxResult profile()
-    {
+    public AjaxResult profile() {
         LoginUser loginUser = getLoginUser();
         SysUser user = loginUser.getUser();
         AjaxResult ajax = AjaxResult.success(user);
@@ -65,24 +62,20 @@ public class SysProfileController extends BaseController
      */
     @Log(title = "个人信息", businessType = BusinessType.UPDATE)
     @PutMapping
-    public AjaxResult updateProfile(@RequestBody SysUser user)
-    {
+    public AjaxResult updateProfile(@RequestBody SysUser user) {
         LoginUser loginUser = getLoginUser();
         SysUser currentUser = loginUser.getUser();
         currentUser.setNickName(user.getNickName());
         currentUser.setEmail(user.getEmail());
         currentUser.setPhonenumber(user.getPhonenumber());
         currentUser.setSex(user.getSex());
-        if (StringUtils.isNotEmpty(user.getPhonenumber()) && !userService.checkPhoneUnique(currentUser))
-        {
+        if (StringUtils.isNotEmpty(user.getPhonenumber()) && !userService.checkPhoneUnique(currentUser)) {
             return error("修改用户'" + loginUser.getUsername() + "'失败，手机号码已存在");
         }
-        if (StringUtils.isNotEmpty(user.getEmail()) && !userService.checkEmailUnique(currentUser))
-        {
+        if (StringUtils.isNotEmpty(user.getEmail()) && !userService.checkEmailUnique(currentUser)) {
             return error("修改用户'" + loginUser.getUsername() + "'失败，邮箱账号已存在");
         }
-        if (userService.updateUserProfile(currentUser) > 0)
-        {
+        if (userService.updateUserProfile(currentUser) > 0) {
             // 更新缓存用户信息
             tokenService.setLoginUser(loginUser);
             return success();
@@ -95,8 +88,7 @@ public class SysProfileController extends BaseController
      */
     @Log(title = "个人信息", businessType = BusinessType.UPDATE)
     @PutMapping("/updatePwd")
-    public AjaxResult updatePwd(@RequestBody Map<String, String> params)
-    {
+    public AjaxResult updatePwd(@RequestBody Map<String, String> params) {
         String oldPassword = params.get("oldPassword");
         String newPassword = params.get("newPassword");
         LoginUser loginUser = getLoginUser();
@@ -104,17 +96,14 @@ public class SysProfileController extends BaseController
         SysUser user = userService.selectUserById(userId);
         String password = user.getPassword();
         // 先校验旧密码是否匹配（BCrypt 比对），再拦新密码与旧密码相同的情况
-        if (!SecurityUtils.matchesPassword(oldPassword, password))
-        {
+        if (!SecurityUtils.matchesPassword(oldPassword, password)) {
             return error("修改密码失败，旧密码错误");
         }
-        if (SecurityUtils.matchesPassword(newPassword, password))
-        {
+        if (SecurityUtils.matchesPassword(newPassword, password)) {
             return error("新密码不能与旧密码相同");
         }
         newPassword = SecurityUtils.encryptPassword(newPassword);
-        if (userService.resetUserPwd(userId, newPassword) > 0)
-        {
+        if (userService.resetUserPwd(userId, newPassword) > 0) {
             // 改密成功后强制下线该用户全部在线会话（含当前会话）：避免旧密码签发的 token 在改密后仍可用。
             // resetUserPwd 已在库中刷新 pwd_update_date，重登后取到的是最新改密时间；此处不再 setLoginUser 续期当前会话。
             tokenService.delLoginUsers(userId);
@@ -128,23 +117,18 @@ public class SysProfileController extends BaseController
      */
     @Log(title = "用户头像", businessType = BusinessType.UPDATE)
     @PostMapping("/avatar")
-    public AjaxResult avatar(@RequestParam("avatarfile") MultipartFile file) throws Exception
-    {
-        if (!file.isEmpty())
-        {
+    public AjaxResult avatar(@RequestParam("avatarfile") MultipartFile file) throws Exception {
+        if (!file.isEmpty()) {
             // 显式大小校验：全局 multipart 已限 10MB、FileUploadUtils 限 50MB，但头像应远小于此，收紧到 2MB 并给出明确文案
-            if (file.getSize() > AVATAR_MAX_SIZE)
-            {
+            if (file.getSize() > AVATAR_MAX_SIZE) {
                 return error("头像图片不能超过 2MB，请压缩后重试");
             }
             LoginUser loginUser = getLoginUser();
             String avatar = FileUploadUtils.upload(RuoYiConfig.getAvatarPath(), file, MimeTypeUtils.IMAGE_EXTENSION, true);
-            if (userService.updateUserAvatar(loginUser.getUserId(), avatar))
-            {
+            if (userService.updateUserAvatar(loginUser.getUserId(), avatar)) {
                 // 新头像保存成功后，删除磁盘上的旧头像文件，避免残留孤儿文件
                 String oldAvatar = loginUser.getUser().getAvatar();
-                if (StringUtils.isNotEmpty(oldAvatar))
-                {
+                if (StringUtils.isNotEmpty(oldAvatar)) {
                     FileUtils.deleteFile(RuoYiConfig.getProfile() + FileUtils.stripPrefix(oldAvatar));
                 }
                 AjaxResult ajax = AjaxResult.success();

@@ -11,8 +11,7 @@ import com.ruoyi.system.domain.SysNoticeRead;
  *
  * @author ruoyi
  */
-public interface SysNoticeReadMapper
-{
+public interface SysNoticeReadMapper {
     /**
      * 新增已读记录（忽略重复）
      *

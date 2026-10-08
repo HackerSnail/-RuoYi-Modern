@@ -22,8 +22,7 @@ import org.springframework.http.MediaType;
  * 
  * @author ruoyi
  */
-public class HttpUtils
-{
+public class HttpUtils {
     private static final Logger log = LoggerFactory.getLogger(HttpUtils.class);
 
     /** HTTP 请求头：Accept */
@@ -59,8 +58,7 @@ public class HttpUtils
      * @param url 发送请求的 URL
      * @return 所代表远程资源的响应结果
      */
-    public static String sendGet(String url)
-    {
+    public static String sendGet(String url) {
         return sendGet(url, StringUtils.EMPTY);
     }
 
@@ -71,8 +69,7 @@ public class HttpUtils
      * @param param 请求参数，请求参数应该是 name1=value1&name2=value2 的形式。
      * @return 所代表远程资源的响应结果
      */
-    public static String sendGet(String url, String param)
-    {
+    public static String sendGet(String url, String param) {
         return sendGet(url, param, Constants.UTF8);
     }
 
@@ -84,11 +81,9 @@ public class HttpUtils
      * @param contentType 编码类型
      * @return 所代表远程资源的响应结果
      */
-    public static String sendGet(String url, String param, String contentType)
-    {
+    public static String sendGet(String url, String param, String contentType) {
         StringBuilder result = new StringBuilder();
-        try
-        {
+        try {
             String urlNameString = StringUtils.isNotBlank(param) ? url + "?" + param : url;
             log.info("sendGet - {}", urlNameString);
             URL realUrl = new URL(urlNameString);
@@ -97,30 +92,20 @@ public class HttpUtils
             connection.setRequestProperty(HEADER_CONNECTION, CONNECTION_KEEP_ALIVE);
             connection.setRequestProperty(HEADER_USER_AGENT, DEFAULT_USER_AGENT);
             connection.connect();
-            try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream(), contentType)))
-            {
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream(), contentType))) {
                 String line;
-                while ((line = in.readLine()) != null)
-                {
+                while ((line = in.readLine()) != null) {
                     result.append(line);
                 }
             }
             log.info("recv - {}", result);
-        }
-        catch (ConnectException e)
-        {
+        } catch (ConnectException e) {
             log.error("调用HttpUtils.sendGet ConnectException, url=" + url + ",param=" + param, e);
-        }
-        catch (SocketTimeoutException e)
-        {
+        } catch (SocketTimeoutException e) {
             log.error("调用HttpUtils.sendGet SocketTimeoutException, url=" + url + ",param=" + param, e);
-        }
-        catch (IOException e)
-        {
+        } catch (IOException e) {
             log.error("调用HttpUtils.sendGet IOException, url=" + url + ",param=" + param, e);
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             log.error("调用HttpsUtil.sendGet Exception, url=" + url + ",param=" + param, e);
         }
         return result.toString();
@@ -133,8 +118,7 @@ public class HttpUtils
      * @param param 请求参数，请求参数应该是 name1=value1&name2=value2 的形式。
      * @return 所代表远程资源的响应结果
      */
-    public static String sendPost(String url, String param)
-    {
+    public static String sendPost(String url, String param) {
         return sendPost(url, param, MediaType.APPLICATION_FORM_URLENCODED_VALUE);
     }
 
@@ -146,11 +130,9 @@ public class HttpUtils
      * @param contentType 内容类型
      * @return 所代表远程资源的响应结果
      */
-    public static String sendPost(String url, String param, String contentType)
-    {
+    public static String sendPost(String url, String param, String contentType) {
         StringBuilder result = new StringBuilder();
-        try
-        {
+        try {
             log.info("sendPost - {}", url);
             URL realUrl = new URL(url);
             URLConnection conn = realUrl.openConnection();
@@ -162,51 +144,37 @@ public class HttpUtils
             conn.setDoOutput(true);
             conn.setDoInput(true);
             // 写请求体与读响应必须分属独立 TWR 块：先关 out 触发 body-end，再开 in 读响应（保持原 finally 语义）
-            try (PrintWriter out = new PrintWriter(conn.getOutputStream()))
-            {
+            try (PrintWriter out = new PrintWriter(conn.getOutputStream())) {
                 out.print(param);
                 out.flush();
             }
-            try (BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8)))
-            {
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
                 String line;
-                while ((line = in.readLine()) != null)
-                {
+                while ((line = in.readLine()) != null) {
                     result.append(line);
                 }
             }
             log.info("recv - {}", result);
-        }
-        catch (ConnectException e)
-        {
+        } catch (ConnectException e) {
             log.error("调用HttpUtils.sendPost ConnectException, url=" + url + ",param=" + param, e);
-        }
-        catch (SocketTimeoutException e)
-        {
+        } catch (SocketTimeoutException e) {
             log.error("调用HttpUtils.sendPost SocketTimeoutException, url=" + url + ",param=" + param, e);
-        }
-        catch (IOException e)
-        {
+        } catch (IOException e) {
             log.error("调用HttpUtils.sendPost IOException, url=" + url + ",param=" + param, e);
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             log.error("调用HttpsUtil.sendPost Exception, url=" + url + ",param=" + param, e);
         }
         return result.toString();
     }
 
-    public static String sendSSLPost(String url, String param)
-    {
+    public static String sendSSLPost(String url, String param) {
         return sendSSLPost(url, param, MediaType.APPLICATION_FORM_URLENCODED_VALUE);
     }
 
-    public static String sendSSLPost(String url, String param, String contentType)
-    {
+    public static String sendSSLPost(String url, String param, String contentType) {
         StringBuilder result = new StringBuilder();
         String urlNameString = url + "?" + param;
-        try
-        {
+        try {
             log.info("sendSSLPost - {}", urlNameString);
             URL console = new URL(urlNameString);
             // 使用 JVM 默认信任库与主机名校验，避免信任所有证书带来的中间人攻击风险
@@ -221,34 +189,23 @@ public class HttpUtils
 
             conn.connect();
             try (InputStream is = conn.getInputStream();
-                    BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8)))
-            {
+                    BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
                 String ret;
-                while ((ret = br.readLine()) != null)
-                {
-                    if (!ret.trim().isEmpty())
-                    {
+                while ((ret = br.readLine()) != null) {
+                    if (!ret.trim().isEmpty()) {
                         result.append(ret);
                     }
                 }
             }
             log.info("recv - {}", result);
             conn.disconnect();
-        }
-        catch (ConnectException e)
-        {
+        } catch (ConnectException e) {
             log.error("调用HttpUtils.sendSSLPost ConnectException, url=" + url + ",param=" + param, e);
-        }
-        catch (SocketTimeoutException e)
-        {
+        } catch (SocketTimeoutException e) {
             log.error("调用HttpUtils.sendSSLPost SocketTimeoutException, url=" + url + ",param=" + param, e);
-        }
-        catch (IOException e)
-        {
+        } catch (IOException e) {
             log.error("调用HttpUtils.sendSSLPost IOException, url=" + url + ",param=" + param, e);
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             log.error("调用HttpsUtil.sendSSLPost Exception, url=" + url + ",param=" + param, e);
         }
         return result.toString();

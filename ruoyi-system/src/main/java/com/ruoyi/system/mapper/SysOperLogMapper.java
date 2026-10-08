@@ -10,8 +10,7 @@ import com.ruoyi.system.domain.SysOperLog;
  * 
  * @author ruoyi
  */
-public interface SysOperLogMapper
-{
+public interface SysOperLogMapper {
     /**
      * 新增操作日志
      * 

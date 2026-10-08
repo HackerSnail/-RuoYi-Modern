@@ -30,8 +30,7 @@ import com.ruoyi.system.service.ISysUserService;
  * @author ruoyi
  */
 @RestController
-public class SysLoginController
-{
+public class SysLoginController {
     private final SysLoginService loginService;
 
     private final ISysMenuService menuService;
@@ -46,8 +45,7 @@ public class SysLoginController
 
     public SysLoginController(SysLoginService loginService, ISysMenuService menuService,
             SysPermissionService permissionService, TokenService tokenService, ISysConfigService configService,
-            ISysUserService userService)
-    {
+            ISysUserService userService) {
         this.loginService = loginService;
         this.menuService = menuService;
         this.permissionService = permissionService;
@@ -63,8 +61,7 @@ public class SysLoginController
      * @return 结果
      */
     @PostMapping("/login")
-    public AjaxResult login(@RequestBody LoginBody loginBody)
-    {
+    public AjaxResult login(@RequestBody LoginBody loginBody) {
         AjaxResult ajax = AjaxResult.success();
         // 生成令牌
         String token = loginService.login(loginBody.getUsername(), loginBody.getPassword(), loginBody.getCode(),
@@ -73,8 +70,7 @@ public class SysLoginController
         // 密码状态契约：登录成功后一并回传是否需要强制改密，前端在保存 token 后读取 forceChangePassword 决定是否强制跳转改密页。
         // 仍返回 code=200（不占用顶层状态码，避免与前端 axios 拦截器的成功判定冲突）；服务端硬拦截需另在过滤器层实现，不在本次范围。
         SysUser user = userService.selectUserByUserName(loginBody.getUsername());
-        if (user != null)
-        {
+        if (user != null) {
             applyPwdStatus(ajax, user);
         }
         return ajax;
@@ -86,8 +82,7 @@ public class SysLoginController
      * @return 用户信息
      */
     @GetMapping("getInfo")
-    public AjaxResult getInfo()
-    {
+    public AjaxResult getInfo() {
         LoginUser loginUser = SecurityUtils.getLoginUser();
         SysUser user = loginUser.getUser();
         // 角色集合
@@ -95,8 +90,7 @@ public class SysLoginController
         // 权限集合
         Set<String> permissions = permissionService.getMenuPermission(user);
         // 登录态缓存的权限可能与库不一致（如刚改过角色），发现差异则刷新 token 中的权限，避免使用陈旧授权
-        if (!loginUser.getPermissions().equals(permissions))
-        {
+        if (!loginUser.getPermissions().equals(permissions)) {
             loginUser.setPermissions(permissions);
             tokenService.refreshToken(loginUser);
         }
@@ -115,8 +109,7 @@ public class SysLoginController
      * @return 路由信息
      */
     @GetMapping("getRouters")
-    public AjaxResult getRouters()
-    {
+    public AjaxResult getRouters() {
         Long userId = SecurityUtils.getUserId();
         List<SysMenu> menus = menuService.selectMenuTreeByUserId(userId);
         return AjaxResult.success(menuService.buildMenus(menus));
@@ -129,8 +122,7 @@ public class SysLoginController
      * <p> forceChangePassword：需要强制跳转改密页的总开关，当前仅在“已过期”时为 true；
      * 因 passwordValidateDays 默认 0（不启用），默认恒为 false，不改变既有登录成功语义，只有管理员调大周期才会触发强制。
      */
-    private void applyPwdStatus(AjaxResult ajax, SysUser user)
-    {
+    private void applyPwdStatus(AjaxResult ajax, SysUser user) {
         boolean needModify = initPasswordIsModify(user.getPwdUpdateDate());
         boolean expired = passwordIsExpiration(user.getPwdUpdateDate());
         ajax.put("isDefaultModifyPwd", needModify);
@@ -139,27 +131,22 @@ public class SysLoginController
     }
 
     // 获取用户密码自定义配置规则
-    public String getSysAccountChrtype()
-    {
+    public String getSysAccountChrtype() {
         return Convert.toStr(configService.selectConfigByKey("sys.account.chrtype"), "0");
     }
 
     // 检查初始密码是否提醒修改
-    public boolean initPasswordIsModify(LocalDateTime pwdUpdateDate)
-    {
+    public boolean initPasswordIsModify(LocalDateTime pwdUpdateDate) {
         Integer initPasswordModify = Convert.toInt(configService.selectConfigByKey("sys.account.initPasswordModify"));
         return initPasswordModify != null && initPasswordModify == 1 && pwdUpdateDate == null;
     }
 
     // 检查密码是否过期：基于 sys.account.passwordValidateDays 配置，从未改过密码或距上次修改超过阈值天数则视为过期
-    public boolean passwordIsExpiration(LocalDateTime pwdUpdateDate)
-    {
+    public boolean passwordIsExpiration(LocalDateTime pwdUpdateDate) {
         Integer passwordValidateDays = Convert.toInt(configService.selectConfigByKey("sys.account.passwordValidateDays"));
         // 未配置或配置为 0（负数）表示不启用过期策略
-        if (passwordValidateDays != null && passwordValidateDays > 0)
-        {
-            if (StringUtils.isNull(pwdUpdateDate))
-            {
+        if (passwordValidateDays != null && passwordValidateDays > 0) {
+            if (StringUtils.isNull(pwdUpdateDate)) {
                 // 如果从未修改过初始密码，直接提醒过期
                 return true;
             }

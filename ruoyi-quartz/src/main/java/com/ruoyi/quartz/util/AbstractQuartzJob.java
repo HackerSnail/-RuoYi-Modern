@@ -21,8 +21,7 @@ import com.ruoyi.quartz.service.ISysJobLogService;
  *
  * @author ruoyi
  */
-public abstract class AbstractQuartzJob implements Job
-{
+public abstract class AbstractQuartzJob implements Job {
     private static final Logger log = LoggerFactory.getLogger(AbstractQuartzJob.class);
 
     /**
@@ -36,23 +35,18 @@ public abstract class AbstractQuartzJob implements Job
      * 因此即便业务方法抛出异常，本次调度的耗时与异常堆栈仍会被持久化。
      */
     @Override
-    public void execute(JobExecutionContext context)
-    {
+    public void execute(JobExecutionContext context) {
         SysJob sysJob = new SysJob();
         // 从合并后的 JobDataMap 还原出调度时的任务快照（创建 trigger 时放入的 TASK_PROPERTIES）
         BeanUtils.copyBeanProp(sysJob, context.getMergedJobDataMap().get(ScheduleConstants.TASK_PROPERTIES));
-        try
-        {
+        try {
             before(context, sysJob);
-            if (sysJob != null)
-            {
+            if (sysJob != null) {
                 // 交由子类实现真正的反射调用逻辑
                 doExecute(context, sysJob);
             }
             after(context, sysJob, null);
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             // 任务执行失败不向外抛出（避免影响 Quartz 线程），改为在 after 中落库失败日志
             log.error("任务执行异常  - ：", e);
             after(context, sysJob, e);
@@ -65,8 +59,7 @@ public abstract class AbstractQuartzJob implements Job
      * @param context 工作执行上下文对象
      * @param sysJob 系统计划任务
      */
-    protected void before(JobExecutionContext context, SysJob sysJob)
-    {
+    protected void before(JobExecutionContext context, SysJob sysJob) {
         // 记录开始时间戳，供 after 计算耗时；用 ThreadLocal 隔离并发调度的执行线程
         threadLocal.set(LocalDateTime.now());
     }
@@ -77,8 +70,7 @@ public abstract class AbstractQuartzJob implements Job
      * @param context 工作执行上下文对象
      * @param sysJob 系统计划任务
      */
-    protected void after(JobExecutionContext context, SysJob sysJob, Exception e)
-    {
+    protected void after(JobExecutionContext context, SysJob sysJob, Exception e) {
         LocalDateTime startTime = threadLocal.get();
         // 取出后必须清理，防止线程被 Quartz 线程池复用时残留脏数据导致内存泄漏/耗时错算
         threadLocal.remove();
@@ -91,15 +83,12 @@ public abstract class AbstractQuartzJob implements Job
         sysJobLog.setEndTime(LocalDateTime.now());
         long runMs = Duration.between(sysJobLog.getStartTime(), sysJobLog.getEndTime()).toMillis();
         sysJobLog.setJobMessage(sysJobLog.getJobName() + " 总共耗时：" + runMs + "毫秒");
-        if (e != null)
-        {
+        if (e != null) {
             sysJobLog.setStatus(Constants.FAIL);
             // 异常信息截断到 2000 字符，避免超长堆栈撑爆日志表的字符串列
             String errorMsg = StringUtils.substring(ExceptionUtil.getExceptionMessage(e), 0, 2000);
             sysJobLog.setExceptionInfo(errorMsg);
-        }
-        else
-        {
+        } else {
             sysJobLog.setStatus(Constants.SUCCESS);
         }
 

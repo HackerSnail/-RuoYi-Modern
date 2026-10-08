@@ -55,8 +55,7 @@ import com.ruoyi.system.service.ISysUserService;
  * 注入一个返回 mock 线程池的 beanFactory，让真实的 {@code AsyncManager} 在无害的 mock 执行器上运行，
  * 从而在不触碰 Spring 容器 / Redis / 数据库的前提下驱动登录全链路。</p>
  */
-public class SysLoginServiceTest
-{
+public class SysLoginServiceTest {
     private SysLoginService loginService;
 
     private TokenService tokenService;
@@ -73,16 +72,14 @@ public class SysLoginServiceTest
      * 向 SpringUtils 注入 mock beanFactory，使 AsyncManager 的静态单例可正常初始化。
      */
     @BeforeAll
-    static void primeSpringUtils()
-    {
+    static void primeSpringUtils() {
         ConfigurableListableBeanFactory beanFactory = mock(ConfigurableListableBeanFactory.class);
         when(beanFactory.getBean("scheduledExecutorService")).thenReturn(mock(ScheduledExecutorService.class));
         ReflectionTestUtils.setField(SpringUtils.class, "beanFactory", beanFactory);
     }
 
     @BeforeEach
-    void setUp()
-    {
+    void setUp() {
         tokenService = mock(TokenService.class);
         authenticationManager = mock(AuthenticationManager.class);
         redisCache = mock(RedisCache.class);
@@ -92,8 +89,7 @@ public class SysLoginServiceTest
         loginService = new SysLoginService(tokenService, authenticationManager, redisCache, userService, configService);
     }
 
-    private LoginUser adminLoginUser()
-    {
+    private LoginUser adminLoginUser() {
         SysUser user = new SysUser();
         user.setUserName("admin");
         return new LoginUser(1L, 100L, user, new HashSet<>());
@@ -101,14 +97,12 @@ public class SysLoginServiceTest
 
     @Test
     @DisplayName("认证成功：委托 TokenService 签发并返回令牌")
-    void loginSuccessDelegatesToTokenService()
-    {
+    void loginSuccessDelegatesToTokenService() {
         when(configService.selectCaptchaEnabled()).thenReturn(false);
 
         try (MockedStatic<AsyncFactory> asyncFactory = mockStatic(AsyncFactory.class);
              MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg");
-             MockedStatic<IpUtils> ipUtils = mockStatic(IpUtils.class))
-        {
+             MockedStatic<IpUtils> ipUtils = mockStatic(IpUtils.class)) {
             ipUtils.when(IpUtils::getIpAddr).thenReturn("127.0.0.1");
             ipUtils.when(() -> IpUtils.isMatchedIp(any(), any())).thenReturn(false);
 
@@ -128,14 +122,12 @@ public class SysLoginServiceTest
 
     @Test
     @DisplayName("认证失败（坏凭据）：抛出 UserPasswordNotMatchException")
-    void loginBadCredentialsThrows()
-    {
+    void loginBadCredentialsThrows() {
         when(configService.selectCaptchaEnabled()).thenReturn(false);
 
         try (MockedStatic<AsyncFactory> asyncFactory = mockStatic(AsyncFactory.class);
              MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg");
-             MockedStatic<IpUtils> ipUtils = mockStatic(IpUtils.class))
-        {
+             MockedStatic<IpUtils> ipUtils = mockStatic(IpUtils.class)) {
             ipUtils.when(IpUtils::getIpAddr).thenReturn("127.0.0.1");
             ipUtils.when(() -> IpUtils.isMatchedIp(any(), any())).thenReturn(false);
             when(authenticationManager.authenticate(any())).thenThrow(new BadCredentialsException("bad"));
@@ -148,11 +140,9 @@ public class SysLoginServiceTest
 
     @Test
     @DisplayName("前置校验：空密码直接拒绝")
-    void loginPreCheckRejectsBlankPassword()
-    {
+    void loginPreCheckRejectsBlankPassword() {
         try (MockedStatic<AsyncFactory> asyncFactory = mockStatic(AsyncFactory.class);
-             MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg"))
-        {
+             MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg")) {
             assertThrows(UserNotExistsException.class,
                     () -> loginService.loginPreCheck("admin", ""));
         }
@@ -160,14 +150,12 @@ public class SysLoginServiceTest
 
     @Test
     @DisplayName("前置校验：IP 命中黑名单抛 BlackListException")
-    void loginPreCheckRejectsBlacklistedIp()
-    {
+    void loginPreCheckRejectsBlacklistedIp() {
         when(configService.selectConfigByKey("sys.login.blackIPList")).thenReturn("1.2.3.4");
 
         try (MockedStatic<AsyncFactory> asyncFactory = mockStatic(AsyncFactory.class);
              MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg");
-             MockedStatic<IpUtils> ipUtils = mockStatic(IpUtils.class))
-        {
+             MockedStatic<IpUtils> ipUtils = mockStatic(IpUtils.class)) {
             ipUtils.when(IpUtils::getIpAddr).thenReturn("1.2.3.4");
             ipUtils.when(() -> IpUtils.isMatchedIp(any(), any())).thenReturn(true);
 
@@ -178,10 +166,8 @@ public class SysLoginServiceTest
 
     @Test
     @DisplayName("recordLoginInfo：委托 userService 更新登录 IP 与时间")
-    void recordLoginInfoDelegatesToUserService()
-    {
-        try (MockedStatic<IpUtils> ipUtils = mockStatic(IpUtils.class))
-        {
+    void recordLoginInfoDelegatesToUserService() {
+        try (MockedStatic<IpUtils> ipUtils = mockStatic(IpUtils.class)) {
             ipUtils.when(IpUtils::getIpAddr).thenReturn("10.0.0.1");
 
             loginService.recordLoginInfo(2L);
@@ -192,8 +178,7 @@ public class SysLoginServiceTest
 
     @Test
     @DisplayName("验证码关闭时跳过校验，不查 Redis")
-    void validateCaptchaSkippedWhenDisabled()
-    {
+    void validateCaptchaSkippedWhenDisabled() {
         when(configService.selectCaptchaEnabled()).thenReturn(false);
 
         assertDoesNotThrow(() -> loginService.validateCaptcha("admin", "1234", "uuid"));
@@ -202,14 +187,12 @@ public class SysLoginServiceTest
 
     @Test
     @DisplayName("验证码错误：抛 CaptchaException 并删除缓存")
-    void validateCaptchaRejectsWrongCode()
-    {
+    void validateCaptchaRejectsWrongCode() {
         when(configService.selectCaptchaEnabled()).thenReturn(true);
         when(redisCache.getCacheObject(anyString())).thenReturn("abcd");
 
         try (MockedStatic<AsyncFactory> asyncFactory = mockStatic(AsyncFactory.class);
-             MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg"))
-        {
+             MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg")) {
             assertThrows(CaptchaException.class,
                     () -> loginService.validateCaptcha("admin", "zzzz", "uuid"));
             verify(redisCache).deleteObject(CacheConstants.CAPTCHA_CODE_KEY + "uuid");
@@ -218,14 +201,12 @@ public class SysLoginServiceTest
 
     @Test
     @DisplayName("验证码缺失（过期）：抛 CaptchaExpireException")
-    void validateCaptchaExpiresWhenMissing()
-    {
+    void validateCaptchaExpiresWhenMissing() {
         when(configService.selectCaptchaEnabled()).thenReturn(true);
         when(redisCache.getCacheObject(anyString())).thenReturn(null);
 
         try (MockedStatic<AsyncFactory> asyncFactory = mockStatic(AsyncFactory.class);
-             MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg"))
-        {
+             MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg")) {
             assertThrows(CaptchaExpireException.class,
                     () -> loginService.validateCaptcha("admin", "1234", "uuid"));
         }

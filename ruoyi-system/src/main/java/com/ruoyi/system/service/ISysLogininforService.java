@@ -8,8 +8,7 @@ import com.ruoyi.system.domain.SysLogininfor;
  * 
  * @author ruoyi
  */
-public interface ISysLogininforService
-{
+public interface ISysLogininforService {
     /**
      * 新增系统登录日志
      * 

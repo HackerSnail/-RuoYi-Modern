@@ -8,8 +8,7 @@ import com.ruoyi.common.core.domain.entity.SysRole;
  * 
  * @author ruoyi
  */
-public interface SysRoleMapper
-{
+public interface SysRoleMapper {
     /**
      * 根据条件分页查询角色数据
      * 

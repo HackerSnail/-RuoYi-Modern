@@ -10,8 +10,7 @@ import com.ruoyi.system.domain.SysUserRole;
  * 
  * @author ruoyi
  */
-public interface ISysRoleService
-{
+public interface ISysRoleService {
     /**
      * 根据条件分页查询角色数据
      * 

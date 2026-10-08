@@ -9,8 +9,7 @@ import com.ruoyi.common.core.domain.entity.SysDept;
  * 
  * @author ruoyi
  */
-public interface ISysDeptService
-{
+public interface ISysDeptService {
     /**
      * 查询部门管理数据
      * 

@@ -29,12 +29,10 @@ import com.ruoyi.system.service.ISysMenuService;
  */
 @RestController
 @RequestMapping("/system/menu")
-public class SysMenuController extends BaseController
-{
+public class SysMenuController extends BaseController {
     private final ISysMenuService menuService;
 
-    public SysMenuController(ISysMenuService menuService)
-    {
+    public SysMenuController(ISysMenuService menuService) {
         this.menuService = menuService;
     }
 
@@ -43,8 +41,7 @@ public class SysMenuController extends BaseController
      */
     @PreAuthorize("@ss.hasPermi('system:menu:list')")
     @GetMapping("/list")
-    public AjaxResult list(SysMenu menu)
-    {
+    public AjaxResult list(SysMenu menu) {
         List<SysMenu> menus = menuService.selectMenuList(menu, getUserId());
         return success(menus);
     }
@@ -54,8 +51,7 @@ public class SysMenuController extends BaseController
      */
     @PreAuthorize("@ss.hasPermi('system:menu:query')")
     @GetMapping(value = "/{menuId}")
-    public AjaxResult getInfo(@PathVariable Long menuId)
-    {
+    public AjaxResult getInfo(@PathVariable Long menuId) {
         return success(menuService.selectMenuById(menuId));
     }
 
@@ -63,8 +59,7 @@ public class SysMenuController extends BaseController
      * 获取菜单下拉树列表
      */
     @GetMapping("/treeselect")
-    public AjaxResult treeselect(SysMenu menu)
-    {
+    public AjaxResult treeselect(SysMenu menu) {
         List<SysMenu> menus = menuService.selectMenuList(menu, getUserId());
         return success(menuService.buildMenuTreeSelect(menus));
     }
@@ -76,8 +71,7 @@ public class SysMenuController extends BaseController
      */
     @PreAuthorize("@ss.hasPermi('system:role:query')")
     @GetMapping(value = "/roleMenuTreeselect/{roleId}")
-    public AjaxResult roleMenuTreeselect(@PathVariable("roleId") Long roleId)
-    {
+    public AjaxResult roleMenuTreeselect(@PathVariable("roleId") Long roleId) {
         List<SysMenu> menus = menuService.selectMenuList(getUserId());
         AjaxResult ajax = AjaxResult.success();
         // checkedKeys 为该角色已分配的菜单 ID；menus 为当前用户可见的完整菜单树，供前端回显勾选
@@ -92,19 +86,13 @@ public class SysMenuController extends BaseController
     @PreAuthorize("@ss.hasPermi('system:menu:add')")
     @Log(title = "菜单管理", businessType = BusinessType.INSERT)
     @PostMapping
-    public AjaxResult add(@Validated @RequestBody SysMenu menu)
-    {
-        if (!menuService.checkMenuNameUnique(menu))
-        {
+    public AjaxResult add(@Validated @RequestBody SysMenu menu) {
+        if (!menuService.checkMenuNameUnique(menu)) {
             return error("新增菜单'" + menu.getMenuName() + "'失败，菜单名称已存在");
-        }
-        else if (UserConstants.YES_FRAME.equals(menu.getIsFrame()) && !StringUtils.ishttp(menu.getPath()))
-        {
+        } else if (UserConstants.YES_FRAME.equals(menu.getIsFrame()) && !StringUtils.ishttp(menu.getPath())) {
             // 外链菜单（isFrame=是）的路径必须是完整 http(s) 地址，否则前端无法正确跳转
             return error("新增菜单'" + menu.getMenuName() + "'失败，地址必须以http(s)://开头");
-        }
-        else if (!menuService.checkRouteConfigUnique(menu))
-        {
+        } else if (!menuService.checkRouteConfigUnique(menu)) {
             return error("新增菜单'" + menu.getMenuName() + "'失败，路由名称或地址已存在");
         }
         menu.setCreateBy(getUsername());
@@ -117,22 +105,14 @@ public class SysMenuController extends BaseController
     @PreAuthorize("@ss.hasPermi('system:menu:edit')")
     @Log(title = "菜单管理", businessType = BusinessType.UPDATE)
     @PutMapping
-    public AjaxResult edit(@Validated @RequestBody SysMenu menu)
-    {
-        if (!menuService.checkMenuNameUnique(menu))
-        {
+    public AjaxResult edit(@Validated @RequestBody SysMenu menu) {
+        if (!menuService.checkMenuNameUnique(menu)) {
             return error("修改菜单'" + menu.getMenuName() + "'失败，菜单名称已存在");
-        }
-        else if (UserConstants.YES_FRAME.equals(menu.getIsFrame()) && !StringUtils.ishttp(menu.getPath()))
-        {
+        } else if (UserConstants.YES_FRAME.equals(menu.getIsFrame()) && !StringUtils.ishttp(menu.getPath())) {
             return error("修改菜单'" + menu.getMenuName() + "'失败，地址必须以http(s)://开头");
-        }
-        else if (menu.getMenuId().equals(menu.getParentId()))
-        {
+        } else if (menu.getMenuId().equals(menu.getParentId())) {
             return error("修改菜单'" + menu.getMenuName() + "'失败，上级菜单不能选择自己");
-        }
-        else if (!menuService.checkRouteConfigUnique(menu))
-        {
+        } else if (!menuService.checkRouteConfigUnique(menu)) {
             return error("修改菜单'" + menu.getMenuName() + "'失败，路由名称或地址已存在");
         }
         menu.setUpdateBy(getUsername());
@@ -148,29 +128,23 @@ public class SysMenuController extends BaseController
     @PreAuthorize("@ss.hasPermi('system:menu:edit')")
     @Log(title = "保存菜单排序", businessType = BusinessType.UPDATE)
     @PutMapping("/updateSort")
-    public AjaxResult updateSort(@RequestBody Map<String, String> params)
-    {
+    public AjaxResult updateSort(@RequestBody Map<String, String> params) {
         String menuIdsStr = params.get("menuIds");
         String orderNumsStr = params.get("orderNums");
-        if (StringUtils.isEmpty(menuIdsStr) || StringUtils.isEmpty(orderNumsStr))
-        {
+        if (StringUtils.isEmpty(menuIdsStr) || StringUtils.isEmpty(orderNumsStr)) {
             return error("排序参数不能为空");
         }
         String[] menuIds = menuIdsStr.split(",");
         String[] orderNums = orderNumsStr.split(",");
-        if (menuIds.length != orderNums.length)
-        {
+        if (menuIds.length != orderNums.length) {
             return error("菜单数量与排序号数量不一致");
         }
         // 逐项校验：菜单 ID 必须为正整数，排序号必须为非负整数；Convert 解析失败回退默认值即判定非法，避免抛异常
-        for (int i = 0; i < menuIds.length; i++)
-        {
-            if (Convert.toLong(menuIds[i], -1L) <= 0)
-            {
+        for (int i = 0; i < menuIds.length; i++) {
+            if (Convert.toLong(menuIds[i], -1L) <= 0) {
                 return error("非法的菜单ID：" + menuIds[i]);
             }
-            if (Convert.toInt(orderNums[i], -1) < 0)
-            {
+            if (Convert.toInt(orderNums[i], -1) < 0) {
                 return error("非法的排序号：" + orderNums[i]);
             }
         }
@@ -184,14 +158,11 @@ public class SysMenuController extends BaseController
     @PreAuthorize("@ss.hasPermi('system:menu:remove')")
     @Log(title = "菜单管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/{menuId}")
-    public AjaxResult remove(@PathVariable("menuId") Long menuId)
-    {
-        if (menuService.hasChildByMenuId(menuId))
-        {
+    public AjaxResult remove(@PathVariable("menuId") Long menuId) {
+        if (menuService.hasChildByMenuId(menuId)) {
             return warn("存在子菜单,不允许删除");
         }
-        if (menuService.checkMenuExistRole(menuId))
-        {
+        if (menuService.checkMenuExistRole(menuId)) {
             return warn("菜单已分配,不允许删除");
         }
         return toAjax(menuService.deleteMenuById(menuId));

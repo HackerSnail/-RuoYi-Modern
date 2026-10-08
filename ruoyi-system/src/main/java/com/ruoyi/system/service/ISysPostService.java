@@ -8,8 +8,7 @@ import com.ruoyi.system.domain.SysPost;
  * 
  * @author ruoyi
  */
-public interface ISysPostService
-{
+public interface ISysPostService {
     /**
      * 查询岗位信息集合
      * 

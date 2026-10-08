@@ -27,6 +27,9 @@
         <oshi.version>7.4.4</oshi.version>
         <commons.io.version>2.22.0</commons.io.version>
         <jsoup.version>1.18.1</jsoup.version>
+        <!-- Apache HttpClient5：HttpUtils 的安全 HTTP 客户端（连接池 + 可插拔 DnsResolver）。显式锁定到本地已缓存版本，避免被 Spring Boot BOM 漂移到未缓存版本 -->
+        <httpclient5.version>5.2.3</httpclient5.version>
+        <httpcore5.version>5.2.4</httpcore5.version>
         <poi.version>5.5.1</poi.version>
         <velocity.version>2.3</velocity.version>
         <jjwt.version>0.13.0</jjwt.version>
@@ -105,6 +108,23 @@
                 <groupId>org.jsoup</groupId>
                 <artifactId>jsoup</artifactId>
                 <version>${jsoup.version}</version>
+            </dependency>
+
+            <!-- Apache HttpClient5（显式锁版本，覆盖 Spring Boot BOM 管理值，确保使用本地已缓存件） -->
+            <dependency>
+                <groupId>org.apache.httpcomponents.client5</groupId>
+                <artifactId>httpclient5</artifactId>
+                <version>${httpclient5.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.httpcomponents.core5</groupId>
+                <artifactId>httpcore5</artifactId>
+                <version>${httpcore5.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.httpcomponents.core5</groupId>
+                <artifactId>httpcore5-h2</artifactId>
+                <version>${httpcore5.version}</version>
             </dependency>
 
             <!-- excel工具 -->

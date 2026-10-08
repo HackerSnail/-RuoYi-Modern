@@ -1,9 +1,12 @@
 package com.ruoyi.framework.interceptor.impl;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import com.alibaba.fastjson2.JSON;
@@ -23,6 +26,8 @@ import com.ruoyi.framework.interceptor.RepeatSubmitInterceptor;
  */
 @Component
 public class SameUrlDataInterceptor extends RepeatSubmitInterceptor {
+    private static final Logger LOGGER = LoggerFactory.getLogger(SameUrlDataInterceptor.class);
+
     public final String REPEAT_PARAMS = "repeatParams";
 
     public final String REPEAT_TIME = "repeatTime";
@@ -46,7 +51,12 @@ public class SameUrlDataInterceptor extends RepeatSubmitInterceptor {
     public boolean isRepeatSubmit(HttpServletRequest request, RepeatSubmit annotation) {
         String nowParams = "";
         if (request instanceof RepeatedlyRequestWrapper repeatedlyRequest) {
-            nowParams = HttpHelper.getBodyString(repeatedlyRequest);
+            try {
+                nowParams = HttpHelper.getBodyString(repeatedlyRequest);
+            } catch (IOException e) {
+                // 读取可重复请求体失败：不阻断请求，降级为下方按 parameterMap 比对（内存流读取极少失败）
+                LOGGER.warn("读取重复提交校验的请求体失败，降级为参数比对", e);
+            }
         }
 
         // body参数为空，获取Parameter的数据

@@ -4,6 +4,8 @@ import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
+import java.util.Objects;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import com.ruoyi.common.exception.ServiceException;
@@ -19,10 +21,13 @@ import com.ruoyi.common.exception.ServiceException;
  *
  * @author ruoyi
  */
-public class SignUtils {
+public final class SignUtils {
     private static final String SHA_256 = "SHA-256";
     private static final String HMAC_SHA256 = "HmacSHA256";
-    private static final char[] HEX_DIGITS = "0123456789abcdef".toCharArray();
+
+    private SignUtils() {
+        // 工具类，禁止实例化
+    }
 
     /**
      * 计算 SHA-256 摘要（十六进制小写）。用于内容指纹/一致性比对，非密钥场景。
@@ -31,9 +36,10 @@ public class SignUtils {
      * @return 64 位十六进制摘要
      */
     public static String sha256(String data) {
+        Objects.requireNonNull(data, "SHA-256 摘要入参不得为 null");
         try {
             MessageDigest digest = MessageDigest.getInstance(SHA_256);
-            return toHex(digest.digest(data.getBytes(StandardCharsets.UTF_8)));
+            return HexFormat.of().formatHex(digest.digest(data.getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException e) {
             throw new ServiceException("SHA-256 摘要计算失败");
         }
@@ -47,10 +53,17 @@ public class SignUtils {
      * @return 64 位十六进制签名
      */
     public static String hmacSha256(String data, String key) {
+        // 空/ null 密钥须前置拦截：本 JDK 的 SecretKeySpec 对空 key 抛 IllegalArgumentException("Empty key")，
+        // key==null 则在 getBytes 处 NPE——两者都不在本方法 catch 集合内会裸抛逃逸，这里统一收敛为
+        // 明确的 ServiceException（并非空 key 能算出有效签名，JDK 本就拒绝空 key）。
+        if (key == null || key.isEmpty()) {
+            throw new ServiceException("HMAC 密钥不能为空");
+        }
+        Objects.requireNonNull(data, "HMAC 摘要入参内容不得为 null");
         try {
             Mac mac = Mac.getInstance(HMAC_SHA256);
             mac.init(new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), HMAC_SHA256));
-            return toHex(mac.doFinal(data.getBytes(StandardCharsets.UTF_8)));
+            return HexFormat.of().formatHex(mac.doFinal(data.getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
             throw new ServiceException("HMAC-SHA256 签名计算失败");
         }
@@ -66,24 +79,13 @@ public class SignUtils {
      * @return 是否匹配
      */
     public static boolean verifyHmacSha256(String data, String key, String expectedHex) {
-        if (expectedHex == null) {
+        // 统一校验路径：无论上送签名是否合法都先算一次 HMAC 再比较，避免"跳过计算"的分支差异
+        //（MessageDigest.isEqual 的恒定时间比较保护的是 actual vs expected 这条逐字节路径）。
+        String actualHex = hmacSha256(data, key);
+        if (expectedHex == null || expectedHex.isEmpty()) {
             return false;
         }
-        String actualHex = hmacSha256(data, key);
         return MessageDigest.isEqual(actualHex.getBytes(StandardCharsets.UTF_8),
                 expectedHex.getBytes(StandardCharsets.UTF_8));
-    }
-
-    /**
-     * 字节数组转小写十六进制字符串（取每字节高低四位）。
-     */
-    private static String toHex(byte[] bytes) {
-        StringBuilder buf = new StringBuilder(bytes.length * 2);
-        for (byte b : bytes) {
-            int v = b & 0xff;
-            buf.append(HEX_DIGITS[v >>> 4]);
-            buf.append(HEX_DIGITS[v & 0x0f]);
-        }
-        return buf.toString();
     }
 }

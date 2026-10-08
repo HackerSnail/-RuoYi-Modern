@@ -6,11 +6,11 @@ import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeanUtils;
 import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.constant.ScheduleConstants;
 import com.ruoyi.common.utils.ExceptionUtil;
 import com.ruoyi.common.utils.StringUtils;
-import com.ruoyi.common.utils.bean.BeanUtils;
 import com.ruoyi.common.utils.spring.SpringUtils;
 import com.ruoyi.quartz.domain.SysJob;
 import com.ruoyi.quartz.domain.SysJobLog;
@@ -31,15 +31,16 @@ public abstract class AbstractQuartzJob implements Job {
 
     /**
      * Quartz 回调入口：采用模板方法模式，串起 before→doExecute→after 三个阶段。
-     * 无论从 JobDataMap 取出的任务属性是否成功拷贝，finally 语义下都会落到 after 记录日志，
-     * 因此即便业务方法抛出异常，本次调度的耗时与异常堆栈仍会被持久化。
+     * 任务快照还原（从 JobDataMap 拷贝属性）同样纳入本 try，任一步骤抛异常都由 catch 兜住并经
+     * after 落库本次调度的耗时与异常堆栈，避免出现“拷贝失败却按成功记录”的静默路径。
      */
     @Override
     public void execute(JobExecutionContext context) {
         SysJob sysJob = new SysJob();
-        // 从合并后的 JobDataMap 还原出调度时的任务快照（创建 trigger 时放入的 TASK_PROPERTIES）
-        BeanUtils.copyBeanProp(sysJob, context.getMergedJobDataMap().get(ScheduleConstants.TASK_PROPERTIES));
         try {
+            // 从合并后的 JobDataMap 还原出调度时的任务快照（创建 trigger 时放入的 TASK_PROPERTIES）
+            // 注意 Spring BeanUtils 参数顺序为 (source, target)，与已移除的自定义 copyBeanProp(dest, src) 相反
+            BeanUtils.copyProperties(context.getMergedJobDataMap().get(ScheduleConstants.TASK_PROPERTIES), sysJob);
             before(context, sysJob);
             if (sysJob != null) {
                 // 交由子类实现真正的反射调用逻辑

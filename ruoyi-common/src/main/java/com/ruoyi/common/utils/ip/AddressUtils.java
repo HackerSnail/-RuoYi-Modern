@@ -26,6 +26,11 @@ public class AddressUtils {
     public static final String UNKNOWN = "XX XX";
 
     public static String getRealAddressByIP(String ip) {
+        // 入口先挡掉 null/空白：null 喂进 internalIp 会经 textToNumericFormatV4 的 text.length() 抛 NPE，
+        // 且该调用位于 try 之外，异常会直冒到调用方；统一在此归为 UNKNOWN，消除隐患
+        if (StringUtils.isBlank(ip)) {
+            return UNKNOWN;
+        }
         // 内网不查询
         if (IpUtils.internalIp(ip)) {
             return "内网IP";
@@ -33,7 +38,7 @@ public class AddressUtils {
         if (RuoYiConfig.isAddressEnabled()) {
             try {
                 // 域白名单 + 地址黑名单叠加：目标固定可枚举，严于任何单纯黑名单；sendGet 内部会对 param 逐值百分号编码
-                String rspStr = HttpUtils.sendGet(IP_URL, Map.of("ip", ip == null ? "" : ip, "json", "true"),
+                String rspStr = HttpUtils.sendGet(IP_URL, Map.of("ip", ip, "json", "true"),
                         Constants.GBK, Set.of("whois.pconline.com.cn"));
                 if (StringUtils.isEmpty(rspStr)) {
                     log.error("获取地理位置异常 {}", ip);

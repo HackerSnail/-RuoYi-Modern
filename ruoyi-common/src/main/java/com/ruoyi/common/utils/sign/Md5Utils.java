@@ -18,8 +18,12 @@ import com.ruoyi.common.exception.ServiceException;
  *
  * @author ruoyi
  */
-public class Md5Utils {
+public final class Md5Utils {
     private static final Logger log = LoggerFactory.getLogger(Md5Utils.class);
+
+    private Md5Utils() {
+        // 工具类，禁止实例化
+    }
 
     private static byte[] md5(String s) {
         try {

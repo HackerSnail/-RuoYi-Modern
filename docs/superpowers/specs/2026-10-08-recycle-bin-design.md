@@ -84,7 +84,7 @@ RecycleBinOpResult {
 ## 6. 彻底删除二次确认 + 事务与部分成功
 
 - **二次确认**：`purge` 必须带 `confirm=true`，否则整请求拒绝（防不可逆误删）；前端弹确认框（契约见 §10）。
-- **事务粒度**：批内**每个 id 独立事务**（`REQUIRES_NEW`），逐个成功/失败并收集到 `RecycleBinOpResult`；一个坏项不回滚其余。`restore`/`purge` 同此策略。
+- **事务与部分成功**：`restore`/`purge` 每项仅执行**一条状态变更语句**（恢复=单条 `update`、销毁=单条 `delete`），单语句天然原子，无需显式 `REQUIRES_NEW` 或独立事务 bean；批处理不开外层事务，逐项 try/catch，一项抛异常仅记为该项失败、不回滚其余（部分成功）。
 - **关联清理**：软删时关联已清空，`purge` 只需删主表行，无关联残留需处理（部门无关联表）。
 - **孤儿引用（已知副作用）**：物理 `purge` 用户/部门后，`sys_notice_read`、登录日志等**非关联表**仍留旧 `id`（无 FK，历史数据悬空）。不清理，仅文档告知（§11）。
 
@@ -98,7 +98,7 @@ RecycleBinOpResult {
 
 **数据权限**：
 - `{type}/list` 复用对应 `@DataScope`（`selectDeletedXxxList` 带 `${params.dataScope}`），部门管理员只见自身范围。
-- `restore`/`purge` **逐项**调 `checkUserDataScope`（对齐 `deleteUserByIds` 现状），杜绝跨范围恢复/销毁。
+- `restore`/`purge` 的行级数据权限**不能用既有 `checkUserDataScope`**——其底层 `selectXxxList` 一律带 `del_flag='0'`，而回收站作用对象是 `del_flag='2'` 记录，套用会使任何非超管对任何回收站项的操作 100% 被误拒。改采"软删口径"：用同样带 `@DataScope` 的 `selectDeletedXxxList` 按目标 id 过滤查一次，命中即视为在当前用户可见范围内、未命中即越权拒绝（超管经切面短路必命中）。杜绝跨范围恢复/销毁。
 
 **种子数据**：`sys_menu` 按钮级插入 + 超管角色 `sys_role_menu` 关联；幂等写法须规避已知坑（`INSERT...SELECT` 派生表多未别名同名列会报 `Duplicate column name`，需显式别名）。
 
@@ -140,7 +140,7 @@ RecycleBinOpResult {
 
 1. **部分成功不可回滚**：独立事务下批处理中途失败 → 已处理项不回退（`purge` 尤甚）。缓解：`RecycleBinOpResult` 逐项如实回报 + 前端明确展示。
 2. **物理删除不可逆**：三重缓解（细粒度 `purge` 权限 + `confirm` + `@Log` 审计）；仍建议生产前 DB 备份。
-3. **越权**：忘记对 `restore`/`purge` 逐项 `checkUserDataScope`/`checkUserAllowed` → 跨范围/动超管。列为测试必覆盖。
+3. **越权**：忘记对 `restore`/`purge` 逐项做软删口径数据权限（`selectDeletedXxxList` 按 id 判可见）/`checkUserAllowed` → 跨范围/动超管。列为测试必覆盖。
 4. **动态权限串注入**：`system:{type}:purge` 拼接前必须白名单校验 `type`。
 5. **种子脚本幂等**：`sys_menu`/`sys_role_menu` 重复执行会炸（含 `Duplicate column name` 坑，需显式别名）。
 6. **"只还壳"认知差**：恢复后账号无角色权限，前端文案 + 文档强调需重授权，避免误以为"恢复即复原"。

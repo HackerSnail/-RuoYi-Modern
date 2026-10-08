@@ -17,6 +17,7 @@ import com.ruoyi.common.constant.UserConstants;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.domain.entity.SysMenu;
+import com.ruoyi.common.core.text.Convert;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.system.service.ISysMenuService;
@@ -70,7 +71,10 @@ public class SysMenuController extends BaseController
 
     /**
      * 加载对应角色菜单列表树
+     * <p> 本接口返回的 checkedKeys 会按传入 roleId 回显该角色已分配的菜单，若不做鉴权，
+     * 任何持登录态、只有菜单可见权的人都能遍历 roleId 窥探“某角色被授了哪些菜单”，故复用角色详情页的 system:role:query。
      */
+    @PreAuthorize("@ss.hasPermi('system:role:query')")
     @GetMapping(value = "/roleMenuTreeselect/{roleId}")
     public AjaxResult roleMenuTreeselect(@PathVariable("roleId") Long roleId)
     {
@@ -137,14 +141,39 @@ public class SysMenuController extends BaseController
 
     /**
      * 保存菜单排序
+     * <p> 前端拖拽后将菜单 ID 与排序号拼为两个逗号分隔字符串传回。旧实现直接 split 后交给 Service：
+     * 键缺失会在本层 NPE（落到兜底返回“系统繁忙”）、空串会带 menuId=null 去批量更新、
+     * 两数组长度不等会在 Service 越界。因此在入口做防御校验，不合法直接返回具体文案，不进 Service。
      */
     @PreAuthorize("@ss.hasPermi('system:menu:edit')")
     @Log(title = "保存菜单排序", businessType = BusinessType.UPDATE)
     @PutMapping("/updateSort")
     public AjaxResult updateSort(@RequestBody Map<String, String> params)
     {
-        String[] menuIds = params.get("menuIds").split(",");
-        String[] orderNums = params.get("orderNums").split(",");
+        String menuIdsStr = params.get("menuIds");
+        String orderNumsStr = params.get("orderNums");
+        if (StringUtils.isEmpty(menuIdsStr) || StringUtils.isEmpty(orderNumsStr))
+        {
+            return error("排序参数不能为空");
+        }
+        String[] menuIds = menuIdsStr.split(",");
+        String[] orderNums = orderNumsStr.split(",");
+        if (menuIds.length != orderNums.length)
+        {
+            return error("菜单数量与排序号数量不一致");
+        }
+        // 逐项校验：菜单 ID 必须为正整数，排序号必须为非负整数；Convert 解析失败回退默认值即判定非法，避免抛异常
+        for (int i = 0; i < menuIds.length; i++)
+        {
+            if (Convert.toLong(menuIds[i], -1L) <= 0)
+            {
+                return error("非法的菜单ID：" + menuIds[i]);
+            }
+            if (Convert.toInt(orderNums[i], -1) < 0)
+            {
+                return error("非法的排序号：" + orderNums[i]);
+            }
+        }
         menuService.updateMenuSort(menuIds, orderNums);
         return success();
     }

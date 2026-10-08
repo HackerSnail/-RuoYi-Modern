@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.apache.hc.client5.http.DnsResolver;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.config.ConnectionConfig;
@@ -60,6 +61,14 @@ public final class HttpUtils {
 
     /** 允许的请求协议白名单：仅 http/https。杜绝 file/dict/gopher/ftp 等被拼接利用造成 SSRF */
     private static final Set<String> ALLOWED_PROTOCOLS = Set.of("http", "https");
+
+    /**
+     * host 形式白名单：仅允许 RFC 1123 主机名（总长 ≤253，每标签 1~63 字节且首尾为字母/数字，中间可含
+     * {@code -}）。十进制/十六进制/前导零八进制的 numeric host（如 {@code 2130706433}、{@code 0x7f.0.0.1}、
+     * {@code 010.0.0.1}）一律前置拒绝，不再依赖 {@link InetAddress#getAllByName} 跨版本行为。
+     */
+    private static final Pattern HOSTNAME_PATTERN = Pattern.compile(
+            "^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$");
 
     /** 建立连接超时 */
     private static final Timeout CONNECT_TIMEOUT = Timeout.ofSeconds(10);
@@ -248,7 +257,8 @@ public final class HttpUtils {
      * (compatible) 抽出内嵌 IPv4 再按 ① 判（否则 {@code ::ffff:169.254.169.254} 会伪装成公网 IPv6
      * 绕过所有 v4 规则），对 {@code 2002::/16}(6to4) 抽出第 2~5 字节内嵌 IPv4 判；纯 IPv6 再判
      * ULA(fc00::/7，JDK isSiteLocal 只覆盖已废弃的 fec0::/10) 及 JDK 谓词(回环/任意本地/链路本地/
-     * 站点本地/组播)。
+     * 站点本地/组播)；对 {@code 2001:0000::/32}(Teredo) 抽 bytes 4~7 服务端 IPv4 与 bytes 12~15
+     * 按位取反的客户端 IPv4 内嵌一并判；{@code 2001:db8::/32} 文档段直接拒。
      *
      * @param addr 已解析地址，非空
      * @return 命中任一被拒类别返回 true
@@ -269,6 +279,19 @@ public final class HttpUtils {
             // 6to4 2002::/16：内嵌 IPv4 藏在第 2~5 字节
             if ((b[0] & 0xFF) == 0x20 && (b[1] & 0xFF) == 0x02) {
                 return isBlockedIpv4(b[2] & 0xFF, b[3] & 0xFF, b[4] & 0xFF, b[5] & 0xFF);
+            }
+            // Teredo 2001:0000::/32：服务端 IPv4 藏 bytes 4~7，客户端 IPv4 藏 bytes 12~15 且按位取反
+            if ((b[0] & 0xFF) == 0x20 && (b[1] & 0xFF) == 0x01 && b[2] == 0 && b[3] == 0) {
+                if (isBlockedIpv4(b[4] & 0xFF, b[5] & 0xFF, b[6] & 0xFF, b[7] & 0xFF)) {
+                    return true;
+                }
+                if (isBlockedIpv4((~b[12] & 0xFF), (~b[13] & 0xFF), (~b[14] & 0xFF), (~b[15] & 0xFF))) {
+                    return true;
+                }
+            }
+            // 2001:db8::/32 IPv6 文档段（RFC 3849）：不属于任何可路由地址，一律拒
+            if ((b[0] & 0xFF) == 0x20 && (b[1] & 0xFF) == 0x01 && (b[2] & 0xFF) == 0x0D && (b[3] & 0xFF) == 0xB8) {
+                return true;
             }
             // 纯 IPv6：ULA(fc00::/7) + JDK 谓词
             int first = b[0] & 0xFF;
@@ -308,8 +331,9 @@ public final class HttpUtils {
     }
 
     /**
-     * 安全 DnsResolver：解析主机名后，逐一校验其地址；只要有一个解析结果落在内网/保留/链路本地/元数据/
-     * CGNAT/ULA 段，即抛 {@link UnknownHostException}（{@code IOException}
+     * 安全 DnsResolver：先对 host 形式做白名单校验（拒绝 numeric host 的跨版本歧义），再解析并
+     * 逐一校验地址；只要有一个解析结果落在内网/保留/链路本地/元数据/CGNAT/ULA/Teredo 内嵌私网/IPv6 文档段
+     * 等白名单外，即抛 {@link UnknownHostException}（{@code IOException}
      * 子类）拒绝连接。返回的地址数组
      * 会被连接池直接用于建立 socket，校验与实际连接之间不发生第二次解析，故 DNS 重绑定无法绕过本校验。
      */
@@ -319,7 +343,11 @@ public final class HttpUtils {
             if (host == null || host.isEmpty()) {
                 throw new UnknownHostException("sendGet 目标主机为空");
             }
-            InetAddress[] addresses = InetAddress.getAllByName(host);
+            // host 形式白名单：拒绝 numeric host(十进制/十六进制/前导零八进制)的跨版本歧义；
+            // 方括号 IPv6 先取中内容，再交给 getAllByName（它不接受字面上的方括号）。
+            assertAllowedHostFormat(host);
+            String target = stripBracketsIfIpv6Literal(host);
+            InetAddress[] addresses = InetAddress.getAllByName(target);
             for (InetAddress address : addresses) {
                 if (isBlockedAddress(address)) {
                     throw new UnknownHostException("sendGet 拒绝连接内网/保留地址: " + host + " -> " + address.getHostAddress());
@@ -333,6 +361,109 @@ public final class HttpUtils {
             // 保持原始主机名，供路由/虚拟主机命名使用；不影响 TLS SNI 与证书主机名校验（仍按原主机名）
             return host;
         }
+    }
+
+    /**
+     * host 形式白名单：仅允许三形态之一 —— ① RFC 1123 主机名（且不命中"单标签全数字"或"任一数字标签带前导零"
+     * 的歧义 numeric host）；② 严格点分四段 IPv4（每段 0~255、无多前导零）；③ 方括号包裹的 IPv6 字面量。
+     * 否则抛 {@link UnknownHostException}，不再依赖 {@link InetAddress#getAllByName} 对 numeric host
+     * 形式的跨版本行为。主要封住 {@code 2130706433}(十进制→127.0.0.1)、{@code 0x7f.0.0.1}(十六进制)、
+     * {@code 010.0.0.1}(前导零可能被解为八进制的 8.0.0.1，与浏览器/OS 不一致) 等形式。
+     * <p>包可见以便单测直接断言。</p>
+     */
+    static void assertAllowedHostFormat(String host) throws UnknownHostException {
+        if (host == null || host.isEmpty()) {
+            throw new UnknownHostException("sendGet host 为空");
+        }
+        if (host.length() > 253) {
+            throw new UnknownHostException("sendGet host 总长超 253: " + abbrev(host));
+        }
+        // 形态三：方括号 IPv6。内容不在此处再预格式校验，交由后续 getAllByName 解析失败自然抛。
+        if (host.charAt(0) == '[') {
+            if (host.charAt(host.length() - 1) != ']' || host.length() < 3) {
+                throw new UnknownHostException("sendGet IPv6 字面量方括号不完整: " + abbrev(host));
+            }
+            return;
+        }
+        // 形态二：严格点分四段 IPv4，无前置零
+        if (isStrictDottedQuadIpv4(host)) {
+            return;
+        }
+        // 形态一：RFC 1123 主机名 + 排除 numeric 歧义
+        if (HOSTNAME_PATTERN.matcher(host).matches() && !isAmbiguousNumericHost(host)) {
+            return;
+        }
+        throw new UnknownHostException("sendGet host 形式不受支持，仅允许主机名/严格点分四段 IPv4/方括号 IPv6: " + abbrev(host));
+    }
+
+    /** 剥方括号 IPv6 字面量的包裹符，非包裹形式原样返回（包含 [ 开头的方括号不完整情形，交给 assertAllowedHostFormat 先拒） */
+    private static String stripBracketsIfIpv6Literal(String host) {
+        if (host.length() >= 2 && host.charAt(0) == '[' && host.charAt(host.length() - 1) == ']') {
+            return host.substring(1, host.length() - 1);
+        }
+        return host;
+    }
+
+    /** 严格点分四段 IPv4：4 段、每段仅含数字、无多余前导零且数值≤ 255 */
+    static boolean isStrictDottedQuadIpv4(String host) {
+        String[] parts = host.split("\\.", -1);
+        if (parts.length != 4) {
+            return false;
+        }
+        for (String p : parts) {
+            if (p.isEmpty() || p.length() > 3) {
+                return false;
+            }
+            for (int i = 0; i < p.length(); i++) {
+                char c = p.charAt(i);
+                if (c < '0' || c > '9') {
+                    return false;
+                }
+            }
+            if (p.length() > 1 && p.charAt(0) == '0') {
+                return false;
+            }
+            if (Integer.parseInt(p) > 255) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * 判定“numeric host 形式歧义”：① 任一标签以 {@code 0x}/{@code 0X} 开头（部分 Java 版本会将十六进制
+     * 预置为 IP）→ true；② 任一全数字标签带前导零（如 {@code 010}，可能被解为八进制的 8，与浏览器/OS 不一致）
+     * → true；③ 所有标签均为纯数字（如 {@code 2130706433} 十进制→127.0.0.1，{@code 1.2.3} 缩写形式）
+     * → true。命中任一 →白名单拒。严格点分四段 IPv4 已在 assertAllowedHostFormat 中优先放行，不会走到这里。
+     */
+    static boolean isAmbiguousNumericHost(String host) {
+        String[] labels = host.split("\\.", -1);
+        boolean allLabelsNumeric = true;
+        for (String label : labels) {
+            if (label.isEmpty()) {
+                return true;
+            }
+            if (label.length() >= 2 && label.charAt(0) == '0'
+                    && (label.charAt(1) == 'x' || label.charAt(1) == 'X')) {
+                return true;
+            }
+            boolean allDigits = true;
+            for (int i = 0; i < label.length(); i++) {
+                char c = label.charAt(i);
+                if (c < '0' || c > '9') {
+                    allDigits = false;
+                    break;
+                }
+            }
+            if (allDigits) {
+                if (label.length() > 1 && label.charAt(0) == '0') {
+                    return true;
+                }
+            } else {
+                allLabelsNumeric = false;
+            }
+        }
+        return allLabelsNumeric;
     }
 
     /**

@@ -16,7 +16,6 @@ import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.domain.model.LoginUser;
 import com.ruoyi.common.enums.BusinessType;
-import java.time.LocalDateTime;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.file.FileUploadUtils;
@@ -37,6 +36,9 @@ public class SysProfileController extends BaseController
     private final ISysUserService userService;
 
     private final TokenService tokenService;
+
+    /** 头像上传大小上限（2MB），比全局 multipart 限制更严格，超出直接给业务文案 */
+    private static final long AVATAR_MAX_SIZE = 2 * 1024 * 1024L;
 
     public SysProfileController(ISysUserService userService, TokenService tokenService)
     {
@@ -113,11 +115,10 @@ public class SysProfileController extends BaseController
         newPassword = SecurityUtils.encryptPassword(newPassword);
         if (userService.resetUserPwd(userId, newPassword) > 0)
         {
-            // 更新缓存用户密码&密码最后更新时间
-            loginUser.getUser().setPwdUpdateDate(LocalDateTime.now());
-            loginUser.getUser().setPassword(newPassword);
-            tokenService.setLoginUser(loginUser);
-            return success();
+            // 改密成功后强制下线该用户全部在线会话（含当前会话）：避免旧密码签发的 token 在改密后仍可用。
+            // resetUserPwd 已在库中刷新 pwd_update_date，重登后取到的是最新改密时间；此处不再 setLoginUser 续期当前会话。
+            tokenService.delLoginUsers(userId);
+            return success("密码修改成功，请使用新密码重新登录");
         }
         return error("修改密码异常，请联系管理员");
     }
@@ -131,6 +132,11 @@ public class SysProfileController extends BaseController
     {
         if (!file.isEmpty())
         {
+            // 显式大小校验：全局 multipart 已限 10MB、FileUploadUtils 限 50MB，但头像应远小于此，收紧到 2MB 并给出明确文案
+            if (file.getSize() > AVATAR_MAX_SIZE)
+            {
+                return error("头像图片不能超过 2MB，请压缩后重试");
+            }
             LoginUser loginUser = getLoginUser();
             String avatar = FileUploadUtils.upload(RuoYiConfig.getAvatarPath(), file, MimeTypeUtils.IMAGE_EXTENSION, true);
             if (userService.updateUserAvatar(loginUser.getUserId(), avatar))

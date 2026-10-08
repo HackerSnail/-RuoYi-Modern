@@ -119,6 +119,40 @@ public class TokenService {
     }
 
     /**
+     * 强制指定用户下线：扫描并删除属于该用户的全部在线会话（含当前会话）。
+     * <p> 用于“改密后强制重新登录”等安全策略。token 以会话 uuid 为键、无 user→会话索引，
+     * 故只能 SCAN login_tokens:* 反序列化后按 userId 过滤删除（与 refreshPermissionByRoleId 同法）。
+     * 删掉缓存后对应 JWT 立即失效（getLoginUser 取不到 loginUser，下次请求即 401）。
+     *
+     * @param userId 需下线的用户ID
+     * @return 被清除的会话数
+     */
+    public int delLoginUsers(Long userId) {
+        if (userId == null) {
+            return 0;
+        }
+        String pattern = CacheConstants.LOGIN_TOKEN_KEY + "*";
+        Collection<String> keys = redisCache.keys(pattern);
+        if (keys == null || keys.isEmpty()) {
+            return 0;
+        }
+        // 一次 MGET 分批取回全部在线会话，替代逐 key GET 的 N+1 往返；multiGetObject 已剔除不存在的 null
+        List<LoginUser> loginUsers = redisCache.multiGetObject(keys);
+        int count = 0;
+        for (LoginUser loginUser : loginUsers) {
+            if (loginUser == null || loginUser.getUser() == null) {
+                continue;
+            }
+            if (userId.equals(loginUser.getUser().getUserId())) {
+                // loginUser.getToken() 即该会话的 uuid（createToken/refreshToken 时写入、随对象缓存）
+                delLoginUser(loginUser.getToken());
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
      * 创建令牌
      * 
      * @param loginUser 用户信息

@@ -214,20 +214,8 @@ public class FileUtils {
      * @return 后缀名
      */
     public static String getFileExtendName(byte[] photoByte) {
-        // 下面各分支均为比对图片文件头（magic number）的字节值，如 71/73/70/56 对应 “GIF8”、66/77 对应
-        // “BM”、80/78/71 对应 “PNG”
-        String strFileExtendName = "jpg";
-        if ((photoByte[0] == 71) && (photoByte[1] == 73) && (photoByte[2] == 70) && (photoByte[3] == 56)
-                && ((photoByte[4] == 55) || (photoByte[4] == 57)) && (photoByte[5] == 97)) {
-            strFileExtendName = "gif";
-        } else if ((photoByte[6] == 74) && (photoByte[7] == 70) && (photoByte[8] == 73) && (photoByte[9] == 70)) {
-            strFileExtendName = "jpg";
-        } else if ((photoByte[0] == 66) && (photoByte[1] == 77)) {
-            strFileExtendName = "bmp";
-        } else if ((photoByte[1] == 80) && (photoByte[2] == 78) && (photoByte[3] == 71)) {
-            strFileExtendName = "png";
-        }
-        return strFileExtendName;
+        // 复用 FileTypeUtils 的文件头魔数识别（含空/短数据回落）；本类历史返回小写后缀，故 toLowerCase 保持语义不变
+        return FileTypeUtils.getFileExtendName(photoByte).toLowerCase(java.util.Locale.ROOT);
     }
 
     /**

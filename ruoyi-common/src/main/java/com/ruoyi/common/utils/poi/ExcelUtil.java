@@ -1032,6 +1032,11 @@ public class ExcelUtil<T> {
                 List<String> imagePaths = StringUtils.str2List(propertyValue, SEPARATOR);
                 for (String imagePath : imagePaths) {
                     byte[] data = ImageUtils.getImage(imagePath);
+                    if (data == null || data.length == 0) {
+                        // ImageUtils.getImage 加载失败会返回 null；跳过坏图，避免把空数据传给 addPicture 中断整个导出
+                        log.warn("导出图片读取失败，已跳过该图：{}", imagePath);
+                        continue;
+                    }
                     getDrawingPatriarch(cell.getSheet()).createPicture(anchor,
                             cell.getSheet().getWorkbook().addPicture(data, getImageType(data)));
                 }

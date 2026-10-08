@@ -48,14 +48,23 @@ public class FileTypeUtils {
      */
     public static String getFileExtendName(byte[] photoByte) {
         String strFileExtendName = "JPG";
-        if ((photoByte[0] == 71) && (photoByte[1] == 73) && (photoByte[2] == 70) && (photoByte[3] == 56)
-                && ((photoByte[4] == 55) || (photoByte[4] == 57)) && (photoByte[5] == 97)) {
+        // 数据为空或长度不足以读取最长文件头（JFIF 需到 index 9）时回落默认类型，避免 NPE / 越界
+        if (photoByte == null || photoByte.length < 10) {
+            return strFileExtendName;
+        }
+        // 各图片格式的文件头魔数以对应 ASCII 字符字面量表示，语义自解释
+        if (photoByte[0] == 'G' && photoByte[1] == 'I' && photoByte[2] == 'F' && photoByte[3] == '8'
+                && (photoByte[4] == '7' || photoByte[4] == '9') && photoByte[5] == 'a') {
+            // GIF 签名 "GIF87a" / "GIF89a"
             strFileExtendName = "GIF";
-        } else if ((photoByte[6] == 74) && (photoByte[7] == 70) && (photoByte[8] == 73) && (photoByte[9] == 70)) {
+        } else if (photoByte[6] == 'J' && photoByte[7] == 'F' && photoByte[8] == 'I' && photoByte[9] == 'F') {
+            // JPEG 的 "JFIF" 应用标记
             strFileExtendName = "JPG";
-        } else if ((photoByte[0] == 66) && (photoByte[1] == 77)) {
+        } else if (photoByte[0] == 'B' && photoByte[1] == 'M') {
+            // BMP 签名 "BM"
             strFileExtendName = "BMP";
-        } else if ((photoByte[1] == 80) && (photoByte[2] == 78) && (photoByte[3] == 71)) {
+        } else if (photoByte[1] == 'P' && photoByte[2] == 'N' && photoByte[3] == 'G') {
+            // PNG 签名 0x89 后紧跟 "PNG"
             strFileExtendName = "PNG";
         }
         return strFileExtendName;

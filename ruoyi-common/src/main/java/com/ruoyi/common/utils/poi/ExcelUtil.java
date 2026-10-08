@@ -620,12 +620,14 @@ public class ExcelUtil<T> {
         }
         checkExportSize(list);
         this.list = list;
-        this.sheetName = sheetName;
+        this.wb = wb;
+        // 存规范化后的基名：后续分页派生名(this.sheetName + index)据此生成，避免非法/超长
+        this.sheetName = resolveSheetName(sheetName);
         this.title = title != null ? title : "";
         this.type = Type.EXPORT;
         this.rownum = 0;
-        this.wb = wb;
-        this.sheet = wb.createSheet(sheetName);
+        // 多 Sheet 场景两张同名很常见，走安全创建做去重，避免重名在 POI 层抛
+        this.sheet = createSafeSheet(wb, this.sheetName);
         createExcelField();
         this.styles = createStyles(wb);
         createTitle();
@@ -1563,12 +1565,55 @@ public class ExcelUtil<T> {
     }
 
     /**
+     * 规范化 Sheet 名称以符合 Excel 硬约束：非空、长度 ≤ 31、不含 : \ / ? * [ ]、首尾不为单引号。
+     * 对已合法且 ≤31 的名字为恒等变换；null/空白/含非法字符/超长分别兜底替换与截断。
+     * 不依赖 POI WorkbookUtil（其对 null 等边界行为不一致），自实现以保证语义确定可读。
+     */
+    private String resolveSheetName(String raw) {
+        String name = raw == null ? "" : raw.trim();
+        // 非法字符统一替换为下划线
+        for (char invalid : new char[] { ':', '\\', '/', '?', '*', '[', ']' }) {
+            name = name.replace(invalid, '_');
+        }
+        // 剥首尾单引号（Excel 不允许 sheet 名以 ' 开始或结束）
+        name = name.replaceAll("^'+", "").replaceAll("'+$", "");
+        // 空名兜底
+        if (name.isEmpty()) {
+            name = "Sheet";
+        }
+        // 截断到 31
+        if (name.length() > 31) {
+            name = name.substring(0, 31);
+        }
+        return name;
+    }
+
+    /**
+     * 在工作簿上创建名称安全且唯一的 Sheet：先规范化基名，若与已有 Sheet 重名则追加 _1/_2/…
+     * 并保证整体 ≤31，避免非法名/超长名/重名在 POI 层抛异常。
+     */
+    private Sheet createSafeSheet(Workbook wb, String rawBase) {
+        String base = resolveSheetName(rawBase);
+        String name = base;
+        int dup = 1;
+        while (wb.getSheet(name) != null) {
+            String suffix = "_" + dup;
+            int maxBase = 31 - suffix.length();
+            String trimmedBase = base.length() > maxBase ? base.substring(0, maxBase) : base;
+            name = trimmedBase + suffix;
+            dup++;
+        }
+        return wb.createSheet(name);
+    }
+
+    /**
      * 创建一个工作簿
      */
     public void createWorkbook() {
         this.wb = new SXSSFWorkbook(DEFAULT_STREAMING_WINDOW_SIZE);
-        this.sheet = wb.createSheet();
-        wb.setSheetName(0, sheetName);
+        // 规范化并回写基名（供分页派生名复用），安全创建避免非法/超长/重名在 POI 层抛
+        this.sheetName = resolveSheetName(this.sheetName);
+        this.sheet = createSafeSheet(wb, this.sheetName);
         this.styles = createStyles(wb);
     }
 
@@ -1581,10 +1626,9 @@ public class ExcelUtil<T> {
     public void createSheet(int sheetNo, int index) {
         // 设置工作表的名称.
         if (sheetNo > 1 && index > 0) {
-            this.sheet = wb.createSheet();
+            // 分页派生名 = 基名 + 页序号，统一走安全创建（规范化 + 去重），非法/超长/重名不再抛异常
+            this.sheet = createSafeSheet(wb, this.sheetName + index);
             this.createTitle();
-            int actualIndex = wb.getSheetIndex(this.sheet);
-            wb.setSheetName(actualIndex, sheetName + index);
         }
     }
 

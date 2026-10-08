@@ -17,6 +17,7 @@ public class UserAgentUtils {
     private static final Pattern EDGE_PATTERN = Pattern.compile("Edg(?:e)?/(\\d+)(?:\\.\\d+)*");
     private static final Pattern SAFARI_PATTERN = Pattern.compile("Version/(\\d+)(?:\\.\\d+)*");
     private static final Pattern OPERA_PATTERN = Pattern.compile("Opera/(\\d+)(?:\\.\\d+)*");
+    private static final Pattern OPERA_NEW_PATTERN = Pattern.compile("OPR/(\\d+)(?:\\.\\d+)*");
     private static final Pattern IE_PATTERN = Pattern.compile("(?:MSIE |Trident/.*rv:)(\\d+)(?:\\.\\d+)*");
     private static final Pattern SAMSUNG_PATTERN = Pattern.compile("SamsungBrowser/(\\d+)(?:\\.\\d+)*");
     private static final Pattern UC_PATTERN = Pattern.compile("UCBrowser/(\\d+)(?:\\.\\d+)*");
@@ -89,6 +90,16 @@ public class UserAgentUtils {
         if (samsungMatcher.find()) {
             return "Samsung Browser" + samsungMatcher.group(1);
         }
+        // Opera 浏览器：现代 Chromium 版用 "OPR/" token 且含 "Chrome/"，旧 Presto 版用 "Opera/" token，
+        // 二者都须先于 Chrome/Safari 判定，否则会被 Chrome（含 OPR/）或 Safari（Version/ 且无 Chrome）误吞。
+        Matcher operaNewMatcher = OPERA_NEW_PATTERN.matcher(browser);
+        if (operaNewMatcher.find()) {
+            return "Opera" + operaNewMatcher.group(1);
+        }
+        Matcher operaMatcher = OPERA_PATTERN.matcher(browser);
+        if (operaMatcher.find()) {
+            return "Opera" + operaMatcher.group(1);
+        }
         // Chrome系列浏览器
         Matcher chromeMatcher = CHROME_PATTERN.matcher(browser);
         if (chromeMatcher.find() && (browser.contains("Chrome") || browser.contains("CriOS"))) {
@@ -103,11 +114,6 @@ public class UserAgentUtils {
         Matcher safariMatcher = SAFARI_PATTERN.matcher(browser);
         if (safariMatcher.find() && !browser.contains("Chrome")) {
             return "Safari" + safariMatcher.group(1);
-        }
-        // Opera浏览器
-        Matcher operaMatcher = OPERA_PATTERN.matcher(browser);
-        if (operaMatcher.find()) {
-            return "Opera" + operaMatcher.group(1);
         }
         // IE浏览器
         Matcher ieMatcher = IE_PATTERN.matcher(browser);

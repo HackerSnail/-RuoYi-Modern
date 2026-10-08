@@ -123,27 +123,41 @@ public final class HttpUtils {
     }
 
     /**
+     * 无 host 白名单的便捷重载，等价于 {@code sendGet(url, params, charset, null)}。
+     * 目标可枚举场景（如固定的 IP 库域名）应用带 {@code allowedHosts} 的重载进一步收敛攻击面。
+     */
+    public static String sendGet(String url, Map<String, String> params, String charset) throws IOException {
+        return sendGet(url, params, charset, null);
+    }
+
+    /**
      * 向指定 URL 发送 GET 请求并返回响应体字符串。
      * <p>
      * 安全约束：① 仅允许 http/https 协议；② 域名解析出的地址必须是公网地址（回环/站点本地/链路本地/
-     * 任意本地/组播/CGNAT(100.64/10)/各保留段/IPv6 ULA，以及 IPv4-mapped·IPv4-compatible·6to4 内嵌的
+     * 任意本地/组播/CGNAT(100.64/10)/各保留段/IPv6 ULA，以及 IPv4-mapped·IPv4-compatible·6to4·Teredo 内嵌的
      * 私网 IPv4 一律拒绝），校验与实际连接共用同一批解析结果，闭合 DNS 重绑定竞态；③ 禁用自动重定向；
-     * ④ 连接与响应均设超时；⑤ 响应体设 8 MiB 上限，超限即抛。
+     * ④ 连接与响应均设超时；⑤ 响应体设 8 MiB 上限，超限即抛；⑥ 端口白名单，仅允许默认/80/443，
+     * 防止被引向非常规端口暴露内部服务；⑦ 可选域白名单，{@code allowedHosts} 非空时严格匹配
+     * {@code uri.getHost()}（大小写不敏感）——黑名单适用于目标不可枚举的通用代理，白名单适用于
+     * 目标可枚举的固定域名场景（如 {@code AddressUtils}），两者叠加最稳。
      * <p>
      * 查询参数由 {@code params} 逐项按 UTF-8 百分号编码后拼接，调用方无需（也不应）自行编码，避免
      * {@code #} 被截为 fragment、以及 {@code &}/{@code =} 语义污染。注意：逐值编码会把 IPv6 地址里的
      * {@code :} 编成 {@code %3A}，若目标服务要求裸 {@code :} 需自行适配。
      * <p>
-     * 失败语义：协议非法、字符集非法、解析到被拒地址、连接/读取失败或超时、响应体超限、以及收到非 2xx
-     * 响应，一律<b>抛出</b> {@link IOException}（非 2xx 会带上状态码与截断后的错误响应体）。
+     * 失败语义：协议非法、端口非法、host 不在白名单、字符集非法、解析到被拒地址、连接/读取失败或超时、
+     * 响应体超限、以及收到非 2xx 响应，一律<b>抛出</b> {@link IOException}。
      *
-     * @param url     请求 URL（协议必须是 http/https）
-     * @param params  查询参数键值对；为 null 或空则不带 query。键与值均按 UTF-8 百分号编码
-     * @param charset 响应体解码字符集名（如 {@code "GBK"}/{@code "UTF-8"}）；为空白时按 UTF-8
+     * @param url          请求 URL（协议必须是 http/https）
+     * @param params       查询参数键值对；为 null 或空则不带 query。键与值均按 UTF-8 百分号编码
+     * @param charset      响应体解码字符集名（如 {@code "GBK"}/{@code "UTF-8"}）；为空白时按 UTF-8
+     * @param allowedHosts 可选域白名单；非空时 {@code uri.getHost()} 必须大小写不敏感命中其中一项；
+     *                     null/空退化为仅依赖地址黑名单拦 SSRF
      * @return 响应体字符串（按原始字节解码，精确保留换行；远程空响应返回空串）
-     * @throws IOException URL 非法、协议不受支持、响应字符集非法、解析到被拒绝的地址，或连接/读取失败/超时/响应超限/非 2xx
+     * @throws IOException URL 非法、协议/端口/host 不受支持、响应字符集非法、解析到被拒绝的地址，或连接/读取失败/超时/响应超限/非 2xx
      */
-    public static String sendGet(String url, Map<String, String> params, String charset) throws IOException {
+    public static String sendGet(String url, Map<String, String> params, String charset, Set<String> allowedHosts)
+            throws IOException {
         String urlNameString = url + buildQuery(url, params);
         URI uri;
         try {
@@ -156,6 +170,25 @@ public final class HttpUtils {
         String protocol = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
         if (!ALLOWED_PROTOCOLS.contains(protocol)) {
             throw new IOException("sendGet 协议不受支持，仅允许 http/https，实际为: " + protocol);
+        }
+        // SSRF 防线之二：端口白名单，-1(默认)/80/443 以外一律拒绝
+        int port = uri.getPort();
+        if (port != -1 && port != 80 && port != 443) {
+            throw new IOException("sendGet 端口不受支持，仅允许默认/80/443，实际为: " + port);
+        }
+        // SSRF 防线之三（可选纵深）：目标可枚举时的域白名单，严于任何地址黑名单
+        if (allowedHosts != null && !allowedHosts.isEmpty()) {
+            String hostOfUri = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
+            boolean allowed = false;
+            for (String a : allowedHosts) {
+                if (a != null && a.toLowerCase(Locale.ROOT).equals(hostOfUri)) {
+                    allowed = true;
+                    break;
+                }
+            }
+            if (!allowed) {
+                throw new IOException("sendGet host 不在允许清单，实际为: " + abbrev(hostOfUri));
+            }
         }
         // 原实现的第三参数名为 contentType，实际用途一直是"响应字符集"；此处正名为 charset 并早校验
         Charset cs;
@@ -223,7 +256,9 @@ public final class HttpUtils {
         if (declared > max) {
             throw new IOException("sendGet 响应体声明长度超过上限 " + max + " 字节, 声明=" + declared);
         }
-        try (InputStream in = entity.getContent(); ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+        try (InputStream in = entity.getContent();
+             ByteArrayOutputStream bos = new ByteArrayOutputStream(
+                     (int) Math.min(Math.max(declared, 0), max))) {
             byte[] buf = new byte[8192];
             long total = 0;
             int n;
@@ -332,6 +367,8 @@ public final class HttpUtils {
         if (o0 == 169 && o1 == 254) return true;          // 169.254/16 link-local(含云元数据)
         if (o0 == 172 && (o1 & 0xF0) == 16) return true;  // 172.16/12
         if (o0 == 192 && o1 == 0 && o2 == 2) return true; // 192.0.2/24 TEST-NET-1
+        if (o0 == 192 && o1 == 0 && o2 == 0) return true;   // 192.0.0/24 IETF Protocol Assignments
+        if (o0 == 192 && o1 == 88 && o2 == 99) return true; // 192.88.99/24 6to4 relay anycast(已废弃)
         if (o0 == 192 && o1 == 168) return true;          // 192.168/16
         if (o0 == 198 && o1 == 51 && o2 == 100) return true; // 198.51.100/24 TEST-NET-2
         if (o0 == 203 && o1 == 0 && o2 == 113) return true;  // 203.0.113/24 TEST-NET-3

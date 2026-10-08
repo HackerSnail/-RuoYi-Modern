@@ -67,6 +67,10 @@ public class ReflectUtils {
      */
     @SuppressWarnings("unchecked")
     public static <E> E getFieldValue(final Object obj, final String fieldName) {
+        // 为空不报错，直接返回 null（与 invokeMethod 语义对齐，避免下方日志分支 obj.getClass() NPE）
+        if (obj == null) {
+            return null;
+        }
         Field field = getAccessibleField(obj, fieldName);
         if (field == null) {
             logger.debug("在 [" + obj.getClass() + "] 中，没有找到 [" + fieldName + "] 字段 ");
@@ -85,6 +89,10 @@ public class ReflectUtils {
      * 直接设置对象属性值, 无视private/protected修饰符, 不经过setter函数.
      */
     public static <E> void setFieldValue(final Object obj, final String fieldName, final E value) {
+        // 为空不报错，直接返回（与 invokeMethod 语义对齐，避免下方日志分支 obj.getClass() NPE）
+        if (obj == null) {
+            return;
+        }
         Field field = getAccessibleField(obj, fieldName);
         if (field == null) {
             // throw new IllegalArgumentException("在 [" + obj.getClass() + "] 中，没有找到 [" +
@@ -130,6 +138,10 @@ public class ReflectUtils {
      */
     @SuppressWarnings("unchecked")
     public static <E> E invokeMethodByName(final Object obj, final String methodName, final Object[] args) {
+        // 为空不报错，直接返回 null（与 invokeMethod 语义对齐，避免下方日志分支 obj.getClass() NPE）
+        if (obj == null) {
+            return null;
+        }
         Method method = getAccessibleMethodByName(obj, methodName, args.length);
         if (method == null) {
             // 如果为空不报错，直接返回空。
@@ -158,7 +170,7 @@ public class ReflectUtils {
                         if (args[i] instanceof String) {
                             args[i] = DateUtils.parseDate(args[i]);
                         } else {
-                            args[i] = DateUtil.getJavaDate((Double) args[i]);
+                            args[i] = DateUtil.getJavaDate(Convert.toDouble(args[i]));
                         }
                     } else if (cs[i] == boolean.class || cs[i] == Boolean.class) {
                         args[i] = Convert.toBool(args[i]);

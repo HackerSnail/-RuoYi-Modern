@@ -57,6 +57,11 @@ public class UserAgentUtils {
      * 全面浏览器检测
      */
     private static String formatBrowser(String browser) {
+        // Firefox：“Firefox/” 标识唯一、几乎不被其它浏览器复用，置于最前。
+        Matcher firefoxMatcher = FIREFOX_PATTERN.matcher(browser);
+        if (firefoxMatcher.find()) {
+            return "Firefox" + firefoxMatcher.group(1);
+        }
         // 以下均为“带各自特有 token 的 Chromium 壳浏览器”，须统一先于泛化的 Chrome 判定：这类 UA
         // 同时含专属标识（Edg/、MicroMessenger/、UCBrowser/、QQBrowser/、baidubrowser/、SamsungBrowser/）
         // 与 "Chrome/"，若先判 Chrome 会把它们一律误识别为 Chrome；专属 token 比 "Chrome/" 更具区分度。
@@ -100,15 +105,12 @@ public class UserAgentUtils {
         if (operaMatcher.find()) {
             return "Opera" + operaMatcher.group(1);
         }
-        // Chrome系列浏览器
+        // Chrome 浏览器：须排除各 Chromium 壳（它们已在上文各自命中并返回，这里再兜一层负向守卫，
+        // 防止某壳的专属 pattern 万一漏判时被误标为 Chrome）。Safari 判定仍保留 !contains("Chrome")。
         Matcher chromeMatcher = CHROME_PATTERN.matcher(browser);
-        if (chromeMatcher.find() && (browser.contains("Chrome") || browser.contains("CriOS"))) {
+        if (chromeMatcher.find() && (browser.contains("Chrome") || browser.contains("CriOS"))
+                && !isChromiumShell(browser)) {
             return "Chrome" + chromeMatcher.group(1);
-        }
-        // Firefox
-        Matcher firefoxMatcher = FIREFOX_PATTERN.matcher(browser);
-        if (firefoxMatcher.find()) {
-            return "Firefox" + firefoxMatcher.group(1);
         }
         // Safari浏览器（需排除Chrome）
         Matcher safariMatcher = SAFARI_PATTERN.matcher(browser);
@@ -124,6 +126,17 @@ public class UserAgentUtils {
     }
 
     /**
+     * 是否为带专属 token 的 Chromium 壳浏览器（Edge/Opera/国产壳等）。这些 UA 普遍也含 "Chrome/"，
+     * 供 Chrome 分支在专属 pattern 万一漏判时将其排除。"Edg/" 与 "Edge/" 分别覆盖新旧 Edge 写法。
+     */
+    private static boolean isChromiumShell(String browser) {
+        return browser.contains("Edg/") || browser.contains("Edge/") || browser.contains("OPR/")
+                || browser.contains("Opera/") || browser.contains("SamsungBrowser/")
+                || browser.contains("UCBrowser/") || browser.contains("QQBrowser/")
+                || browser.contains("baidubrowser/") || browser.contains("MicroMessenger/");
+    }
+
+    /**
      * 检测操作系统
      */
     private static String formatOperatingSystem(String operatingSystem) {
@@ -135,8 +148,8 @@ public class UserAgentUtils {
         // macOS系统
         Matcher macMatcher = MACOS_PATTERN.matcher(operatingSystem);
         if (macMatcher.find()) {
-            String version = macMatcher.group(1).replace("_", ".");
-            return "macOS" + extractMajorVersion(version);
+            // "_" 分隔交由 extractMajorVersion 内部按 [._] 取首段处理，无需在此预替换
+            return "macOS" + extractMajorVersion(macMatcher.group(1));
         }
         // Android系统
         Matcher androidMatcher = ANDROID_PATTERN.matcher(operatingSystem);
@@ -160,34 +173,15 @@ public class UserAgentUtils {
     }
 
     /**
-     * 提取优化的主版本号
+     * 提取主版本号：直接按 "." 或 "_" 取首段（macOS 旧格式用 "_" 分隔如 "10_15_7"，其余用 "." 或纯数字）。
+     * 去掉原先“清理非数字后按点分割、三位数再除以 10”的脆弱启发式——它会把 "10_15_7" 误算成 "1015"。
      */
     private static String extractMajorVersion(String fullVersion) {
         if (StringUtils.isEmpty(fullVersion)) {
             return StringUtils.EMPTY;
         }
-        try {
-            // 清理版本号中的非数字字符
-            String cleanVersion = fullVersion.replaceAll("[^0-9.]", "");
-            String[] parts = cleanVersion.split("\\.");
-            if (parts.length > 0) {
-                String firstPart = parts[0];
-                if (firstPart.matches("\\d+")) {
-                    int version = Integer.parseInt(firstPart);
-
-                    // 仅针对 macOS 10.x 时代以 "_" 分隔的旧格式（清理后可能得到三位数），把 142
-                    // 归一成 14；现代 macOS(11+/12+/14+)、Android、iOS、Windows 均为一到两位数，
-                    // 不会走到这条分支。
-                    if (version >= 100) {
-                        return String.valueOf(version / 10);
-                    }
-                    return firstPart;
-                }
-            }
-        } catch (NumberFormatException e) {
-            // 版本号解析失败，返回原始值
-        }
-        return fullVersion;
+        String first = fullVersion.split("[._]")[0];
+        return first.matches("\\d+") ? first : fullVersion;
     }
 
     /**

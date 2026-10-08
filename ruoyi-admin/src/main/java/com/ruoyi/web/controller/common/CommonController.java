@@ -52,6 +52,10 @@ public class CommonController {
             }
             String realFileName = System.currentTimeMillis() + fileName.substring(fileName.indexOf("_") + 1);
             String filePath = RuoYiConfig.getDownloadPath() + fileName;
+            // 基目录锚定：拼接出的最终路径经 canonical 归一后必须仍在下载根目录内，杜绝跳出
+            if (!FileUtils.isPathUnderBase(RuoYiConfig.getDownloadPath(), filePath)) {
+                throw new Exception(StringUtils.format("文件名称({})非法，不允许下载。 ", fileName));
+            }
 
             response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
             FileUtils.setAttachmentResponseHeader(response, realFileName);
@@ -132,6 +136,10 @@ public class CommonController {
             String localPath = RuoYiConfig.getProfile();
             // 数据库资源地址
             String downloadPath = localPath + FileUtils.stripPrefix(resource);
+            // 基目录锚定：资源地址经 stripPrefix 拼接后仍必须落在 profile 根目录内，杜绝跳出
+            if (!FileUtils.isPathUnderBase(localPath, downloadPath)) {
+                throw new Exception(StringUtils.format("资源文件({})非法，不允许下载。 ", resource));
+            }
             // 下载名称
             String downloadName = StringUtils.substringAfterLast(downloadPath, "/");
             response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);

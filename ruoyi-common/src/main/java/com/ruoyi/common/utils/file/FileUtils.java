@@ -9,10 +9,8 @@ import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import com.ruoyi.common.config.RuoYiConfig;
 import com.ruoyi.common.constant.Constants;
@@ -25,37 +23,36 @@ import com.ruoyi.common.utils.uuid.IdUtils;
  * 
  * @author ruoyi
  */
-public class FileUtils {
-    public static String FILENAME_PATTERN = "[a-zA-Z0-9_\\-\\|\\.\\u4e00-\\u9fa5]+";
+public final class FileUtils {
+    private FileUtils() {
+    }
 
     /**
      * 输出指定文件的 byte 数组到给定的输出流
      *
      * <p>
-     * 输入流（本地文件）使用 try-with-resources 自动关闭；输出流 {@code os} 由调用方传入，
-     * 在 finally 中关闭（保持原有“调用方负责关流”的语义）。
+     * 输入流（本地文件）用 try-with-resources 自动关闭；输出流 {@code os} 由调用方传入，其
+     * 生命周期归调用方 / Servlet 容器，本方法只 flush、不关闭，避免与调用方的关流动作产生
+     * 双重关闭歧义。
      * </p>
      *
      * @param filePath 文件路径
-     * @param os       输出流（本方法不负责打开，但会关闭它）
+     * @param os       输出流（本方法既不打开也不关闭，仅在写完后 flush）
      * @throws IOException 文件不存在或读写异常
      */
     public static void writeBytes(String filePath, OutputStream os) throws IOException {
-        try {
-            File file = new File(filePath);
-            if (!file.exists()) {
-                throw new FileNotFoundException(filePath);
+        File file = new File(filePath);
+        if (!file.exists()) {
+            throw new FileNotFoundException(filePath);
+        }
+        try (FileInputStream fis = new FileInputStream(file)) {
+            byte[] b = new byte[1024];
+            int length;
+            while ((length = fis.read(b)) > 0) {
+                os.write(b, 0, length);
             }
-            try (FileInputStream fis = new FileInputStream(file)) {
-                byte[] b = new byte[1024];
-                int length;
-                while ((length = fis.read(b)) > 0) {
-                    os.write(b, 0, length);
-                }
-            }
-        } finally {
-            // os 由调用方传入，维持原“关闭输出流”语义
-            IOUtils.close(os);
+            // 只 flush 不 close：确保数据进入容器输出缓冲区，流关闭交由持有方负责
+            os.flush();
         }
     }
 
@@ -115,24 +112,19 @@ public class FileUtils {
     }
 
     /**
-     * 文件名称验证
-     * 
-     * @param filename 文件名称
-     * @return true 正常 false 非法
-     */
-    public static boolean isValidFilename(String filename) {
-        return filename.matches(FILENAME_PATTERN);
-    }
-
-    /**
      * 检查文件是否可下载
-     * 
+     * <p>
+     * 两道前置：其一按分隔符（正/反斜杠）逐段拆开后判断是否存在父目录跳转段 ".."——取代历史
+     * "整串 contains(..)" 的弱检测，既仍能拦截 "..\"、解码后的 %2e%2e，又不会误伤 "a..b.pdf" 之类
+     * 含连续点但无跳转的合法名；其二要求后缀落在允许下载白名单内。真正的基目录锚定由调用方在
+     * 拼出最终路径后用 {@link #isPathUnderBase(String, String)} 完成（此处只有相对字符串、无从知晓根）。
+     *
      * @param resource 需要下载的文件
      * @return true 正常 false 非法
      */
     public static boolean checkAllowDownload(String resource) {
         // 禁止目录上跳级别
-        if (StringUtils.contains(resource, "..")) {
+        if (StringUtils.isEmpty(resource) || containsParentTraversal(resource)) {
             return false;
         }
 
@@ -146,35 +138,41 @@ public class FileUtils {
     }
 
     /**
-     * 下载文件名重新编码
-     * 
-     * @param request  请求对象
-     * @param fileName 文件名
-     * @return 编码后的文件名
+     * 按文件系统分隔符逐段拆分，任一段等于 ".." 即判定为父目录跳转
      */
-    public static String setFileDownloadHeader(HttpServletRequest request, String fileName)
-            throws UnsupportedEncodingException {
-        final String agent = request.getHeader("USER-AGENT");
-        String filename = fileName;
-        if (agent.contains("MSIE")) {
-            // IE浏览器
-            filename = URLEncoder.encode(filename, "utf-8");
-            filename = filename.replace("+", " ");
-        } else if (agent.contains("Firefox")) {
-            // 火狐浏览器
-            filename = new String(fileName.getBytes(StandardCharsets.UTF_8), "ISO8859-1");
-        } else if (agent.contains("Chrome")) {
-            // google浏览器
-            filename = URLEncoder.encode(filename, "utf-8");
-        } else {
-            // 其它浏览器
-            filename = URLEncoder.encode(filename, "utf-8");
+    private static boolean containsParentTraversal(String path) {
+        for (String segment : path.split("[/\\\\]")) {
+            if ("..".equals(segment)) {
+                return true;
+            }
         }
-        return filename;
+        return false;
     }
 
     /**
-     * 下载文件名重新编码
+     * 校验 target 解析（canonical 归一，消解 "."/".."/符号链接）后是否仍位于 baseDir 之内。
+     * <p>
+     * 用于下载/删除等"拼接出最终路径再落文件系统"的场景做基目录锚定，杜绝通过拼接、编码、
+     * 软链接等方式跳出根目录。比较按分隔符边界进行，避免 /download 误配 /downloadbak 之类前缀。
+     *
+     * @param baseDir 允许访问的基目录
+     * @param target  待校验的目标路径
+     * @return true 目标在基目录内 false 越界
+     * @throws IOException 路径解析失败
+     */
+    public static boolean isPathUnderBase(String baseDir, String target) throws IOException {
+        String canonicalBase = new File(baseDir).getCanonicalPath();
+        String canonicalTarget = new File(target).getCanonicalPath();
+        return canonicalTarget.equals(canonicalBase)
+                || canonicalTarget.startsWith(canonicalBase + File.separator);
+    }
+
+    /**
+     * 下载文件名重新编码（Content-Disposition，RFC 6266 双轨）
+     * <p>
+     * filename= 给一个纯 ASCII 兜底名，兼容只识别传统形式的老浏览器/中间层；filename*=UTF-8''
+     * 用百分号编码承载原始名，现代浏览器优先取它，非 ASCII 文件名不再依赖 filename= 字段。
+     * 另单独暴露 download-filename 头供前端读取。
      *
      * @param response     响应对象
      * @param realFileName 真实文件名
@@ -182,11 +180,12 @@ public class FileUtils {
     public static void setAttachmentResponseHeader(HttpServletResponse response, String realFileName)
             throws UnsupportedEncodingException {
         String percentEncodedFileName = percentEncode(realFileName);
+        String asciiFallback = toAsciiFilenameFallback(realFileName);
 
         StringBuilder contentDispositionValue = new StringBuilder();
-        contentDispositionValue.append("attachment; filename=")
-                .append(percentEncodedFileName)
-                .append(";")
+        contentDispositionValue.append("attachment; filename=\"")
+                .append(asciiFallback)
+                .append("\";")
                 .append("filename*=")
                 .append("utf-8''")
                 .append(percentEncodedFileName);
@@ -194,6 +193,13 @@ public class FileUtils {
         response.addHeader("Access-Control-Expose-Headers", "Content-Disposition,download-filename");
         response.setHeader("Content-disposition", contentDispositionValue.toString());
         response.setHeader("download-filename", percentEncodedFileName);
+    }
+
+    /**
+     * 生成 Content-Disposition filename= 使用的纯 ASCII 兜底名：非 [a-zA-Z0-9._-] 字符一律替换为下划线
+     */
+    private static String toAsciiFilenameFallback(String fileName) {
+        return StringUtils.isEmpty(fileName) ? "download" : fileName.replaceAll("[^a-zA-Z0-9._-]", "_");
     }
 
     /**

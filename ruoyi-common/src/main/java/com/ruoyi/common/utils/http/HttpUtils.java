@@ -11,6 +11,7 @@ import java.util.Locale;
 import java.util.Set;
 import org.apache.hc.client5.http.DnsResolver;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
@@ -31,7 +32,8 @@ import com.ruoyi.common.utils.StringUtils;
  * 丢弃空白行破坏响应等多处缺陷，属"抄来未消化"的死代码，已整体移除。仅保留被 {@code AddressUtils}
  * 实际使用的 sendGet。
  * <p>
- * 之所以从 {@code HttpURLConnection} 迁到 HttpClient5：① 前者无真正的连接池、{@code disconnect()}
+ * 之所以从 {@code HttpURLConnection} 迁到 HttpClient5：①
+ * 前者无真正的连接池、{@code disconnect()}
  * 在多数实现下会直接关闭底层 socket，高并发下 fd/端口压力大；② HttpClient5 提供可插拔
  * {@link DnsResolver}，能把"域名解析→安全校验→实际连接"绑定到同一批 IP，从而闭合 DNS 重绑定
  * （rebinding）竞态——这是在 {@code HttpURLConnection}/{@code java.net.http} 上无法干净做到的。
@@ -77,13 +79,19 @@ public final class HttpUtils {
     private static CloseableHttpClient buildClient() {
         // 关键：连接池使用 SafeDnsResolver，解析出的 IP 先经内网/保留地址校验，随后 socket 直接连到
         // 这批已校验的地址——校验与连接之间不再发生第二次解析，故对 DNS 重绑定是免疫的（TOCTOU 闭合）。
+        // 连接超时在 5.2 起从 RequestConfig.setConnectTimeout（已标 @Deprecated）迁至 ConnectionConfig，
+        // 并通过连接池构建器的 setDefaultConnectionConfig 注册；响应超时仍留在 RequestConfig（未废弃）。
+        ConnectionConfig connectionConfig = ConnectionConfig.custom()
+                .setConnectTimeout(CONNECT_TIMEOUT)
+                .setSocketTimeout(RESPONSE_TIMEOUT)
+                .build();
         PoolingHttpClientConnectionManager connectionManager = PoolingHttpClientConnectionManagerBuilder.create()
                 .setDnsResolver(new SafeDnsResolver())
+                .setDefaultConnectionConfig(connectionConfig)
                 .setMaxConnTotal(100)
                 .setMaxConnPerRoute(20)
                 .build();
         RequestConfig requestConfig = RequestConfig.custom()
-                .setConnectTimeout(CONNECT_TIMEOUT)
                 .setResponseTimeout(RESPONSE_TIMEOUT)
                 // 禁用自动重定向：3xx 不被静默跟随到可能不受信任（内网/元数据）的目标
                 .setRedirectsEnabled(false)
@@ -164,7 +172,8 @@ public final class HttpUtils {
      * @return 2xx 时解码后的响应体（空 body 返回空串）
      * @throws IOException 非 2xx 响应
      */
-    public static String interpretResponse(int statusCode, byte[] rawBody, Charset charset, String url) throws IOException {
+    public static String interpretResponse(int statusCode, byte[] rawBody, Charset charset, String url)
+            throws IOException {
         String body = new String(rawBody == null ? new byte[0] : rawBody, charset);
         if (statusCode >= 200 && statusCode < 300) {
             return body;
@@ -206,7 +215,8 @@ public final class HttpUtils {
 
     /**
      * 安全 DnsResolver：解析主机名后，逐一校验其地址；只要有一个解析结果落在内网/保留/链路本地/元数据/
-     * CGNAT/ULA 段，即抛 {@link UnknownHostException}（{@code IOException} 子类）拒绝连接。返回的地址数组
+     * CGNAT/ULA 段，即抛 {@link UnknownHostException}（{@code IOException}
+     * 子类）拒绝连接。返回的地址数组
      * 会被连接池直接用于建立 socket，校验与实际连接之间不发生第二次解析，故 DNS 重绑定无法绕过本校验。
      */
     static final class SafeDnsResolver implements DnsResolver {

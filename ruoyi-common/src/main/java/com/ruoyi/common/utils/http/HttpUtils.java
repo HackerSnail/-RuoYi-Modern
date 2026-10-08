@@ -112,12 +112,12 @@ public final class HttpUtils {
                 .build();
         RequestConfig requestConfig = RequestConfig.custom()
                 .setResponseTimeout(RESPONSE_TIMEOUT)
-                // 禁用自动重定向：3xx 不被静默跟随到可能不受信任（内网/元数据）的目标
-                .setRedirectsEnabled(false)
                 .build();
         return HttpClients.custom()
                 .setConnectionManager(connectionManager)
                 .setDefaultRequestConfig(requestConfig)
+                // 禁用自动重定向：3xx 不被静默跟随到可能不受信任（内网/元数据）的目标；
+                // 客户端级一次性失效，无需再在 RequestConfig 里 setRedirectsEnabled(false)。
                 .disableRedirectHandling()
                 .build();
     }
@@ -183,7 +183,15 @@ public final class HttpUtils {
 
     /**
      * 由 params 构造百分号编码后的查询串（含前导 {@code ?} 或 {@code &}）；params 为 null/空返回空串。
-     * url 已带 query 时用 {@code &} 续接，否则用 {@code ?}。键值均按 UTF-8 编码，null 值视作空串。
+     * url 已带 query 时用 {@code &} 续接，否则用 {@code ?}。键/值中任一侧为 null 均视作空串。
+     * <p>
+     * 编码约定：采用 {@link URLEncoder#encode(String, java.nio.charset.Charset)} 的 HTML 表单编码——
+     * 空格→{@code +}、{@code :}→{@code %3A} 等。与 RFC 3986 的 {@code %20}/{@code :} 略不同，但
+     * 对目标服务普遍采用 form-urlencoded 语义的 query 串无影响；若对端严格遵循 RFC 3986（如局部
+     * 需预签名的 API），需自行预先拼接并传入 null params。
+     * <p>
+     * 参数顺序：取决于 {@link Map} 本身的迭代顺序；如需稳定顺序（如签名预映），请传 {@link LinkedHashMap}
+     * 或 {@link java.util.SortedMap}，{@code HashMap}/{@code Map.of} 不保证顺序。
      * （包可见以便单测直接断言编码语义。）
      */
     static String buildQuery(String url, Map<String, String> params) {
@@ -195,8 +203,10 @@ public final class HttpUtils {
             if (q.length() > 0) {
                 q.append('&');
             }
-            q.append(URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8)).append('=')
-             .append(URLEncoder.encode(entry.getValue() == null ? "" : entry.getValue(), StandardCharsets.UTF_8));
+            String k = entry.getKey();
+            String v = entry.getValue();
+            q.append(URLEncoder.encode(k == null ? "" : k, StandardCharsets.UTF_8)).append('=')
+             .append(URLEncoder.encode(v == null ? "" : v, StandardCharsets.UTF_8));
         }
         return (url != null && url.indexOf('?') >= 0 ? "&" : "?") + q;
     }

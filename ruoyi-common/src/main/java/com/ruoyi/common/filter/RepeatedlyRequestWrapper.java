@@ -46,12 +46,14 @@ public class RepeatedlyRequestWrapper extends HttpServletRequestWrapper {
 
             @Override
             public boolean isFinished() {
-                return false;
+                // 内存流读尽（无剩余可读字节）即为完成，符合 Servlet 规范对 isFinished 的约定
+                return bais.available() == 0;
             }
 
             @Override
             public boolean isReady() {
-                return false;
+                // 同步阻塞式读取下内存流永远可读、不会阻塞，故恒返回 true
+                return true;
             }
 
             @Override

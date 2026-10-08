@@ -56,6 +56,12 @@ public class UserAgentUtils {
      * 全面浏览器检测
      */
     private static String formatBrowser(String browser) {
+        // Edge 浏览器：必须先于 Chrome 判定。Edge（及国产 Chromium 壳）UA 同时含 "Edg/" 与 "Chrome/"
+        // token，若先判 Chrome 会把 Edge 误识别为 Chrome；"Edg(e)?/" 是 Edge 特有标识，前置可去歧义。
+        Matcher edgeMatcher = EDGE_PATTERN.matcher(browser);
+        if (edgeMatcher.find()) {
+            return "Edge" + edgeMatcher.group(1);
+        }
         // Chrome系列浏览器
         Matcher chromeMatcher = CHROME_PATTERN.matcher(browser);
         if (chromeMatcher.find() && (browser.contains("Chrome") || browser.contains("CriOS"))) {
@@ -65,11 +71,6 @@ public class UserAgentUtils {
         Matcher firefoxMatcher = FIREFOX_PATTERN.matcher(browser);
         if (firefoxMatcher.find()) {
             return "Firefox" + firefoxMatcher.group(1);
-        }
-        // Edge浏览器
-        Matcher edgeMatcher = EDGE_PATTERN.matcher(browser);
-        if (edgeMatcher.find()) {
-            return "Edge" + edgeMatcher.group(1);
         }
         // Safari浏览器（需排除Chrome）
         Matcher safariMatcher = SAFARI_PATTERN.matcher(browser);

@@ -178,6 +178,10 @@ public final class HTMLFilter {
     // ---------------------------------------------------------------
     // my versions of some PHP library functions
     public static String chr(final int decimal) {
+        // #10 范围校验：超出 char(BMP) 范围的十进制强转会得到乱码字符，越界一律返回空串
+        if (decimal < 0 || decimal > 0xFFFF) {
+            return "";
+        }
         return String.valueOf((char) decimal);
     }
 
@@ -200,12 +204,17 @@ public final class HTMLFilter {
      * @return "clean" version of input, with only valid, whitelisted html elements
      *         allowed
      */
-    public String filter(final String input) {
+    public synchronized String filter(final String input) {
+        // #11 null 守卫：原实现直接对 null 调 P_COMMENTS.matcher 触发 NPE
+        if (input == null) {
+            return "";
+        }
+        // #8 synchronized：vTagCounts 为实例可变态，防止该实例被当作共享 Bean 并发调用时串标签（缓解，非根除）
         // 每次过滤前重置标签计数，避免多次调用互相干扰
         reset();
         String s = input;
 
-        // 转义注释 -> 平衡尖括号 -> 白名单校验标签 -> 剔除空标签，逐步净化不可信 HTML
+        // 转义注释 -> 平衡尖括号 -> 白名单校验标签 -> 剔除空标签 -> 实体收敛，逐步净化不可信 HTML
         s = escapeComments(s);
 
         s = balanceHTML(s);
@@ -214,7 +223,8 @@ public final class HTMLFilter {
 
         s = processRemoveBlanks(s);
 
-        // s = validateEntities(s);
+        // #1 重启用实体校验：补回此前被注释掉的实体收敛安全网（对普通文本中的 &#x3C;/&lt; 等做合法性收敛）
+        s = validateEntities(s);
 
         return s;
     }
@@ -369,7 +379,8 @@ public final class HTMLFilter {
                         if (inArray(paramName, vProtocolAtts)) {
                             paramValue = processParamProtocol(paramValue);
                         }
-                        params.append(' ').append(paramName).append("=\\\"").append(paramValue).append("\\\"");
+                        // #6 修复：原 "=\\\"" 实际输出带字面反斜杠 =\"（畸形 HTML），应为 ="
+                        params.append(' ').append(paramName).append("=\"").append(paramValue).append("\"");
                     }
                 }
 
@@ -429,11 +440,12 @@ public final class HTMLFilter {
     private String decodeEntities(String s) {
         StringBuilder buf = new StringBuilder();
 
+        // #9 硬化：Integer.decode/valueOf 对畸形/超长数字(如 &#999999999999;) 会抛 NumberFormatException
+        // 并冒泡污染整条清洗链路；改为安全解码，失败或超出 char 范围时按原始实体文本原样保留，绝不抛
         Matcher m = P_ENTITY.matcher(s);
         while (m.find()) {
-            final String match = m.group(1);
-            final int decimal = Integer.decode(match).intValue();
-            m.appendReplacement(buf, Matcher.quoteReplacement(chr(decimal)));
+            final String replacement = safeDecodeEntity(m.group(1), 10, m.group());
+            m.appendReplacement(buf, Matcher.quoteReplacement(replacement));
         }
         m.appendTail(buf);
         s = buf.toString();
@@ -441,9 +453,8 @@ public final class HTMLFilter {
         buf = new StringBuilder();
         m = P_ENTITY_UNICODE.matcher(s);
         while (m.find()) {
-            final String match = m.group(1);
-            final int decimal = Integer.valueOf(match, 16).intValue();
-            m.appendReplacement(buf, Matcher.quoteReplacement(chr(decimal)));
+            final String replacement = safeDecodeEntity(m.group(1), 16, m.group());
+            m.appendReplacement(buf, Matcher.quoteReplacement(replacement));
         }
         m.appendTail(buf);
         s = buf.toString();
@@ -451,15 +462,30 @@ public final class HTMLFilter {
         buf = new StringBuilder();
         m = P_ENCODE.matcher(s);
         while (m.find()) {
-            final String match = m.group(1);
-            final int decimal = Integer.valueOf(match, 16).intValue();
-            m.appendReplacement(buf, Matcher.quoteReplacement(chr(decimal)));
+            final String replacement = safeDecodeEntity(m.group(1), 16, m.group());
+            m.appendReplacement(buf, Matcher.quoteReplacement(replacement));
         }
         m.appendTail(buf);
         s = buf.toString();
 
         s = validateEntities(s);
         return s;
+    }
+
+    /**
+     * 将实体中的数字按指定进制安全解码为字符：畸形数字或超出 char(BMP) 范围时，原样返回整个原始
+     * 实体串（不抛异常、不产生乱码）
+     */
+    private static String safeDecodeEntity(final String digits, final int radix, final String original) {
+        try {
+            final long value = Long.parseLong(digits, radix);
+            if (value < 0 || value > 0xFFFF) {
+                return original;
+            }
+            return String.valueOf((char) value);
+        } catch (NumberFormatException e) {
+            return original;
+        }
     }
 
     private String validateEntities(final String s) {

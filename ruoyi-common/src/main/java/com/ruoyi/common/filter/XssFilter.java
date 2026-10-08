@@ -21,9 +21,12 @@ import com.ruoyi.common.enums.HttpMethod;
  */
 public class XssFilter implements Filter {
     /**
-     * 排除链接
+     * 排除链接（仅本类使用，故为 private）
+     * <p>
+     * 采 Ant 风格路径匹配，但比对的是 request.getServletPath() 的精确路径；
+     * 如需覆盖某路径及其子路径（如 /system/notice/**），必须在配置里显式写出 **，只写父路径不会自动子匹配
      */
-    public List<String> excludes = new ArrayList<>();
+    private List<String> excludes = new ArrayList<>();
 
     @Override
     public void init(FilterConfig filterConfig) throws ServletException {

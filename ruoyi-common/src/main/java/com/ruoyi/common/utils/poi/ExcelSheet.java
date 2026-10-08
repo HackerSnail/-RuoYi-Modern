@@ -1,6 +1,7 @@
 package com.ruoyi.common.utils.poi;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -18,16 +19,16 @@ import java.util.List;
  */
 public class ExcelSheet<T> {
     /** Sheet 名称 */
-    private String sheetName;
+    private final String sheetName;
 
-    /** 导出数据集合 */
-    private List<T> list;
+    /** 导出数据集合（构造完成即定型，对外只暴露只读视图） */
+    private final List<T> list;
 
     /** 数据对应的实体 Class */
-    private Class<T> clazz;
+    private final Class<T> clazz;
 
     /** Sheet 顶部大标题（可为空） */
-    private String title;
+    private final String title;
 
     public ExcelSheet(String sheetName, List<T> list, Class<T> clazz) {
         this(sheetName, list, clazz, "");
@@ -45,7 +46,8 @@ public class ExcelSheet<T> {
     }
 
     public List<T> getList() {
-        return list;
+        // 导出为只读场景，返回不可修改视图，防止调用方 sheet.getList().add(...) 绕过构造改动内容
+        return Collections.unmodifiableList(list);
     }
 
     public Class<T> getClazz() {
@@ -54,21 +56,5 @@ public class ExcelSheet<T> {
 
     public String getTitle() {
         return title;
-    }
-
-    public void setSheetName(String sheetName) {
-        this.sheetName = sheetName;
-    }
-
-    public void setList(List<T> list) {
-        this.list = list;
-    }
-
-    public void setClazz(Class<T> clazz) {
-        this.clazz = clazz;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
     }
 }

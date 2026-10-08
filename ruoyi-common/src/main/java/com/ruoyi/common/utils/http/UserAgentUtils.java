@@ -56,26 +56,13 @@ public class UserAgentUtils {
      * 全面浏览器检测
      */
     private static String formatBrowser(String browser) {
-        // Edge 浏览器：必须先于 Chrome 判定。Edge（及国产 Chromium 壳）UA 同时含 "Edg/" 与 "Chrome/"
-        // token，若先判 Chrome 会把 Edge 误识别为 Chrome；"Edg(e)?/" 是 Edge 特有标识，前置可去歧义。
+        // 以下均为“带各自特有 token 的 Chromium 壳浏览器”，须统一先于泛化的 Chrome 判定：这类 UA
+        // 同时含专属标识（Edg/、MicroMessenger/、UCBrowser/、QQBrowser/、baidubrowser/、SamsungBrowser/）
+        // 与 "Chrome/"，若先判 Chrome 会把它们一律误识别为 Chrome；专属 token 比 "Chrome/" 更具区分度。
+        // Edge 浏览器
         Matcher edgeMatcher = EDGE_PATTERN.matcher(browser);
         if (edgeMatcher.find()) {
             return "Edge" + edgeMatcher.group(1);
-        }
-        // Chrome系列浏览器
-        Matcher chromeMatcher = CHROME_PATTERN.matcher(browser);
-        if (chromeMatcher.find() && (browser.contains("Chrome") || browser.contains("CriOS"))) {
-            return "Chrome" + chromeMatcher.group(1);
-        }
-        // Firefox
-        Matcher firefoxMatcher = FIREFOX_PATTERN.matcher(browser);
-        if (firefoxMatcher.find()) {
-            return "Firefox" + firefoxMatcher.group(1);
-        }
-        // Safari浏览器（需排除Chrome）
-        Matcher safariMatcher = SAFARI_PATTERN.matcher(browser);
-        if (safariMatcher.find() && !browser.contains("Chrome")) {
-            return "Safari" + safariMatcher.group(1);
         }
         // 微信内置浏览器
         Matcher wechatMatcher = WECHAT_PATTERN.matcher(browser);
@@ -101,6 +88,21 @@ public class UserAgentUtils {
         Matcher samsungMatcher = SAMSUNG_PATTERN.matcher(browser);
         if (samsungMatcher.find()) {
             return "Samsung Browser" + samsungMatcher.group(1);
+        }
+        // Chrome系列浏览器
+        Matcher chromeMatcher = CHROME_PATTERN.matcher(browser);
+        if (chromeMatcher.find() && (browser.contains("Chrome") || browser.contains("CriOS"))) {
+            return "Chrome" + chromeMatcher.group(1);
+        }
+        // Firefox
+        Matcher firefoxMatcher = FIREFOX_PATTERN.matcher(browser);
+        if (firefoxMatcher.find()) {
+            return "Firefox" + firefoxMatcher.group(1);
+        }
+        // Safari浏览器（需排除Chrome）
+        Matcher safariMatcher = SAFARI_PATTERN.matcher(browser);
+        if (safariMatcher.find() && !browser.contains("Chrome")) {
+            return "Safari" + safariMatcher.group(1);
         }
         // Opera浏览器
         Matcher operaMatcher = OPERA_PATTERN.matcher(browser);

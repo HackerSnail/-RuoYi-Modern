@@ -53,9 +53,13 @@ public class SysDeptController extends BaseController {
     @GetMapping("/list/exclude/{deptId}")
     public AjaxResult excludeChild(@PathVariable(value = "deptId", required = false) Long deptId) {
         List<SysDept> depts = deptService.selectDeptList(new SysDept());
-        // 排除自身及子孙节点（ancestors 逗号串中包含 deptId 即为后代），用于上级部门下拉选择时避免成环
-        depts.removeIf(d -> d.getDeptId().intValue() == deptId
-                || ArrayUtils.contains(StringUtils.split(d.getAncestors(), ","), deptId + ""));
+        // deptId 为空表示新增顶级部门：没有"自身/子孙"需要排除，直接返回全量。
+        // 必须短路掉下面的 removeIf——否则 deptId 与 int 比较时自动拆箱会抛 NullPointerException
+        if (deptId != null) {
+            // 排除自身及子孙节点（ancestors 逗号串中包含 deptId 即为后代），用于上级部门下拉选择时避免成环
+            depts.removeIf(d -> d.getDeptId().intValue() == deptId
+                    || ArrayUtils.contains(StringUtils.split(d.getAncestors(), ","), deptId + ""));
+        }
         return success(depts);
     }
 

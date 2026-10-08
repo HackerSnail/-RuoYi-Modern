@@ -455,11 +455,7 @@ public final class HttpUtils {
         if (host == null || host.isEmpty()) {
             return "";
         }
-        String h = host;
-        if (h.length() >= 2 && h.charAt(0) == '[' && h.charAt(h.length() - 1) == ']') {
-            h = h.substring(1, h.length() - 1);
-        }
-        return h.toLowerCase(Locale.ROOT);
+        return stripBracketsIfIpv6Literal(host).toLowerCase(Locale.ROOT);
     }
 
     /** 剥方括号 IPv6 字面量的包裹符，非包裹形式原样返回（包含 [ 开头的方括号不完整情形，交给 assertAllowedHostFormat 先拒） */

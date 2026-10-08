@@ -25,6 +25,8 @@ import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
+import com.ruoyi.common.utils.file.FileUploadUtils;
+import com.ruoyi.common.utils.file.MimeTypeUtils;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.system.service.ISysDeptService;
 import com.ruoyi.system.service.ISysPostService;
@@ -87,6 +89,13 @@ public class SysUserController extends BaseController {
     @PreAuthorize("@ss.hasPermi('system:user:import')")
     @PostMapping("/importData")
     public AjaxResult importData(MultipartFile file, boolean updateSupport) throws Exception {
+        // 前置类型拦截：导入直接读 file 流、不经 FileUploadUtils 白名单，历史对扩展名零校验；
+        // 这里按 IMPORT_EXTENSION(xls/xlsx) 早拒非 Excel，避免把任意文件交给 POI 解析
+        String extension = FileUploadUtils.getExtension(file);
+        if (!FileUploadUtils.isAllowedExtension(extension, MimeTypeUtils.IMPORT_EXTENSION)) {
+            return error(StringUtils.format("导入文件类型({})非法，仅允许 {} 格式", extension,
+                    String.join(", ", MimeTypeUtils.IMPORT_EXTENSION)));
+        }
         ExcelUtil<SysUser> util = new ExcelUtil<>(SysUser.class);
         List<SysUser> userList = util.importExcel(file.getInputStream());
         String operName = getUsername();

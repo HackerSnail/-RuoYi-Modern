@@ -22,6 +22,7 @@ import com.ruoyi.framework.web.service.SysPermissionService;
 import com.ruoyi.framework.web.service.TokenService;
 import com.ruoyi.system.service.ISysConfigService;
 import com.ruoyi.system.service.ISysMenuService;
+import com.ruoyi.system.service.ISysUserService;
 
 /**
  * 登录验证
@@ -41,14 +42,18 @@ public class SysLoginController
 
     private final ISysConfigService configService;
 
+    private final ISysUserService userService;
+
     public SysLoginController(SysLoginService loginService, ISysMenuService menuService,
-            SysPermissionService permissionService, TokenService tokenService, ISysConfigService configService)
+            SysPermissionService permissionService, TokenService tokenService, ISysConfigService configService,
+            ISysUserService userService)
     {
         this.loginService = loginService;
         this.menuService = menuService;
         this.permissionService = permissionService;
         this.tokenService = tokenService;
         this.configService = configService;
+        this.userService = userService;
     }
 
     /**
@@ -65,6 +70,13 @@ public class SysLoginController
         String token = loginService.login(loginBody.getUsername(), loginBody.getPassword(), loginBody.getCode(),
                 loginBody.getUuid());
         ajax.put(Constants.TOKEN, token);
+        // 密码状态契约：登录成功后一并回传是否需要强制改密，前端在保存 token 后读取 forceChangePassword 决定是否强制跳转改密页。
+        // 仍返回 code=200（不占用顶层状态码，避免与前端 axios 拦截器的成功判定冲突）；服务端硬拦截需另在过滤器层实现，不在本次范围。
+        SysUser user = userService.selectUserByUserName(loginBody.getUsername());
+        if (user != null)
+        {
+            applyPwdStatus(ajax, user);
+        }
         return ajax;
     }
 
@@ -93,8 +105,7 @@ public class SysLoginController
         ajax.put("roles", roles);
         ajax.put("permissions", permissions);
         ajax.put("pwdChrtype", getSysAccountChrtype());
-        ajax.put("isDefaultModifyPwd", initPasswordIsModify(user.getPwdUpdateDate()));
-        ajax.put("isPasswordExpired", passwordIsExpiration(user.getPwdUpdateDate()));
+        applyPwdStatus(ajax, user);
         return ajax;
     }
 
@@ -109,6 +120,22 @@ public class SysLoginController
         Long userId = SecurityUtils.getUserId();
         List<SysMenu> menus = menuService.selectMenuTreeByUserId(userId);
         return AjaxResult.success(menuService.buildMenus(menus));
+    }
+
+    /**
+     * 统一写入“密码状态”契约字段，供 /login 与 /getInfo 复用：
+     * <p> isDefaultModifyPwd：初始/默认密码尚未修改（该配置项语义为“提醒”，不做强制，避免把“提醒”悄悄升级为“拦截”）。
+     * <p> isPasswordExpired：密码超过更新周期，或已启用周期但从未改过密码（该配置项语义为“必须更新”）。
+     * <p> forceChangePassword：需要强制跳转改密页的总开关，当前仅在“已过期”时为 true；
+     * 因 passwordValidateDays 默认 0（不启用），默认恒为 false，不改变既有登录成功语义，只有管理员调大周期才会触发强制。
+     */
+    private void applyPwdStatus(AjaxResult ajax, SysUser user)
+    {
+        boolean needModify = initPasswordIsModify(user.getPwdUpdateDate());
+        boolean expired = passwordIsExpiration(user.getPwdUpdateDate());
+        ajax.put("isDefaultModifyPwd", needModify);
+        ajax.put("isPasswordExpired", expired);
+        ajax.put("forceChangePassword", expired);
     }
 
     // 获取用户密码自定义配置规则

@@ -152,7 +152,9 @@ public final class HttpUtils {
      * @param params       查询参数键值对；为 null 或空则不带 query。键与值均按 UTF-8 百分号编码
      * @param charset      响应体解码字符集名（如 {@code "GBK"}/{@code "UTF-8"}）；为空白时按 UTF-8
      * @param allowedHosts 可选域白名单；非空时 {@code uri.getHost()} 必须大小写不敏感命中其中一项；
-     *                     null/空退化为仅依赖地址黑名单拦 SSRF
+     *                     比对前两侧均剥 IPv6 方括号（因 {@code URI#getHost()} 对 IPv6 字面量可能带
+     *                     也可能不带 {@code []}，跨 JDK 不一致），因而 {@code "[::1]"} 与 {@code "::1"}
+     *                     可互替书写；null/空退化为仅依赖地址黑名单拦 SSRF
      * @return 响应体字符串（按原始字节解码，精确保留换行；远程空响应返回空串）
      * @throws IOException URL 非法、协议/端口/host 不受支持、响应字符集非法、解析到被拒绝的地址，或连接/读取失败/超时/响应超限/非 2xx
      */
@@ -176,12 +178,13 @@ public final class HttpUtils {
         if (port != -1 && port != 80 && port != 443) {
             throw new IOException("sendGet 端口不受支持，仅允许默认/80/443，实际为: " + port);
         }
-        // SSRF 防线之三（可选纵深）：目标可枚举时的域白名单，严于任何地址黑名单
+        // SSRF 防线之三（可选纵深）：目标可枚举时的域白名单，严于任何地址黑名单；
+        // 两侧均剥 IPv6 方括号 + 小写归一，让 "[::1]" 与 "::1" 可互替书写。
         if (allowedHosts != null && !allowedHosts.isEmpty()) {
-            String hostOfUri = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
+            String hostOfUri = normalizeHostForWhitelist(uri.getHost());
             boolean allowed = false;
             for (String a : allowedHosts) {
-                if (a != null && a.toLowerCase(Locale.ROOT).equals(hostOfUri)) {
+                if (a != null && normalizeHostForWhitelist(a).equals(hostOfUri)) {
                     allowed = true;
                     break;
                 }
@@ -441,6 +444,22 @@ public final class HttpUtils {
             return;
         }
         throw new UnknownHostException("sendGet host 形式不受支持，仅允许主机名/严格点分四段 IPv4/方括号 IPv6: " + abbrev(host));
+    }
+
+    /**
+     * 域白名单比对归一化：null/空→""；剥 IPv6 方括号包裹 {@code [...]}；剩 lowercase。使用
+     * {@link java.util.Locale#ROOT}，不受主机区域设置影响。</p>
+     * <p>包可见以便单测直接断言。</p>
+     */
+    static String normalizeHostForWhitelist(String host) {
+        if (host == null || host.isEmpty()) {
+            return "";
+        }
+        String h = host;
+        if (h.length() >= 2 && h.charAt(0) == '[' && h.charAt(h.length() - 1) == ']') {
+            h = h.substring(1, h.length() - 1);
+        }
+        return h.toLowerCase(Locale.ROOT);
     }
 
     /** 剥方括号 IPv6 字面量的包裹符，非包裹形式原样返回（包含 [ 开头的方括号不完整情形，交给 assertAllowedHostFormat 先拒） */

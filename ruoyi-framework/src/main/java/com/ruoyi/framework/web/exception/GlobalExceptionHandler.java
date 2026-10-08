@@ -1,6 +1,9 @@
 package com.ruoyi.framework.web.exception;
 
+import java.util.Set;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
@@ -138,6 +141,22 @@ public class GlobalExceptionHandler {
     public Object handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
         log.error(e.getMessage(), e);
         String message = e.getBindingResult().getFieldError().getDefaultMessage();
+        return AjaxResult.error(message);
+    }
+
+    /**
+     * 方法级参数校验异常（如 @Validated 直接约束方法参数、或手动调用 BeanValidators 抛出）
+     * <p>
+     * ConstraintViolationException 继承 RuntimeException，若不单独拦截会落到兜底
+     * handleRuntimeException 返回笼统的“系统繁忙，请稍后再试”，前端拿不到字段级错误；
+     * 此处与 BindException/MethodArgumentNotValidException 对称，取首条违规的字段级消息返回。
+     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public AjaxResult handleConstraintViolationException(ConstraintViolationException e, HttpServletRequest request) {
+        String requestURI = request.getRequestURI();
+        Set<ConstraintViolation<?>> violations = e.getConstraintViolations();
+        String message = violations.isEmpty() ? e.getMessage() : violations.iterator().next().getMessage();
+        log.error("请求地址'{}',参数校验失败'{}'", requestURI, message);
         return AjaxResult.error(message);
     }
 

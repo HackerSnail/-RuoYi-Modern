@@ -50,9 +50,9 @@ public class SysIndexController {
      * <p>
      * 安全加固：
      * ① 防暴力破解——密码比对复用 {@link SysPasswordService#validateUnlock} 的失败计数与锁定阈值，
-     *    连续错误达 maxRetryCount 次即锁定 lockTime 分钟，杜绝持有效 Token 者无限尝试；
+     * 连续错误达 maxRetryCount 次即锁定 lockTime 分钟，杜绝持有效 Token 者无限尝试；
      * ② 审计留痕——@Log 使每次解锁（成功/失败）都写入 sys_oper_log，便于回溯接口是否被滥用；
-     *    因请求体含明文密码，特意关闭 isSaveRequestData，只留操作人/时间/URL/结果，不把密码写进日志；
+     * 因请求体含明文密码，特意关闭 isSaveRequestData，只留操作人/时间/URL/结果，不把密码写进日志；
      * 失败统一抛 ServiceException，由全局异常处理器原样返回提示（响应体与原 AjaxResult.error 一致）。
      * 密码传输保持与登录一致（HTTPS 明文，本系统未启用 RSA），若未来登录改用加密需同步此处。
      */

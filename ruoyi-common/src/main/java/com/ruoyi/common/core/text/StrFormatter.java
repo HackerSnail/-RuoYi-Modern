@@ -23,7 +23,7 @@ public class StrFormatter {
      * 转义\： format("this is \\\\{} for {}", "a", "b") -> this is \a for b<br>
      * 
      * @param strPattern 字符串模板
-     * @param argArray 参数列表
+     * @param argArray   参数列表
      * @return 结果
      */
     public static String format(final String strPattern, final Object... argArray) {

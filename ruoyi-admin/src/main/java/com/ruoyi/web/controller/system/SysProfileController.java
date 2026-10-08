@@ -124,7 +124,8 @@ public class SysProfileController extends BaseController {
                 return error("头像图片不能超过 2MB，请压缩后重试");
             }
             LoginUser loginUser = getLoginUser();
-            String avatar = FileUploadUtils.upload(RuoYiConfig.getAvatarPath(), file, MimeTypeUtils.IMAGE_EXTENSION, true);
+            String avatar = FileUploadUtils.upload(RuoYiConfig.getAvatarPath(), file, MimeTypeUtils.IMAGE_EXTENSION,
+                    true);
             if (userService.updateUserAvatar(loginUser.getUserId(), avatar)) {
                 // 新头像保存成功后，删除磁盘上的旧头像文件，避免残留孤儿文件
                 String oldAvatar = loginUser.getUser().getAvatar();

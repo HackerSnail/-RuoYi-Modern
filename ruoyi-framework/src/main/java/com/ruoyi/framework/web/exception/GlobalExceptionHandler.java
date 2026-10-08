@@ -87,12 +87,15 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 上传文件超过 multipart 大小限制（spring.servlet.multipart.max-file-size/max-request-size）
-     * <p> 该异常在进入 Controller 前由 multipart 解析抛出，若不单独拦截会落到兜底 handleException
+     * 上传文件超过 multipart
+     * 大小限制（spring.servlet.multipart.max-file-size/max-request-size）
+     * <p>
+     * 该异常在进入 Controller 前由 multipart 解析抛出，若不单独拦截会落到兜底 handleException
      * 返回笼统的“系统繁忙”，用户无从得知是文件过大；此处给出明确的业务文案。
      */
     @ExceptionHandler(MaxUploadSizeExceededException.class)
-    public AjaxResult handleMaxUploadSizeExceededException(MaxUploadSizeExceededException e, HttpServletRequest request) {
+    public AjaxResult handleMaxUploadSizeExceededException(MaxUploadSizeExceededException e,
+            HttpServletRequest request) {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',上传文件过大 '{}'", requestURI, e.getMessage());
         return AjaxResult.error("上传文件过大，已超过允许的单文件大小限制，请压缩后重试");

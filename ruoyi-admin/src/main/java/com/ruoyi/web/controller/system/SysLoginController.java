@@ -117,9 +117,12 @@ public class SysLoginController {
 
     /**
      * 统一写入“密码状态”契约字段，供 /login 与 /getInfo 复用：
-     * <p> isDefaultModifyPwd：初始/默认密码尚未修改（该配置项语义为“提醒”，不做强制，避免把“提醒”悄悄升级为“拦截”）。
-     * <p> isPasswordExpired：密码超过更新周期，或已启用周期但从未改过密码（该配置项语义为“必须更新”）。
-     * <p> forceChangePassword：需要强制跳转改密页的总开关，当前仅在“已过期”时为 true；
+     * <p>
+     * isDefaultModifyPwd：初始/默认密码尚未修改（该配置项语义为“提醒”，不做强制，避免把“提醒”悄悄升级为“拦截”）。
+     * <p>
+     * isPasswordExpired：密码超过更新周期，或已启用周期但从未改过密码（该配置项语义为“必须更新”）。
+     * <p>
+     * forceChangePassword：需要强制跳转改密页的总开关，当前仅在“已过期”时为 true；
      * 因 passwordValidateDays 默认 0（不启用），默认恒为 false，不改变既有登录成功语义，只有管理员调大周期才会触发强制。
      */
     private void applyPwdStatus(AjaxResult ajax, SysUser user) {
@@ -143,7 +146,8 @@ public class SysLoginController {
 
     // 检查密码是否过期：基于 sys.account.passwordValidateDays 配置，从未改过密码或距上次修改超过阈值天数则视为过期
     public boolean passwordIsExpiration(LocalDateTime pwdUpdateDate) {
-        Integer passwordValidateDays = Convert.toInt(configService.selectConfigByKey("sys.account.passwordValidateDays"));
+        Integer passwordValidateDays = Convert
+                .toInt(configService.selectConfigByKey("sys.account.passwordValidateDays"));
         // 未配置或配置为 0（负数）表示不启用过期策略
         if (passwordValidateDays != null && passwordValidateDays > 0) {
             if (StringUtils.isNull(pwdUpdateDate)) {
@@ -151,7 +155,8 @@ public class SysLoginController {
                 return true;
             }
             // 距上次改密的天数超过配置阈值即判定过期
-            return DateUtils.differentDaysByMillisecond(DateUtils.getNowDate(), DateUtils.toDate(pwdUpdateDate)) > passwordValidateDays;
+            return DateUtils.differentDaysByMillisecond(DateUtils.getNowDate(),
+                    DateUtils.toDate(pwdUpdateDate)) > passwordValidateDays;
         }
         return false;
     }

@@ -66,7 +66,8 @@ public class SysMenuController extends BaseController {
 
     /**
      * 加载对应角色菜单列表树
-     * <p> 本接口返回的 checkedKeys 会按传入 roleId 回显该角色已分配的菜单，若不做鉴权，
+     * <p>
+     * 本接口返回的 checkedKeys 会按传入 roleId 回显该角色已分配的菜单，若不做鉴权，
      * 任何持登录态、只有菜单可见权的人都能遍历 roleId 窥探“某角色被授了哪些菜单”，故复用角色详情页的 system:role:query。
      */
     @PreAuthorize("@ss.hasPermi('system:role:query')")
@@ -121,7 +122,8 @@ public class SysMenuController extends BaseController {
 
     /**
      * 保存菜单排序
-     * <p> 前端拖拽后将菜单 ID 与排序号拼为两个逗号分隔字符串传回。旧实现直接 split 后交给 Service：
+     * <p>
+     * 前端拖拽后将菜单 ID 与排序号拼为两个逗号分隔字符串传回。旧实现直接 split 后交给 Service：
      * 键缺失会在本层 NPE（落到兜底返回“系统繁忙”）、空串会带 menuId=null 去批量更新、
      * 两数组长度不等会在 Service 越界。因此在入口做防御校验，不合法直接返回具体文案，不进 Service。
      */

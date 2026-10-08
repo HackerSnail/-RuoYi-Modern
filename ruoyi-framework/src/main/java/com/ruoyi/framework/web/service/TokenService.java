@@ -120,7 +120,8 @@ public class TokenService {
 
     /**
      * 强制指定用户下线：扫描并删除属于该用户的全部在线会话（含当前会话）。
-     * <p> 用于“改密后强制重新登录”等安全策略。token 以会话 uuid 为键、无 user→会话索引，
+     * <p>
+     * 用于“改密后强制重新登录”等安全策略。token 以会话 uuid 为键、无 user→会话索引，
      * 故只能 SCAN login_tokens:* 反序列化后按 userId 过滤删除（与 refreshPermissionByRoleId 同法）。
      * 删掉缓存后对应 JWT 立即失效（getLoginUser 取不到 loginUser，下次请求即 401）。
      *

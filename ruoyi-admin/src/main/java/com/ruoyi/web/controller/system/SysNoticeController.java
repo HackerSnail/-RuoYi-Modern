@@ -88,7 +88,8 @@ public class SysNoticeController extends BaseController {
 
     /**
      * 重新推送公告：清空该公告的全部已读记录，使所有用户在顶栏重新看到未读标记
-     * <p> 作为独立的显式操作，不放在 edit 内自动触发——仅改标题/错别字不应抹掉全员已读进度；
+     * <p>
+     * 作为独立的显式操作，不放在 edit 内自动触发——仅改标题/错别字不应抹掉全员已读进度；
      * 只有公告内容确有重要更新、需要全员重读时，由管理员主动调用本接口。
      */
     @PreAuthorize("@ss.hasPermi('system:notice:edit')")
@@ -154,7 +155,8 @@ public class SysNoticeController extends BaseController {
 
     /**
      * 未读用户列表（催读：查某公告尚未阅读的用户，供管理侧发起提醒）
-     * <p> 与 readUsersList 对称：已读=命中已读表；未读=启用且未删除的用户中不存在该公告已读记录者。
+     * <p>
+     * 与 readUsersList 对称：已读=命中已读表；未读=启用且未删除的用户中不存在该公告已读记录者。
      * 注：本接口仅负责查出未读用户；实际催读推送（站内信/企业微信等）依赖推送通道，另行接入。
      */
     @PreAuthorize("@ss.hasPermi('system:notice:list')")

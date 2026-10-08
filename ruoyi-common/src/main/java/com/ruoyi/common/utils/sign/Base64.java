@@ -6,16 +6,16 @@ package com.ruoyi.common.utils.sign;
  * @author ruoyi
  */
 public final class Base64 {
-    static private final int     BASELENGTH           = 128;
-    static private final int     LOOKUPLENGTH         = 64;
-    static private final int     TWENTYFOURBITGROUP   = 24;
-    static private final int     EIGHTBIT             = 8;
-    static private final int     SIXTEENBIT           = 16;
-    static private final int     FOURBYTE             = 4;
-    static private final int     SIGN                 = -128;
-    static private final char    PAD                  = '=';
-    static final private byte[]  base64Alphabet       = new byte[BASELENGTH];
-    static final private char[]  lookUpBase64Alphabet = new char[LOOKUPLENGTH];
+    static private final int BASELENGTH = 128;
+    static private final int LOOKUPLENGTH = 64;
+    static private final int TWENTYFOURBITGROUP = 24;
+    static private final int EIGHTBIT = 8;
+    static private final int SIXTEENBIT = 16;
+    static private final int FOURBYTE = 4;
+    static private final int SIGN = -128;
+    static private final char PAD = '=';
+    static final private byte[] base64Alphabet = new byte[BASELENGTH];
+    static final private char[] lookUpBase64Alphabet = new char[LOOKUPLENGTH];
 
     static {
         for (int i = 0; i < BASELENGTH; ++i) {

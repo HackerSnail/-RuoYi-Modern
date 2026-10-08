@@ -11,7 +11,8 @@ import com.ruoyi.common.exception.ServiceException;
 /**
  * 签名/摘要工具（SHA-256 与 HMAC-SHA256）
  * <p>
- * 适用：API 请求签名（{@link #hmacSha256(String, String)} 生成、{@link #verifyHmacSha256(String, String, String)} 校验）、
+ * 适用：API 请求签名（{@link #hmacSha256(String, String)}
+ * 生成、{@link #verifyHmacSha256(String, String, String)} 校验）、
  * 内容指纹（{@link #sha256(String)}）。
  * <b>不用于密码存储</b>——密码请走 SecurityUtils#encryptPassword（BCrypt，自带盐与自适应代价）。
  * HMAC 与 SHA-256 均为 JDK 保证存在的算法；计算失败显式抛出 {@link ServiceException}，绝不静默返回可疑值。
@@ -59,9 +60,9 @@ public class SignUtils {
      * 校验 HMAC-SHA256 签名。使用 {@link MessageDigest#isEqual} 做恒定时间比较，
      * 避免通过响应耗时侧信道被逐字节猜测签名。
      *
-     * @param data         待签名内容
-     * @param key          密钥
-     * @param expectedHex  客户端上送的签名
+     * @param data        待签名内容
+     * @param key         密钥
+     * @param expectedHex 客户端上送的签名
      * @return 是否匹配
      */
     public static boolean verifyHmacSha256(String data, String key, String expectedHex) {

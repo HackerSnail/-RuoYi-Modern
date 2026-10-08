@@ -46,7 +46,7 @@ public interface ISysNoticeReadService {
     /**
      * 查询已阅读某公告的用户列表
      *
-     * @param noticeId  公告ID
+     * @param noticeId    公告ID
      * @param searchValue 搜索值
      * @return 已读用户列表
      */
@@ -55,7 +55,7 @@ public interface ISysNoticeReadService {
     /**
      * 查询某公告的未读用户列表（催读，仅负责“查出未读用户”；实际推送需接入推送通道）
      *
-     * @param noticeId  公告ID
+     * @param noticeId    公告ID
      * @param searchValue 搜索值
      * @return 未读用户列表
      */

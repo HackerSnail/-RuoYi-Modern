@@ -1,5 +1,6 @@
 package com.ruoyi.common.utils.ip;
 
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.alibaba.fastjson2.JSON;
@@ -30,7 +31,8 @@ public class AddressUtils {
         }
         if (RuoYiConfig.isAddressEnabled()) {
             try {
-                String rspStr = HttpUtils.sendGet(IP_URL, "ip=" + ip + "&json=true", Constants.GBK);
+                // 查询参数交由 HttpUtils.sendGet 逐值百分号编码，此处传原始键值，不再手拼 query 串
+                String rspStr = HttpUtils.sendGet(IP_URL, Map.of("ip", ip == null ? "" : ip, "json", "true"), Constants.GBK);
                 if (StringUtils.isEmpty(rspStr)) {
                     log.error("获取地理位置异常 {}", ip);
                     return UNKNOWN;

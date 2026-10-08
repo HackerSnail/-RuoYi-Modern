@@ -67,8 +67,8 @@ public final class EscapeUtil {
      * 清除所有非法/危险 HTML，仅保留白名单内的标签及其安全属性，且不删除标签内的正文内容
      * <p>
      * 由 jsoup 的 {@link Jsoup#clean(String, String, Safelist, Document.OutputSettings)} 基于真正的
-     * HTML 解析器执行（非正则匹配），从根本上避免了旧 {@code HTMLFilter} 以正则解析 HTML 带来的标签/属性
-     * 边界误判。这是本类唯一面向安全场景（XSS 清洗）应被调用的方法。
+     * HTML 解析器执行（非正则匹配），从根本上避免了以正则匹配解析 HTML 带来的标签/属性边界误判。
+     * 这是本类唯一面向安全场景（XSS 清洗）应被调用的方法。
      *
      * @param content 文本
      * @return 清洗后的文本；入参为 null 时返回空串，绝不抛异常

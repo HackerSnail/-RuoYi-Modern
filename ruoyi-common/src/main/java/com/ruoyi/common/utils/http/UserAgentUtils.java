@@ -3,8 +3,6 @@ package com.ruoyi.common.utils.http;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import com.ruoyi.common.utils.StringUtils;
-import nl.basjes.parse.useragent.UserAgent;
-import nl.basjes.parse.useragent.UserAgentAnalyzer;
 
 /**
  * UserAgent解析工具类
@@ -12,7 +10,6 @@ import nl.basjes.parse.useragent.UserAgentAnalyzer;
  * @author ruoyi
  */
 public class UserAgentUtils {
-    public static final String UNKNOWN = "";
 
     // 浏览器正则表达式模式
     private static final Pattern CHROME_PATTERN = Pattern.compile("Chrome/(\\d+)(?:\\.\\d+)*");
@@ -35,36 +32,24 @@ public class UserAgentUtils {
     private static final Pattern LINUX_PATTERN = Pattern.compile("Linux");
     private static final Pattern CHROMEOS_PATTERN = Pattern.compile("CrOS");
 
-    private static final UserAgentAnalyzer userAgentAnalyzer = UserAgentAnalyzer
-            .newBuilder().hideMatcherLoadStats()
-            .withCache(5000)
-            .showMinimalVersion()
-            .withField(UserAgent.AGENT_NAME_VERSION)
-            .withField(UserAgent.OPERATING_SYSTEM_NAME_VERSION)
-            .build();
-
     /**
-     * 获取客户端浏览器
+     * 获取客户端浏览器（纯正则识别）
      */
     public static String getBrowser(String userAgent) {
-        UserAgent.ImmutableUserAgent iua = userAgentAnalyzer.parse(userAgent);
-        String agentNameVersion = iua.get(UserAgent.AGENT_NAME_VERSION).getValue();
-        if (StringUtils.isBlank(agentNameVersion) || agentNameVersion.contains("??")) {
-            return formatBrowser(userAgent);
+        if (StringUtils.isBlank(userAgent)) {
+            return StringUtils.EMPTY;
         }
-        return agentNameVersion;
+        return formatBrowser(userAgent);
     }
 
     /**
-     * 获取客户端操作系统
+     * 获取客户端操作系统（纯正则识别）
      */
     public static String getOperatingSystem(String userAgent) {
-        UserAgent.ImmutableUserAgent iua = userAgentAnalyzer.parse(userAgent);
-        String operatingSystemNameVersion = iua.get(UserAgent.OPERATING_SYSTEM_NAME_VERSION).getValue();
-        if (StringUtils.isBlank(operatingSystemNameVersion) || operatingSystemNameVersion.contains("??")) {
-            return formatOperatingSystem(userAgent);
+        if (StringUtils.isBlank(userAgent)) {
+            return StringUtils.EMPTY;
         }
-        return operatingSystemNameVersion;
+        return formatOperatingSystem(userAgent);
     }
 
     /**
@@ -126,7 +111,7 @@ public class UserAgentUtils {
         if (ieMatcher.find()) {
             return "Internet Explorer" + ieMatcher.group(1);
         }
-        return UNKNOWN;
+        return StringUtils.EMPTY;
     }
 
     /**
@@ -162,7 +147,7 @@ public class UserAgentUtils {
         if (CHROMEOS_PATTERN.matcher(operatingSystem).find()) {
             return "Chrome OS";
         }
-        return UNKNOWN;
+        return StringUtils.EMPTY;
     }
 
     /**
@@ -181,7 +166,9 @@ public class UserAgentUtils {
                 if (firstPart.matches("\\d+")) {
                     int version = Integer.parseInt(firstPart);
 
-                    // 处理三位数版本号（如142 -> 14）
+                    // 仅针对 macOS 10.x 时代以 "_" 分隔的旧格式（清理后可能得到三位数），把 142
+                    // 归一成 14；现代 macOS(11+/12+/14+)、Android、iOS、Windows 均为一到两位数，
+                    // 不会走到这条分支。
                     if (version >= 100) {
                         return String.valueOf(version / 10);
                     }

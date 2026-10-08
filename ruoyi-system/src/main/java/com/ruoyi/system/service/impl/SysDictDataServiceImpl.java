@@ -2,8 +2,10 @@ package com.ruoyi.system.service.impl;
 
 import java.util.List;
 import org.springframework.stereotype.Service;
+import com.ruoyi.common.constant.UserConstants;
 import com.ruoyi.common.core.domain.entity.SysDictData;
 import com.ruoyi.common.utils.DictUtils;
+import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.system.mapper.SysDictDataMapper;
 import com.ruoyi.system.service.ISysDictDataService;
 
@@ -100,5 +102,19 @@ public class SysDictDataServiceImpl implements ISysDictDataService {
             DictUtils.setDictCache(data.getDictType(), dictDatas);
         }
         return row;
+    }
+
+    /**
+     * 校验同一字典类型下 dictValue 是否唯一。更新时依据 dictCode 排除自己；
+     * 新增时 dictCode 为 null，统一归到 -1L 与已存在记录的 dictCode 对比。
+     */
+    @Override
+    public boolean checkDictValueUnique(SysDictData dictData) {
+        Long dictCode = StringUtils.isNull(dictData.getDictCode()) ? -1L : dictData.getDictCode();
+        SysDictData info = dictDataMapper.checkDictValueUnique(dictData.getDictType(), dictData.getDictValue());
+        if (StringUtils.isNotNull(info) && info.getDictCode().longValue() != dictCode.longValue()) {
+            return UserConstants.NOT_UNIQUE;
+        }
+        return UserConstants.UNIQUE;
     }
 }

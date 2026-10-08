@@ -27,6 +27,18 @@ public interface ISysConfigService
     public String selectConfigByKey(String configKey);
 
     /**
+     * 公开接口读取参数值（带白名单校验）
+     * <p>
+     * {@link #selectConfigByKey(String)} 供服务端内部使用、可读任意键；
+     * 本方法专供无权限校验的 {@code /system/config/configKey/{key}} 使用，
+     * 只放行白名单内的键，避免任何登录用户拖走配置里的敏感值。
+     * 
+     * @param configKey 参数键名
+     * @return 参数键值
+     */
+    public String selectPublicConfigByKey(String configKey);
+
+    /**
      * 获取验证码开关
      * 
      * @return true开启，false关闭

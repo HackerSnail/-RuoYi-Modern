@@ -57,4 +57,15 @@ public interface ISysDictDataService
      * @return 结果
      */
     public int updateDictData(SysDictData dictData);
+
+    /**
+     * 校验同一字典类型下 dictValue 是否唯一（新增/修改前置检查）
+     * <p>
+     * 前端下拉框基于 dictValue 定位选中项，同一 dictType 下重复的 dictValue
+     * 会造成选项重影、默认值错乱；更新场景自动排除自己（dictCode 比对）。
+     * 
+     * @param dictData 待写入的字典数据
+     * @return true=唯一，false=同类型下已存在相同键值
+     */
+    public boolean checkDictValueUnique(SysDictData dictData);
 }

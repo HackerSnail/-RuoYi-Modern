@@ -19,12 +19,24 @@ public interface SysDictDataMapper {
     public List<SysDictData> selectDictDataList(SysDictData dictData);
 
     /**
-     * 根据字典类型查询字典数据
+     * 按字典类型查询所有正常状态数据（用于前端下拉框、缓存加载）
      * 
      * @param dictType 字典类型
      * @return 字典数据集合信息
      */
     public List<SysDictData> selectDictDataByType(String dictType);
+
+    /**
+     * 校验同一字典类型下 dictValue 是否已存在（新增/修改前的唯一性检查）
+     * <p>
+     * limit 1 短路查询，命中即返回；调用方需自行排除自己（更新场景比对 dictCode）。
+     * 
+     * @param dictType  字典类型
+     * @param dictValue 字典键值
+     * @return 已存在的字典数据；无冲突时返回 null
+     */
+    public SysDictData checkDictValueUnique(@Param("dictType") String dictType,
+            @Param("dictValue") String dictValue);
 
     /**
      * 根据字典类型和字典键值查询字典数据信息

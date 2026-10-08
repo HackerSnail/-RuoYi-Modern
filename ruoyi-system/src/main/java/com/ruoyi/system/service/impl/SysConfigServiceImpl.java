@@ -2,7 +2,10 @@ package com.ruoyi.system.service.impl;
 
 import java.util.List;
 import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import com.ruoyi.common.config.RuoYiConfig;
 import com.ruoyi.common.constant.CacheConstants;
 import com.ruoyi.common.constant.UserConstants;
 import com.ruoyi.common.core.redis.RedisCache;
@@ -20,6 +23,8 @@ import com.ruoyi.system.service.ISysConfigService;
  */
 @Service
 public class SysConfigServiceImpl implements ISysConfigService {
+    private static final Logger logger = LoggerFactory.getLogger(SysConfigServiceImpl.class);
+
     private final SysConfigMapper configMapper;
 
     private final RedisCache redisCache;
@@ -71,6 +76,19 @@ public class SysConfigServiceImpl implements ISysConfigService {
             return retConfig.getConfigValue();
         }
         return StringUtils.EMPTY;
+    }
+
+    /**
+     * 公开接口读取参数值：先过白名单再取值
+     */
+    @Override
+    public String selectPublicConfigByKey(String configKey) {
+        if (!RuoYiConfig.getPublicConfigKeys().contains(configKey)) {
+            // 记 warn：既能发现前端误用/漏配白名单，也能留下有人在探测其它配置键的痕迹
+            logger.warn("参数键[{}]不在公开读取白名单内，已拒绝", configKey);
+            throw new ServiceException("参数键不允许通过公开接口读取：" + configKey);
+        }
+        return selectConfigByKey(configKey);
     }
 
     /**

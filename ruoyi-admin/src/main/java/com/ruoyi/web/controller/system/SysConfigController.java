@@ -53,7 +53,7 @@ public class SysConfigController extends BaseController {
     @PreAuthorize("@ss.hasPermi('system:config:export')")
     @PostMapping("/export")
     public void export(HttpServletResponse response, SysConfig config) {
-        List<SysConfig> list = configService.selectConfigList(config);
+        List<SysConfig> list = exportLimit(() -> configService.selectConfigList(config));
         ExcelUtil<SysConfig> util = new ExcelUtil<>(SysConfig.class);
         util.exportExcel(response, list, "参数数据");
     }
@@ -69,10 +69,15 @@ public class SysConfigController extends BaseController {
 
     /**
      * 根据参数键名查询参数值
+     * <p>
+     * 刻意不加 {@code @PreAuthorize}：前端登录页要在用户尚未持有任何权限时读取
+     * 验证码/注册开关，加权限会直接把登录页读开关的能力堵死。
+     * 代价是"任何登录用户都能调"，所以走 {@code selectPublicConfigByKey} 做白名单过滤，
+     * 只有 ruoyi.publicConfigKeys 里列出的键才返回，敏感参数不会被拖走。
      */
     @GetMapping(value = "/configKey/{configKey}")
     public AjaxResult getConfigKey(@PathVariable String configKey) {
-        return success(configService.selectConfigByKey(configKey));
+        return success(configService.selectPublicConfigByKey(configKey));
     }
 
     /**
@@ -117,8 +122,12 @@ public class SysConfigController extends BaseController {
 
     /**
      * 刷新参数缓存
+     * <p>
+     * 刷新只重建缓存、不改动数据，是高频运维操作；删除是不可恢复的高危操作。
+     * 二者共用 system:config:remove 会让"只需刷新的运维角色"顺带拿到删除权限，
+     * 因此拆出独立的 system:config:refresh（需配套 sys_menu 按钮权限与角色授权）。
      */
-    @PreAuthorize("@ss.hasPermi('system:config:remove')")
+    @PreAuthorize("@ss.hasPermi('system:config:refresh')")
     @Log(title = "参数管理", businessType = BusinessType.CLEAN)
     @DeleteMapping("/refreshCache")
     public AjaxResult refreshCache() {

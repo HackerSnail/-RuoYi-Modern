@@ -227,6 +227,8 @@ insert into sys_menu values('1031', '参数新增', '106', '2', '#', '', '', '',
 insert into sys_menu values('1032', '参数修改', '106', '3', '#', '', '', '', 1, 0, 'F', '0', '0', 'system:config:edit',         '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('1033', '参数删除', '106', '4', '#', '', '', '', 1, 0, 'F', '0', '0', 'system:config:remove',       '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('1034', '参数导出', '106', '5', '#', '', '', '', 1, 0, 'F', '0', '0', 'system:config:export',       '#', 'admin', sysdate(), '', null, '');
+-- 刷新缓存：与删除拆分，避免"只需刷新的运维角色"顺带拿到删除权限
+insert into sys_menu values('1061', '刷新缓存', '106', '6', '#', '', '', '', 1, 0, 'F', '0', '0', 'system:config:refresh',      '#', 'admin', sysdate(), '', null, '');
 -- 通知公告按钮
 insert into sys_menu values('1035', '公告查询', '107', '1', '#', '', '', '', 1, 0, 'F', '0', '0', 'system:notice:query',        '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('1036', '公告新增', '107', '2', '#', '', '', '', 1, 0, 'F', '0', '0', 'system:notice:add',          '#', 'admin', sysdate(), '', null, '');
@@ -376,6 +378,7 @@ insert into sys_role_menu values ('2', '1057');
 insert into sys_role_menu values ('2', '1058');
 insert into sys_role_menu values ('2', '1059');
 insert into sys_role_menu values ('2', '1060');
+insert into sys_role_menu values ('2', '1061');
 
 -- ----------------------------
 -- 8、角色和部门关联表  角色1-N部门
@@ -600,6 +603,8 @@ create table sys_job (
 insert into sys_job values(1, '系统默认（无参）', 'DEFAULT', 'ryTask.ryNoParams',        '0/10 * * * * ?', '3', '1', '1', 'admin', sysdate(), '', null, '');
 insert into sys_job values(2, '系统默认（有参）', 'DEFAULT', 'ryTask.ryParams(\'ry\')',  '0/15 * * * * ?', '3', '1', '1', 'admin', sysdate(), '', null, '');
 insert into sys_job values(3, '系统默认（多参）', 'DEFAULT', 'ryTask.ryMultipleParams(\'ry\', true, 2000L, 316.50D, 100)',  '0/20 * * * * ?', '3', '1', '1', 'admin', sysdate(), '', null, '');
+-- 操作日志定期清理：每天凌晨3点，保留90天。status='1' 表示默认暂停，确认策略后在“定时任务”页面启用
+insert into sys_job values(4, '操作日志定期清理', 'SYSTEM', 'operLogCleanTask.clean(\'90\')', '0 0 3 * * ?', '3', '1', '1', 'admin', sysdate(), '', null, '删除90天前的sys_oper_log，分批5000条删除');
 
 
 -- ----------------------------

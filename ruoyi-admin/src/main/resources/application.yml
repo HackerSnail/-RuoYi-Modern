@@ -12,6 +12,15 @@ ruoyi:
   addressEnabled: false
   # 验证码类型 math 数字计算 char 字符验证
   captchaType: math
+  # 单次导出最大条数，超过则拒绝导出并提示缩小查询条件（不配置默认 50000）
+  exportMaxRows: 50000
+  # 操作日志保留天数，定时清理任务只删除早于该天数的记录（不配置默认 90）
+  operLogRetentionDays: 90
+  # 无权限校验的 /system/config/configKey/{key} 允许读取的参数键白名单，逗号分隔。
+  # 只有明确列出的键才能被任何登录用户读取，敏感参数请勿加入
+  publicConfigKeys: sys.account.captchaEnabled,sys.account.registerUser
+  # 需要 system:dict:list 权限才能读取的敏感字典类型，逗号分隔；留空表示所有字典按原逻辑开放
+  sensitiveDictTypes:
 
 # 开发环境配置
 server:

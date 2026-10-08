@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import com.ruoyi.common.constant.CacheConstants;
 import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.redis.RedisCache;
+import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.exception.user.UserPasswordNotMatchException;
 import com.ruoyi.common.exception.user.UserPasswordRetryLimitExceedException;
 import com.ruoyi.common.utils.SecurityUtils;
@@ -74,6 +75,36 @@ public class SysPasswordService {
      */
     public boolean matches(SysUser user, String rawPassword) {
         return SecurityUtils.matchesPassword(rawPassword, user.getPassword());
+    }
+
+    /**
+     * 屏幕解锁密码校验：复用登录的失败计数与锁定阈值（同一 pwd_err_cnt 键），
+     * 防止持有有效 Token 的攻击者对解锁接口无限暴破。
+     * <p>
+     * 与 {@link #validate(SysUser)} 的区别：validate 服务于登录流程，抛框架自定义的
+     * UserPassword*Exception；而本方法供已登录态的解锁调用，统一抛 ServiceException，
+     * 由 GlobalExceptionHandler 原样返回 message，保证前端能拿到"密码错误/已锁定"等具体提示。
+     * 失败计数达上限、或比对失败都抛异常，成功则清零计数——因此解锁失败也会锁定登录，
+     * 属刻意设计：登录与解锁共享同一份密码尝试预算，跨接口暴破同样被限制在 maxRetryCount 次/lockTime 分钟。
+     *
+     * @param username    当前登录用户名
+     * @param rawPassword 待校验的明文密码
+     * @param user        用户实体（提供库中密文）
+     */
+    public void validateUnlock(String username, String rawPassword, SysUser user) {
+        Integer retryCount = redisCache.getCacheObject(getCacheKey(username));
+        if (retryCount == null) {
+            retryCount = 0;
+        }
+        if (retryCount >= maxRetryCount) {
+            throw new ServiceException("密码错误次数过多，账号已锁定，请 " + lockTime + " 分钟后再试");
+        }
+        if (!matches(user, rawPassword)) {
+            retryCount = retryCount + 1;
+            redisCache.setCacheObject(getCacheKey(username), retryCount, lockTime, TimeUnit.MINUTES);
+            throw new ServiceException("密码错误，请重新输入");
+        }
+        clearLoginRecordCache(username);
     }
 
     /**

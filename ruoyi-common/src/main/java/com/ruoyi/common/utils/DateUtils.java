@@ -77,7 +77,7 @@ public class DateUtils {
         try {
             return new SimpleDateFormat(format).parse(ts);
         } catch (ParseException e) {
-            throw new RuntimeException(e);
+            throw new IllegalArgumentException("日期解析失败: " + ts, e);
         }
     }
 

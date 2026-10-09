@@ -1,8 +1,7 @@
 package com.ruoyi.common.utils;
 
 import java.lang.management.ManagementFactory;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
+import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -12,8 +11,11 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
+import java.time.temporal.TemporalAccessor;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.TimeZone;
 import org.apache.commons.lang3.time.DateFormatUtils;
 
@@ -90,18 +92,43 @@ public class DateUtils {
         return parseDateToStr(YYYY_MM_DD, date);
     }
 
+    /**
+     * 按 pattern 缓存的 DateTimeFormatter（不可变、线程安全）。用 ThreadLocal 让每个线程各持一份缓存，
+     * 避免每次调用重新 ofPattern——pattern 由调用方传入不固定，故按串缓存而非单个静态常量。
+     * 统一 STRICT + 将 yyyy 归一为 uuuu(proleptic-year)，与 parseDate 的非法日期判定口径一致；
+     * 正常年份两者数值等价。STRICT 下解析拒绝日历上不存在的日期（如 2 月 30 日）与尾部多余文本。
+     */
+    private static final ThreadLocal<Map<String, DateTimeFormatter>> FORMATTER_CACHE =
+            ThreadLocal.withInitial(() -> new HashMap<>());
+
+    private static DateTimeFormatter formatterOf(String pattern) {
+        Map<String, DateTimeFormatter> cache = FORMATTER_CACHE.get();
+        DateTimeFormatter fmt = cache.get(pattern);
+        if (fmt == null) {
+            fmt = DateTimeFormatter.ofPattern(pattern.replace("yyyy", "uuuu"))
+                    .withResolverStyle(ResolverStyle.STRICT);
+            cache.put(pattern, fmt);
+        }
+        return fmt;
+    }
+
     public static final String parseDateToStr(final String format, final Date date) {
-        SimpleDateFormat sdf = new SimpleDateFormat(format);
-        sdf.setTimeZone(DEFAULT_TZ);
-        return sdf.format(date);
+        // Date -> 固定东八区的 ZonedDateTime 再交 DateTimeFormatter 格式化（不再依赖 JVM 默认时区）
+        return formatterOf(format).format(date.toInstant().atZone(DEFAULT_ZONE));
     }
 
     public static final Date dateTime(final String format, final String ts) {
-        SimpleDateFormat sdf = new SimpleDateFormat(format);
-        sdf.setTimeZone(DEFAULT_TZ);
         try {
-            return sdf.parse(ts);
-        } catch (ParseException e) {
+            TemporalAccessor parsed = formatterOf(format).parse(ts);
+            try {
+                // 模式含时分秒 -> LocalDateTime
+                return Date.from(LocalDateTime.from(parsed).atZone(DEFAULT_ZONE).toInstant());
+            } catch (DateTimeException e) {
+                // 纯日期模式 -> LocalDate 落当日零点
+                return Date.from(LocalDate.from(parsed).atStartOfDay(DEFAULT_ZONE).toInstant());
+            }
+        } catch (DateTimeException e) {
+            // 含解析失败/尾部文本/非法日期，以及 LocalDateTime 与 LocalDate 均无法还原的情形
             throw new IllegalArgumentException("日期解析失败: " + ts, e);
         }
     }

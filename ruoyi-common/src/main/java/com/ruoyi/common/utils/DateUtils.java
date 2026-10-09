@@ -17,6 +17,9 @@ import org.apache.commons.lang3.time.DateFormatUtils;
  * @author ruoyi
  */
 public class DateUtils extends org.apache.commons.lang3.time.DateUtils {
+    /** 默认时区：固定东八区，避免随容器/CI 的 JVM 默认时区漂移导致 Date↔Local 转换结果偏移 */
+    private static final ZoneId DEFAULT_ZONE = ZoneId.of("Asia/Shanghai");
+
     public static String YYYY = "yyyy";
 
     public static String YYYY_MM = "yyyy-MM";
@@ -158,11 +161,11 @@ public class DateUtils extends org.apache.commons.lang3.time.DateUtils {
     /**
      * LocalDateTime ==> Date。
      * <p>
-     * 时区依赖：使用 JVM 默认时区 {@link ZoneId#systemDefault()}；若服务器/容器时区变化，转换结果会偏移。
-     * 需确定时区的敏感场景请改用 {@link #toDate(LocalDateTime, ZoneId)}。
+     * 时区：使用固定默认时区东八区 {@code Asia/Shanghai}（常量 {@code DEFAULT_ZONE}），不再随 JVM/容器默认时区漂移；
+     * 需其他时区请改用 {@link #toDate(LocalDateTime, ZoneId)} 显式传入。
      */
     public static Date toDate(LocalDateTime temporalAccessor) {
-        return toDate(temporalAccessor, ZoneId.systemDefault());
+        return toDate(temporalAccessor, DEFAULT_ZONE);
     }
 
     /**
@@ -176,10 +179,10 @@ public class DateUtils extends org.apache.commons.lang3.time.DateUtils {
     /**
      * LocalDate ==> Date（当天 00:00:00）。
      * <p>
-     * 时区依赖：使用 JVM 默认时区 {@link ZoneId#systemDefault()}；需确定时区请改用 {@link #toDate(LocalDate, ZoneId)}。
+     * 时区：使用固定默认时区东八区 {@code Asia/Shanghai}（常量 {@code DEFAULT_ZONE}）；需其他时区请改用 {@link #toDate(LocalDate, ZoneId)}。
      */
     public static Date toDate(LocalDate temporalAccessor) {
-        return toDate(temporalAccessor, ZoneId.systemDefault());
+        return toDate(temporalAccessor, DEFAULT_ZONE);
     }
 
     /**
@@ -194,12 +197,12 @@ public class DateUtils extends org.apache.commons.lang3.time.DateUtils {
     /**
      * Date ==> LocalDateTime。
      * <p>
-     * 时区依赖：使用 JVM 默认时区 {@link ZoneId#systemDefault()}；需确定时区请改用 {@link #toLocalDateTime(Date, ZoneId)}。
+     * 时区：使用固定默认时区东八区 {@code Asia/Shanghai}（常量 {@code DEFAULT_ZONE}）；需其他时区请改用 {@link #toLocalDateTime(Date, ZoneId)}。
      *
      * @return date 为 null 时返回 null
      */
     public static LocalDateTime toLocalDateTime(Date date) {
-        return toLocalDateTime(date, ZoneId.systemDefault());
+        return toLocalDateTime(date, DEFAULT_ZONE);
     }
 
     /**

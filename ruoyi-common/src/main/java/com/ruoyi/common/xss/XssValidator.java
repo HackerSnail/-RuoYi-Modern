@@ -3,16 +3,20 @@ package com.ruoyi.common.xss;
 import com.ruoyi.common.utils.StringUtils;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 自定义xss校验注解实现
- * 
+ * 自定义 xss 校验注解实现。
+ * <p>
+ * 说明：本校验器只做“是否含 HTML 标签”的轻量黑名单拒绝（命中即判为非法、拦截请求），
+ * 并非完整的 XSS 净化方案；需要保留富文本的场景应依赖白名单净化（XssFilter /
+ * XssHttpServletRequestWrapper 那条 jsoup 清洗链路），不要把它当作可靠 XSS 防线。
+ *
  * @author ruoyi
  */
 public class XssValidator implements ConstraintValidator<Xss, String> {
-    private static final String HTML_PATTERN = "<(\\S*?)[^>]*>.*?|<.*? />";
+    /** 预编译，避免每次校验都 Pattern.compile */
+    private static final Pattern HTML_PATTERN = Pattern.compile("<(\\S*?)[^>]*>.*?|<.*? />");
 
     @Override
     public boolean isValid(String value, ConstraintValidatorContext constraintValidatorContext) {
@@ -24,15 +28,14 @@ public class XssValidator implements ConstraintValidator<Xss, String> {
     }
 
     /**
-     * 是否包含 HTML 标签：先找出所有命中标签正则的片段拼接，再整体匹配以判定是否存在 XSS 风险内容
+     * 是否包含 HTML 标签：正则命中任一标签片段即为 true。
+     * 旧实现 find() 拼接后再 matches() 属逻辑错误（find 已证明存在标签，matches 却要求整段完全匹配，
+     * 多片段且片段内含换行时会漏判），改为直接 find()。
      */
     public static boolean containsHtml(String value) {
-        StringBuilder sHtml = new StringBuilder();
-        Pattern pattern = Pattern.compile(HTML_PATTERN);
-        Matcher matcher = pattern.matcher(value);
-        while (matcher.find()) {
-            sHtml.append(matcher.group());
+        if (value == null) {
+            return false;
         }
-        return pattern.matcher(sHtml).matches();
+        return HTML_PATTERN.matcher(value).find();
     }
 }

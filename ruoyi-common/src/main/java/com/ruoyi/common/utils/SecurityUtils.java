@@ -18,49 +18,50 @@ import com.ruoyi.common.exception.ServiceException;
  * 
  * @author ruoyi
  */
-public class SecurityUtils {
+public final class SecurityUtils {
+    /**
+     * 密码编码器：BCryptPasswordEncoder 无状态、线程安全，提为常量避免每次 new
+     */
+    private static final BCryptPasswordEncoder PASSWORD_ENCODER = new BCryptPasswordEncoder();
+
+    private SecurityUtils() {
+    }
 
     /**
      * 用户ID
      **/
     public static Long getUserId() {
-        try {
-            return getLoginUser().getUserId();
-        } catch (Exception e) {
-            throw new ServiceException("获取用户ID异常", HttpStatus.UNAUTHORIZED);
-        }
+        return getLoginUser().getUserId();
     }
 
     /**
      * 获取部门ID
      **/
     public static Long getDeptId() {
-        try {
-            return getLoginUser().getDeptId();
-        } catch (Exception e) {
-            throw new ServiceException("获取部门ID异常", HttpStatus.UNAUTHORIZED);
-        }
+        return getLoginUser().getDeptId();
     }
 
     /**
      * 获取用户账户
      **/
     public static String getUsername() {
-        try {
-            return getLoginUser().getUsername();
-        } catch (Exception e) {
-            throw new ServiceException("获取用户账户异常", HttpStatus.UNAUTHORIZED);
-        }
+        return getLoginUser().getUsername();
     }
 
     /**
      * 获取用户
      **/
     public static LoginUser getLoginUser() {
+        Authentication authentication = getAuthentication();
+        // 定时任务/异步线程/匿名接口/Token 失效时 getAuthentication() 可能为 null，显式判空给出准确文案，
+        // 不再依赖捕获 NPE 做控制流。
+        if (authentication == null || authentication.getPrincipal() == null) {
+            throw new ServiceException("用户未登录", HttpStatus.UNAUTHORIZED);
+        }
         try {
-            return (LoginUser) getAuthentication().getPrincipal();
-        } catch (Exception e) {
-            throw new ServiceException("获取用户信息异常", HttpStatus.UNAUTHORIZED);
+            return (LoginUser) authentication.getPrincipal();
+        } catch (ClassCastException e) {
+            throw new ServiceException("用户信息类型异常", HttpStatus.UNAUTHORIZED);
         }
     }
 
@@ -78,8 +79,7 @@ public class SecurityUtils {
      * @return 加密字符串
      */
     public static String encryptPassword(String password) {
-        BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-        return passwordEncoder.encode(password);
+        return PASSWORD_ENCODER.encode(password);
     }
 
     /**
@@ -90,8 +90,7 @@ public class SecurityUtils {
      * @return 结果
      */
     public static boolean matchesPassword(String rawPassword, String encodedPassword) {
-        BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-        return passwordEncoder.matches(rawPassword, encodedPassword);
+        return PASSWORD_ENCODER.matches(rawPassword, encodedPassword);
     }
 
     /**
@@ -131,6 +130,9 @@ public class SecurityUtils {
      * @return 用户是否具备某权限
      */
     public static boolean hasPermi(Collection<String> authorities, String permission) {
+        if (authorities == null || authorities.isEmpty()) {
+            return false;
+        }
         return authorities.stream().filter(StringUtils::hasText)
                 .anyMatch(x -> Constants.ALL_PERMISSION.equals(x) || PatternMatchUtils.simpleMatch(x, permission));
     }
@@ -142,8 +144,13 @@ public class SecurityUtils {
      * @return 用户是否具备某角色
      */
     public static boolean hasRole(String role) {
-        List<SysRole> roleList = getLoginUser().getUser().getRoles();
-        Collection<String> roles = roleList.stream().map(SysRole::getRoleKey).collect(Collectors.toSet());
+        LoginUser loginUser = getLoginUser();
+        // getUser() 在异常 LoginUser 下可能为 null，getRoles() 也可能为 null，逐层兜底。
+        if (loginUser.getUser() == null || loginUser.getUser().getRoles() == null) {
+            return false;
+        }
+        List<SysRole> roleList = loginUser.getUser().getRoles();
+        Collection<String> roles = roleList.stream().map(sysRole -> sysRole.getRoleKey()).collect(Collectors.toSet());
         return hasRole(roles, role);
     }
 
@@ -155,6 +162,9 @@ public class SecurityUtils {
      * @return 用户是否具备某角色权限
      */
     public static boolean hasRole(Collection<String> roles, String role) {
+        if (roles == null || roles.isEmpty()) {
+            return false;
+        }
         return roles.stream().filter(StringUtils::hasText)
                 .anyMatch(x -> Constants.SUPER_ADMIN.equals(x) || PatternMatchUtils.simpleMatch(x, role));
     }

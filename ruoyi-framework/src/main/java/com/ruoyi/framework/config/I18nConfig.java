@@ -1,5 +1,6 @@
 package com.ruoyi.framework.config;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.LocaleResolver;
@@ -16,6 +17,17 @@ import com.ruoyi.common.constant.Constants;
  */
 @Configuration
 public class I18nConfig implements WebMvcConfigurer {
+    /**
+     * 语言切换拦截器的延迟提供者：本类的 {@link #localeChangeInterceptor()} 即其 Bean 定义。
+     * 用 ObjectProvider 而非直接注入 LocaleChangeInterceptor，可规避“配置类自造 Bean 又构造器自注入”的循环依赖；
+     * addInterceptors 经 getObject() 取到的仍是容器单例
+     */
+    private final ObjectProvider<LocaleChangeInterceptor> localeChangeInterceptorProvider;
+
+    public I18nConfig(ObjectProvider<LocaleChangeInterceptor> localeChangeInterceptorProvider) {
+        this.localeChangeInterceptorProvider = localeChangeInterceptorProvider;
+    }
+
     /**
      * 本地化解析器：基于 Session 存储用户语言，默认取 Constants.DEFAULT_LOCALE
      */
@@ -43,6 +55,6 @@ public class I18nConfig implements WebMvcConfigurer {
      */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(localeChangeInterceptor());
+        registry.addInterceptor(localeChangeInterceptorProvider.getObject());
     }
 }

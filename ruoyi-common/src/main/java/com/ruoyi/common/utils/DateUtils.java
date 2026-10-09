@@ -16,7 +16,6 @@ import org.apache.commons.lang3.time.DateFormatUtils;
  * 
  * @author ruoyi
  */
-@SuppressWarnings("deprecation")
 public class DateUtils extends org.apache.commons.lang3.time.DateUtils {
     public static String YYYY = "yyyy";
 
@@ -96,7 +95,12 @@ public class DateUtils extends org.apache.commons.lang3.time.DateUtils {
     }
 
     /**
-     * 日期型字符串转化为日期 格式
+     * 日期型字符串转化为日期（宽松解析，多格式尝试）。
+     * <p>
+     * 契约：入参为 null 或所有 {@code parsePatterns} 均不匹配时<b>返回 null，不抛异常</b>。
+     * 这是刻意保留的宽松语义——{@code BaseController} 的 {@code @InitBinder} 表单 Date 绑定、
+     * {@code ExcelUtil} 导入的日期单元格、{@code ReflectUtils} 的 Date 参数转换三处都依赖
+     * “留空/不合法即为 null”，<b>勿改成抛异常</b>，否则会中断表单绑定/整表导入。调用方须自行判空。
      */
     public static Date parseDate(Object str) {
         if (str == null) {
@@ -125,7 +129,10 @@ public class DateUtils extends org.apache.commons.lang3.time.DateUtils {
     }
 
     /**
-     * 计算时间差
+     * 计算时间差（endDate 相对 startTime）。
+     * <p>
+     * 方向性：假定 {@code endDate} 不早于 {@code startTime}（如“当前时间 - 服务器启动时间”）；
+     * 若 endDate 早于 startTime，diff 为负，输出会含负值（如 "-1天-1小时"）。需恒定非负请先保证 endDate 较晚。
      *
      * @param endDate   最后时间
      * @param startTime 开始时间
@@ -150,26 +157,58 @@ public class DateUtils extends org.apache.commons.lang3.time.DateUtils {
     }
 
     /**
-     * 增加 LocalDateTime ==> Date
+     * LocalDateTime ==> Date。
+     * <p>
+     * 时区依赖：使用 JVM 默认时区 {@link ZoneId#systemDefault()}；若服务器/容器时区变化，转换结果会偏移。
+     * 需确定时区的敏感场景请改用 {@link #toDate(LocalDateTime, ZoneId)}。
      */
     public static Date toDate(LocalDateTime temporalAccessor) {
-        ZonedDateTime zdt = temporalAccessor.atZone(ZoneId.systemDefault());
+        return toDate(temporalAccessor, ZoneId.systemDefault());
+    }
+
+    /**
+     * LocalDateTime ==> Date（显式时区）。
+     */
+    public static Date toDate(LocalDateTime temporalAccessor, ZoneId zone) {
+        ZonedDateTime zdt = temporalAccessor.atZone(zone);
         return Date.from(zdt.toInstant());
     }
 
     /**
-     * 增加 LocalDate ==> Date
+     * LocalDate ==> Date（当天 00:00:00）。
+     * <p>
+     * 时区依赖：使用 JVM 默认时区 {@link ZoneId#systemDefault()}；需确定时区请改用 {@link #toDate(LocalDate, ZoneId)}。
      */
     public static Date toDate(LocalDate temporalAccessor) {
+        return toDate(temporalAccessor, ZoneId.systemDefault());
+    }
+
+    /**
+     * LocalDate ==> Date（当天 00:00:00，显式时区）。
+     */
+    public static Date toDate(LocalDate temporalAccessor, ZoneId zone) {
         LocalDateTime localDateTime = LocalDateTime.of(temporalAccessor, LocalTime.of(0, 0, 0));
-        ZonedDateTime zdt = localDateTime.atZone(ZoneId.systemDefault());
+        ZonedDateTime zdt = localDateTime.atZone(zone);
         return Date.from(zdt.toInstant());
     }
 
     /**
-     * Date ==> LocalDateTime
+     * Date ==> LocalDateTime。
+     * <p>
+     * 时区依赖：使用 JVM 默认时区 {@link ZoneId#systemDefault()}；需确定时区请改用 {@link #toLocalDateTime(Date, ZoneId)}。
+     *
+     * @return date 为 null 时返回 null
      */
     public static LocalDateTime toLocalDateTime(Date date) {
-        return date == null ? null : LocalDateTime.ofInstant(date.toInstant(), ZoneId.systemDefault());
+        return toLocalDateTime(date, ZoneId.systemDefault());
+    }
+
+    /**
+     * Date ==> LocalDateTime（显式时区）。
+     *
+     * @return date 为 null 时返回 null
+     */
+    public static LocalDateTime toLocalDateTime(Date date, ZoneId zone) {
+        return date == null ? null : LocalDateTime.ofInstant(date.toInstant(), zone);
     }
 }

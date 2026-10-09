@@ -1,6 +1,7 @@
 package com.ruoyi.framework.config;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.data.redis.serializer.SerializationException;
 import com.alibaba.fastjson2.JSON;
@@ -15,7 +16,7 @@ import com.ruoyi.common.constant.Constants;
  * @author ruoyi
  */
 public class FastJson2JsonRedisSerializer<T> implements RedisSerializer<T> {
-    public static final Charset DEFAULT_CHARSET = Charset.forName("UTF-8");
+    private static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
 
     /**
      * 反序列化白名单过滤器：仅允许 Constants.JSON_WHITELIST_STR 中的包参与 autoType，
@@ -23,10 +24,13 @@ public class FastJson2JsonRedisSerializer<T> implements RedisSerializer<T> {
      */
     static final Filter AUTO_TYPE_FILTER = JSONReader.autoTypeFilter(Constants.JSON_WHITELIST_STR);
 
-    private Class<T> clazz;
+    private final Class<T> clazz;
 
     public FastJson2JsonRedisSerializer(Class<T> clazz) {
         super();
+        if (clazz == null) {
+            throw new IllegalArgumentException("clazz must not be null");
+        }
         this.clazz = clazz;
     }
 

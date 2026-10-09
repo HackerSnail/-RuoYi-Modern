@@ -1,19 +1,20 @@
 package com.ruoyi.framework.interceptor.impl;
 
 import java.io.IOException;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
+import java.util.TreeMap;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.WebUtils;
-import com.alibaba.fastjson2.JSON;
 import com.ruoyi.common.annotation.RepeatSubmit;
 import com.ruoyi.common.constant.CacheConstants;
-import com.ruoyi.common.core.redis.RedisCache;
 import com.ruoyi.common.filter.RepeatedlyRequestWrapper;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.http.HttpHelper;
@@ -29,25 +30,25 @@ import com.ruoyi.framework.interceptor.RepeatSubmitInterceptor;
 public class SameUrlDataInterceptor extends RepeatSubmitInterceptor {
     private static final Logger LOGGER = LoggerFactory.getLogger(SameUrlDataInterceptor.class);
 
-    public final String REPEAT_PARAMS = "repeatParams";
-
-    public final String REPEAT_TIME = "repeatTime";
-
     // 令牌自定义标识
     @Value("${token.header}")
     private String header;
 
-    private final RedisCache redisCache;
+    private final RedisTemplate<String, Object> redisTemplate;
 
-    public SameUrlDataInterceptor(RedisCache redisCache) {
-        this.redisCache = redisCache;
+    private final RedisScript<Long> repeatSubmitScript;
+
+    public SameUrlDataInterceptor(RedisTemplate<String, Object> redisTemplate,
+            @Qualifier("repeatSubmitScript") RedisScript<Long> repeatSubmitScript) {
+        this.redisTemplate = redisTemplate;
+        this.repeatSubmitScript = repeatSubmitScript;
     }
 
     /**
-     * 基于 Redis 的重复提交判定：以 key(前缀+url+令牌) 缓存本次“参数+时间戳”，
-     * 若与上次缓存参数相同且间隔小于 annotation.interval 则判为重复；否则刷新缓存并放行
+     * 基于 Redis 的重复提交判定：以 key(前缀 + url + ":" + 令牌) 缓存本次规范化参数串，
+     * 用 Lua 脚本原子完成“取回上次→相同且仍在窗口内判重复，否则覆盖并刷新窗口”，消除 Java 侧
+     * get-compare-set 的 TOCTOU 竞态；时间窗由 key 的 TTL(=annotation.interval 毫秒)承载，故无需再存时间戳。
      */
-    @SuppressWarnings("unchecked")
     @Override
     public boolean isRepeatSubmit(HttpServletRequest request, RepeatSubmit annotation) {
         String nowParams = "";
@@ -63,58 +64,41 @@ public class SameUrlDataInterceptor extends RepeatSubmitInterceptor {
             }
         }
 
-        // body参数为空，获取Parameter的数据
+        // body 为空时降级按 parameterMap 比对；规范化(按 key 排序拼接)以获得顺序稳定、与 Map 实现无关的可比较串，
+        // 避免直接 JSON 序列化 getParameterMap 的编码不确定导致防重漏判
         if (StringUtils.isEmpty(nowParams)) {
-            nowParams = JSON.toJSONString(request.getParameterMap());
+            nowParams = normalizeParams(request.getParameterMap());
         }
-        Map<String, Object> nowDataMap = new HashMap<>();
-        nowDataMap.put(REPEAT_PARAMS, nowParams);
-        nowDataMap.put(REPEAT_TIME, System.currentTimeMillis());
 
-        // 请求地址（作为存放cache的key值）
+        // 唯一标识 = key 前缀 + url + 固定冒号分隔符 + 令牌；加冒号消除 url 与 submitKey 直接拼接的歧义
         String url = request.getRequestURI();
-
-        // 唯一值（没有消息头则使用请求地址）
         String submitKey = StringUtils.trimToEmpty(request.getHeader(header));
+        String cacheRepeatKey = CacheConstants.REPEAT_SUBMIT_KEY + url + ":" + submitKey;
 
-        // 唯一标识（指定key + url + 消息头）
-        String cacheRepeatKey = CacheConstants.REPEAT_SUBMIT_KEY + url + submitKey;
+        // 原子“读-比-写”：返回 1=判为重复(参数相同且 key 仍在窗口内)，0=非重复且已记录本次并刷新 TTL。
+        // annotation.interval() 单位为毫秒，作为脚本内 SET ... PX 的 TTL
+        Long repeatFlag = redisTemplate.execute(repeatSubmitScript,
+                Collections.singletonList(cacheRepeatKey), nowParams, annotation.interval());
+        return repeatFlag != null && repeatFlag == 1L;
+    }
 
-        Object sessionObj = redisCache.getCacheObject(cacheRepeatKey);
-        if (sessionObj != null) {
-            Map<String, Object> sessionMap = (Map<String, Object>) sessionObj;
-            if (sessionMap.containsKey(url)) {
-                Map<String, Object> preDataMap = (Map<String, Object>) sessionMap.get(url);
-                if (compareParams(nowDataMap, preDataMap)
-                        && compareTime(nowDataMap, preDataMap, annotation.interval())) {
-                    return true;
-                }
+    /**
+     * 规范化请求参数：按参数名升序，每个参数名拼接其全部取值(String[] 以逗号连接)，得到稳定串。
+     * 注：值内含分隔符(,&,=)的极端歧义未做转义——较原 JSON 方案已消除顺序不确定性，防重目的足够。
+     */
+    private String normalizeParams(Map<String, String[]> parameterMap) {
+        if (parameterMap == null || parameterMap.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        // TreeMap 按 key 自然序排序，消除 HashMap 迭代顺序不确定
+        for (Map.Entry<String, String[]> entry : new TreeMap<>(parameterMap).entrySet()) {
+            if (sb.length() > 0) {
+                sb.append('&');
             }
+            String[] values = entry.getValue();
+            sb.append(entry.getKey()).append('=').append(values == null ? "" : String.join(",", values));
         }
-        Map<String, Object> cacheMap = new HashMap<>();
-        cacheMap.put(url, nowDataMap);
-        redisCache.setCacheObject(cacheRepeatKey, cacheMap, annotation.interval(), TimeUnit.MILLISECONDS);
-        return false;
-    }
-
-    /**
-     * 判断参数是否相同
-     */
-    private boolean compareParams(Map<String, Object> nowMap, Map<String, Object> preMap) {
-        String nowParams = (String) nowMap.get(REPEAT_PARAMS);
-        String preParams = (String) preMap.get(REPEAT_PARAMS);
-        return nowParams.equals(preParams);
-    }
-
-    /**
-     * 判断两次间隔时间
-     */
-    private boolean compareTime(Map<String, Object> nowMap, Map<String, Object> preMap, int interval) {
-        long time1 = (Long) nowMap.get(REPEAT_TIME);
-        long time2 = (Long) preMap.get(REPEAT_TIME);
-        if ((time1 - time2) < interval) {
-            return true;
-        }
-        return false;
+        return sb.toString();
     }
 }

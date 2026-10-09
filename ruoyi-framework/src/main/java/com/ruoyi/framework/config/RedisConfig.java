@@ -72,4 +72,28 @@ public class RedisConfig {
                 "redis.call('PEXPIRE', key, time * 1000)\n" +
                 "return current + 1;";
     }
+
+    /**
+     * 重复提交判定 Lua 脚本 Bean（供 SameUrlDataInterceptor 原子执行）：单脚本内完成
+     * “取回上次参数串→与本次相同则判重复，否则覆盖并刷新窗口”，消除 Java 侧 get-compare-set 的 TOCTOU 竞态。
+     * 时间窗由 key 的 PX TTL(=interval 毫秒)承载，key 存活即仍在窗口内，故无需再单独存时间戳。
+     * ARGV[1]=规范化参数串（valueSerializer=FastJson2 序列化，读写编码对称故可等值比较），
+     * ARGV[2]=interval 毫秒（以数字传入，序列化后不加引号，可直接用作 PX）。
+     */
+    @Bean
+    public DefaultRedisScript<Long> repeatSubmitScript() {
+        DefaultRedisScript<Long> redisScript = new DefaultRedisScript<>();
+        redisScript.setScriptText(repeatSubmitScriptText());
+        redisScript.setResultType(Long.class);
+        return redisScript;
+    }
+
+    private String repeatSubmitScriptText() {
+        return "local cur = redis.call('GET', KEYS[1])\n" +
+                "if cur and cur == ARGV[1] then\n" +
+                "    return 1\n" +
+                "end\n" +
+                "redis.call('SET', KEYS[1], ARGV[1], 'PX', tonumber(ARGV[2]))\n" +
+                "return 0;";
+    }
 }

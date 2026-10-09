@@ -1,7 +1,9 @@
 package com.ruoyi.framework.config.properties;
 
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.stereotype.Component;
+import org.springframework.util.Assert;
 import com.alibaba.druid.pool.DruidDataSource;
 
 /**
@@ -9,7 +11,7 @@ import com.alibaba.druid.pool.DruidDataSource;
  * 
  * @author ruoyi
  */
-@Configuration
+@Component
 public class DruidProperties {
     @Value("${spring.datasource.druid.initialSize}")
     private int initialSize;
@@ -49,6 +51,20 @@ public class DruidProperties {
 
     @Value("${spring.datasource.druid.testOnReturn}")
     private boolean testOnReturn;
+
+    /**
+     * 启动期对连接池关键参数做合法性校验，配错即刻失败并给出明确文案，避免运行后才暴露。
+     * 仅校验与池容量/等待相关的约束，其余值交由 Druid 自身处理。
+     */
+    @PostConstruct
+    public void validate() {
+        Assert.isTrue(initialSize >= 0, "Druid initialSize 不能小于 0");
+        Assert.isTrue(minIdle >= 0, "Druid minIdle 不能小于 0");
+        Assert.isTrue(maxActive > 0, "Druid maxActive 必须大于 0");
+        Assert.isTrue(maxWait >= 0, "Druid maxWait 不能小于 0");
+        Assert.isTrue(minIdle <= maxActive, "Druid minIdle 不能大于 maxActive");
+        Assert.isTrue(initialSize <= maxActive, "Druid initialSize 不能大于 maxActive");
+    }
 
     /**
      * 将本类中通过 @Value 注入的连接池参数统一应用到传入的 DruidDataSource 上，

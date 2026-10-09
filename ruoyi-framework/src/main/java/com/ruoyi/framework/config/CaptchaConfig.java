@@ -18,7 +18,7 @@ public class CaptchaConfig {
      * 字符型验证码生成器：4 位文本 + 阴影干扰样式，用于普通登录验证码
      */
     @Bean(name = "captchaProducer")
-    public DefaultKaptcha getKaptchaBean() {
+    public DefaultKaptcha captchaProducer() {
         DefaultKaptcha defaultKaptcha = new DefaultKaptcha();
         Properties properties = new Properties();
         // 是否有边框 默认为true 我们可以自己设置yes，no
@@ -31,9 +31,8 @@ public class CaptchaConfig {
         properties.setProperty(KAPTCHA_IMAGE_HEIGHT, "60");
         // 验证码文本字符大小 默认为40
         properties.setProperty(KAPTCHA_TEXTPRODUCER_FONT_SIZE, "38");
-        // KAPTCHA_SESSION_KEY
-        properties.setProperty(KAPTCHA_SESSION_CONFIG_KEY, "kaptchaCode");
-        // 验证码文本字符长度 默认为5
+        // KAPTCHA_SESSION_KEY 已删：本仓验证码经 CaptchaController 写入 Redis(CAPTCHA_CODE_KEY+uuid)、由 Redis 校验，此会话键从未被读
+        // 字符验证码文本长度：有意覆盖 Kaptcha 默认的 5，取 4 位更易读
         properties.setProperty(KAPTCHA_TEXTPRODUCER_CHAR_LENGTH, "4");
         // 验证码文本字体样式 默认为new Font("Arial", 1, fontSize), new Font("Courier", 1, fontSize)
         properties.setProperty(KAPTCHA_TEXTPRODUCER_FONT_NAMES, "Arial,Courier");
@@ -51,7 +50,7 @@ public class CaptchaConfig {
      * 用户需计算结果，比纯字符识别更能抵御 OCR 打码
      */
     @Bean(name = "captchaProducerMath")
-    public DefaultKaptcha getKaptchaBeanMath() {
+    public DefaultKaptcha captchaProducerMath() {
         DefaultKaptcha defaultKaptcha = new DefaultKaptcha();
         Properties properties = new Properties();
         // 是否有边框 默认为true 我们可以自己设置yes，no
@@ -66,13 +65,12 @@ public class CaptchaConfig {
         properties.setProperty(KAPTCHA_IMAGE_HEIGHT, "60");
         // 验证码文本字符大小 默认为40
         properties.setProperty(KAPTCHA_TEXTPRODUCER_FONT_SIZE, "35");
-        // KAPTCHA_SESSION_KEY
-        properties.setProperty(KAPTCHA_SESSION_CONFIG_KEY, "kaptchaCodeMath");
-        // 验证码文本生成器
+        // 算术文本由自定义生成器 KaptchaTextCreator 直接产出算式（如 "3*4=?@12"）；
+        // 本 bean 的会话键 kaptchaCodeMath 已删（同字符 bean，验证码走 Redis 校验，会话键从未被读）
         properties.setProperty(KAPTCHA_TEXTPRODUCER_IMPL, "com.ruoyi.framework.config.KaptchaTextCreator");
         // 验证码文本字符间距 默认为2
         properties.setProperty(KAPTCHA_TEXTPRODUCER_CHAR_SPACE, "3");
-        // 验证码文本字符长度 默认为5
+        // 验证码文本字符长度：算式长度由 getText() 决定，自定义生产者下此项不生效，保留仅作显式说明
         properties.setProperty(KAPTCHA_TEXTPRODUCER_CHAR_LENGTH, "6");
         // 验证码文本字体样式 默认为new Font("Arial", 1, fontSize), new Font("Courier", 1, fontSize)
         properties.setProperty(KAPTCHA_TEXTPRODUCER_FONT_NAMES, "Arial,Courier");

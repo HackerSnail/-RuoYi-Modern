@@ -16,29 +16,33 @@ import com.ruoyi.common.utils.StringUtils;
  */
 @Configuration
 public class RedissonConfig {
-    @Value("${spring.data.redis.host:127.0.0.1}")
-    private String host;
+    private final String host;
 
-    @Value("${spring.data.redis.port:6379}")
-    private int port;
+    private final int port;
 
-    @Value("${spring.data.redis.database:0}")
-    private int database;
+    private final int database;
 
-    @Value("${spring.data.redis.password:}")
-    private String password;
+    private final String password;
+
+    public RedissonConfig(
+            @Value("${spring.data.redis.host:127.0.0.1}") String host,
+            @Value("${spring.data.redis.port:6379}") int port,
+            @Value("${spring.data.redis.database:0}") int database,
+            @Value("${spring.data.redis.password:}") String password) {
+        this.host = host;
+        this.port = port;
+        this.database = database;
+        this.password = password;
+    }
 
     /**
      * RedissonClient：destroyMethod=shutdown 保证应用关闭时释放 Netty 线程与连接。
      * 密码为空时不设置（对应无鉴权的本地/测试 Redis）。
-     *
-     * 注：Redisson 4.x 已将 BaseConfig#setPassword/setUsername 标记为 @Deprecated，
-     * 官方提示 "Use password setting in Config instead"，因此密码统一设在 Config 顶层。
      */
     @Bean(destroyMethod = "shutdown")
     public RedissonClient redissonClient() {
         Config config = new Config();
-        if (StringUtils.isNotEmpty(password)) {
+        if (StringUtils.hasText(password)) {
             config.setPassword(password);
         }
         config.useSingleServer()

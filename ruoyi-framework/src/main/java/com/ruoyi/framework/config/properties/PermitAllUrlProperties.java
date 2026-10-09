@@ -3,13 +3,10 @@ package com.ruoyi.framework.config.properties;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
-import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
@@ -23,16 +20,20 @@ import com.ruoyi.common.annotation.Anonymous;
  * @author ruoyi
  */
 @Component
-public class PermitAllUrlProperties implements InitializingBean, ApplicationContextAware {
+public class PermitAllUrlProperties implements InitializingBean {
     private static final Pattern PATTERN = Pattern.compile("\\{(.*?)\\}");
 
     /** 通配符：把路径变量 {xxx} 替换为 * 供 requestMatchers 放行 */
     private static final String ASTERISK = "*";
 
-    private ApplicationContext applicationContext;
+    private final ApplicationContext applicationContext;
 
     /** 收集到的免鉴权 URL；用 LinkedHashSet 去重并保持发现顺序，引用 final 不可替换 */
     private final Set<String> urls = new LinkedHashSet<>();
+
+    public PermitAllUrlProperties(ApplicationContext applicationContext) {
+        this.applicationContext = applicationContext;
+    }
 
     /**
      * Bean 初始化完成后执行：遍历所有控制器映射，收集标有 @Anonymous（方法或类上）的接口 URL，
@@ -44,12 +45,10 @@ public class PermitAllUrlProperties implements InitializingBean, ApplicationCont
                 RequestMappingHandlerMapping.class);
         Map<RequestMappingInfo, HandlerMethod> map = mapping.getHandlerMethods();
 
-        map.keySet().forEach(info -> {
-            HandlerMethod handlerMethod = map.get(info);
-
-            // 默认 Spring Boot 使用 PathPatternParser 匹配策略，getPathPatternsCondition() 恒非 null；
-            // 其姊妹方法 getPatternsCondition() 在 Spring Framework 7 已 @Deprecated(forRemoval=true)，
-            // 故此处不回退到旧 API——若显式改用 ant_path_matcher 策略则属不受支持的配置，直接快速失败给明确提示。
+        map.forEach((info, handlerMethod) -> {
+            // 默认 PathPatternParser 策略下 getPathPatternsCondition() 通常非 null；若显式切换为
+            // ant_path_matcher 则可能为 null，此时属不受支持的配置，直接快速失败给明确提示。
+            // （其姊妹方法 getPatternsCondition() 在 Spring Framework 7 已 @Deprecated(forRemoval=true)，故不回退旧 API。）
             var condition = info.getPathPatternsCondition();
             if (condition == null) {
                 throw new IllegalStateException(
@@ -58,23 +57,23 @@ public class PermitAllUrlProperties implements InitializingBean, ApplicationCont
             }
             Set<String> patternValues = condition.getPatternValues();
 
-            // 获取方法上边的注解 替代path variable 为 *
+            // 方法或类上任意一处标注 @Anonymous 即放行其全部 URL；两处同时标注时同一 URL 会被加两次，
+            // 已由 Set 天然去重，属预期行为。
             Anonymous method = AnnotationUtils.findAnnotation(handlerMethod.getMethod(), Anonymous.class);
-            Optional.ofNullable(method)
-                    .ifPresent(anonymous -> patternValues
-                            .forEach(url -> urls.add(PATTERN.matcher(url).replaceAll(ASTERISK))));
+            if (method != null) {
+                addAnonymousUrls(patternValues);
+            }
 
-            // 获取类上边的注解, 替代path variable 为 *
             Anonymous controller = AnnotationUtils.findAnnotation(handlerMethod.getBeanType(), Anonymous.class);
-            Optional.ofNullable(controller)
-                    .ifPresent(anonymous -> patternValues
-                            .forEach(url -> urls.add(PATTERN.matcher(url).replaceAll(ASTERISK))));
+            if (controller != null) {
+                addAnonymousUrls(patternValues);
+            }
         });
     }
 
-    @Override
-    public void setApplicationContext(ApplicationContext context) throws BeansException {
-        this.applicationContext = context;
+    /** 把 patternValues 中的路径变量 {xxx} 替换为 * 通配后收集到免鉴权 URL 集合 */
+    private void addAnonymousUrls(Set<String> patternValues) {
+        patternValues.forEach(url -> urls.add(PATTERN.matcher(url).replaceAll(ASTERISK)));
     }
 
     /**

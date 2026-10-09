@@ -129,22 +129,21 @@ public class DateUtils extends org.apache.commons.lang3.time.DateUtils {
     }
 
     /**
-     * 计算时间差（endDate 相对 startTime）。
+     * 计算时间差（endDate 与 startTime 之间的间隔）。
      * <p>
-     * 方向性：假定 {@code endDate} 不早于 {@code startTime}（如“当前时间 - 服务器启动时间”）；
-     * 若 endDate 早于 startTime，diff 为负，输出会含负值（如 "-1天-1小时"）。需恒定非负请先保证 endDate 较晚。
+     * 对毫秒差取绝对值，输出恒为非负（天/小时/分钟），不依赖两入参先后顺序；调用方无需保证 endDate 较晚。
      *
-     * @param endDate   最后时间
-     * @param startTime 开始时间
-     * @return 时间差（天/小时/分钟）
+     * @param endDate   时间一端
+     * @param startTime 时间另一端
+     * @return 时间差（天/小时/分钟，非负）
      */
     public static String timeDistance(Date endDate, Date startTime) {
         long nd = 1000 * 24 * 60 * 60;
         long nh = 1000 * 60 * 60;
         long nm = 1000 * 60;
         // long ns = 1000;
-        // 获得两个时间的毫秒时间差异
-        long diff = endDate.getTime() - startTime.getTime();
+        // 获得两个时间的毫秒时间差异（取绝对值，输出恒非负）
+        long diff = Math.abs(endDate.getTime() - startTime.getTime());
         // 计算差多少天
         long day = diff / nd;
         // 计算差多少小时

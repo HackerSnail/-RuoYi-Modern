@@ -1,31 +1,20 @@
 package com.ruoyi.framework.config;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import javax.sql.DataSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.NoSuchBeanDefinitionException;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import com.alibaba.druid.pool.DruidDataSource;
 import com.alibaba.druid.spring.boot4.autoconfigure.DruidDataSourceBuilder;
-import com.alibaba.druid.spring.boot4.autoconfigure.properties.DruidStatProperties;
-import com.alibaba.druid.util.Utils;
 import com.ruoyi.common.enums.DataSourceType;
-import com.ruoyi.common.utils.spring.SpringUtils;
 import com.ruoyi.framework.config.properties.DruidProperties;
 import com.ruoyi.framework.datasource.DynamicDataSource;
-import jakarta.servlet.Filter;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.ServletRequest;
-import jakarta.servlet.ServletResponse;
 
 /**
  * druid 配置多数据源
@@ -34,7 +23,6 @@ import jakarta.servlet.ServletResponse;
  */
 @Configuration
 public class DruidConfig {
-    private static final Logger log = LoggerFactory.getLogger(DruidConfig.class);
 
     /**
      * 主数据源（始终启用），绑定 spring.datasource.druid.master 配置
@@ -58,75 +46,21 @@ public class DruidConfig {
     }
 
     /**
-     * 动态数据源：@Primary 作为全局默认数据源，以 master 为默认目标，聚合主/从供 DynamicDataSource 按上下文切换
+     * 动态数据源：@Primary 作为全局默认数据源，以 master 为默认目标，聚合主/从供 DynamicDataSource 按上下文切换。
+     * 从库用 @Qualifier + ObjectProvider 按 bean 名注入：slave.enabled=false 时该 bean 不存在，getIfAvailable() 返回 null，
+     * 等价于原先 SpringUtils.getBean + catch NoSuchBeanDefinitionException 的“从库可选”语义；
+     * 若从库已启用却创建失败，则容器启动即失败（fail-fast），不再静默降级为无从库。
      */
     @Bean(name = "dynamicDataSource")
     @Primary
-    public DynamicDataSource dataSource(DataSource masterDataSource) {
+    public DynamicDataSource dataSource(@Qualifier("masterDataSource") DataSource masterDataSource,
+            @Qualifier("slaveDataSource") ObjectProvider<DataSource> slaveProvider) {
         Map<Object, Object> targetDataSources = new HashMap<>();
         targetDataSources.put(DataSourceType.MASTER.name(), masterDataSource);
-        setDataSource(targetDataSources, DataSourceType.SLAVE.name(), "slaveDataSource");
-        return new DynamicDataSource(masterDataSource, targetDataSources);
-    }
-    
-    /**
-     * 设置数据源
-     * 
-     * @param targetDataSources 备选数据源集合
-     * @param sourceName 数据源名称
-     * @param beanName bean名称
-     */
-    public void setDataSource(Map<Object, Object> targetDataSources, String sourceName, String beanName) {
-        try {
-            DataSource dataSource = SpringUtils.getBean(beanName);
-            targetDataSources.put(sourceName, dataSource);
-        } catch (NoSuchBeanDefinitionException e) {
-            // 数据源未启用（如从库 enabled=false）时对应 bean 不存在，属预期情况，静默跳过
-            log.debug("数据源 [{}] 未配置，跳过注册", sourceName);
-        } catch (Exception e) {
-            // 其他异常说明数据源配置有误，记录以便排障，不再静默吞掉
-            log.error("注册数据源 [{}] 失败，请检查其配置", sourceName, e);
+        DataSource slaveDataSource = slaveProvider.getIfAvailable();
+        if (slaveDataSource != null) {
+            targetDataSources.put(DataSourceType.SLAVE.name(), slaveDataSource);
         }
-    }
-
-    /**
-     * 去除监控页面底部的广告
-     */
-    @SuppressWarnings({ "rawtypes", "unchecked" })
-    @Bean
-    @ConditionalOnProperty(name = "spring.datasource.druid.statViewServlet.enabled", havingValue = "true")
-    public FilterRegistrationBean removeDruidFilterRegistrationBean(DruidStatProperties properties) {
-        // 获取web监控页面的参数
-        DruidStatProperties.StatViewServlet config = properties.getStatViewServlet();
-        // 提取common.js的配置路径
-        String pattern = config.getUrlPattern() != null ? config.getUrlPattern() : "/druid/*";
-        String commonJsPattern = pattern.replaceAll("\\*", "js/common.js");
-        final String filePath = "support/http/resources/js/common.js";
-        // 创建filter进行过滤
-        Filter filter = new Filter() {
-            @Override
-            public void init(jakarta.servlet.FilterConfig filterConfig) throws ServletException {
-            }
-            @Override
-            public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-                    throws IOException, ServletException {
-                chain.doFilter(request, response);
-                // 重置缓冲区，响应头不会被重置
-                response.resetBuffer();
-                // 获取common.js
-                String text = Utils.readFromResource(filePath);
-                // 正则替换banner, 除去底部的广告信息
-                text = text.replaceAll("<a.*?banner\"></a><br/>", "");
-                text = text.replaceAll("powered.*?shrek.wang</a>", "");
-                response.getWriter().write(text);
-            }
-            @Override
-            public void destroy() {
-            }
-        };
-        FilterRegistrationBean registrationBean = new FilterRegistrationBean();
-        registrationBean.setFilter(filter);
-        registrationBean.addUrlPatterns(commonJsPattern);
-        return registrationBean;
+        return new DynamicDataSource(masterDataSource, targetDataSources);
     }
 }

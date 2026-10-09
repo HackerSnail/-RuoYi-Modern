@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.WebUtils;
 import com.alibaba.fastjson2.JSON;
 import com.ruoyi.common.annotation.RepeatSubmit;
 import com.ruoyi.common.constant.CacheConstants;
@@ -50,7 +51,10 @@ public class SameUrlDataInterceptor extends RepeatSubmitInterceptor {
     @Override
     public boolean isRepeatSubmit(HttpServletRequest request, RepeatSubmit annotation) {
         String nowParams = "";
-        if (request instanceof RepeatedlyRequestWrapper repeatedlyRequest) {
+        // 逐层拆包定位 RepeatedlyRequestWrapper：RepeatableFilter 已提前到高优先级缓存 body，
+        // 其后 Spring Security 等还会再包一层，故不能用 instanceof 直接判定最外层类型
+        RepeatedlyRequestWrapper repeatedlyRequest = WebUtils.getNativeRequest(request, RepeatedlyRequestWrapper.class);
+        if (repeatedlyRequest != null) {
             try {
                 nowParams = HttpHelper.getBodyString(repeatedlyRequest);
             } catch (IOException e) {

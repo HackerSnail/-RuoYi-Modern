@@ -21,23 +21,22 @@ import com.ruoyi.common.utils.StringUtils;
  */
 @Configuration
 public class FilterConfig {
-    @Value("${xss.excludes}")
+    @Value("${xss.excludes:}")
     private String excludes;
 
-    @Value("${xss.urlPatterns}")
+    @Value("${xss.urlPatterns:}")
     private String urlPatterns;
 
-    @Value("${referer.allowed-domains}")
+    @Value("${referer.allowed-domains:}")
     private String allowedDomains;
 
     /**
      * 注册 XSS 过滤（仅 xss.enabled=true 时生效），最高优先级，对配置的 url 范围过滤脚本参数，excludes 为豁免项
      */
-    @SuppressWarnings({ "rawtypes", "unchecked" })
     @Bean
     @ConditionalOnProperty(value = "xss.enabled", havingValue = "true")
-    public FilterRegistrationBean xssFilterRegistration() {
-        FilterRegistrationBean registration = new FilterRegistrationBean();
+    public FilterRegistrationBean<XssFilter> xssFilterRegistration() {
+        FilterRegistrationBean<XssFilter> registration = new FilterRegistrationBean<>();
         registration.setDispatcherTypes(DispatcherType.REQUEST);
         registration.setFilter(new XssFilter());
         registration.addUrlPatterns(StringUtils.split(urlPatterns, ","));
@@ -52,11 +51,10 @@ public class FilterConfig {
     /**
      * 注册 Referer 防盗链过滤（仅 referer.enabled=true 时生效），仅拦截本地资源路径，校验 Referer 是否在允许域名内
      */
-    @SuppressWarnings({ "rawtypes", "unchecked" })
     @Bean
     @ConditionalOnProperty(value = "referer.enabled", havingValue = "true")
-    public FilterRegistrationBean refererFilterRegistration() {
-        FilterRegistrationBean registration = new FilterRegistrationBean();
+    public FilterRegistrationBean<RefererFilter> refererFilterRegistration() {
+        FilterRegistrationBean<RefererFilter> registration = new FilterRegistrationBean<>();
         registration.setDispatcherTypes(DispatcherType.REQUEST);
         registration.setFilter(new RefererFilter());
         registration.addUrlPatterns(Constants.RESOURCE_PREFIX + "/*");
@@ -69,16 +67,18 @@ public class FilterConfig {
     }
 
     /**
-     * 注册可重复读过滤器：包装 request 使 body 可多次读取（供日志/防重提交等拦截器消费），最低优先级最后包装
+     * 注册可重复读过滤器：包装 request 使 body 可多次读取（供日志/防重提交等拦截器消费）。
+     * 置于高优先级（仅次于 XSS）先于其它过滤器缓存 body，避免原始流被提前消费；
+     * 其后 Spring Security 等还会再包一层，故下游 SameUrlDataInterceptor 经 WebUtils 逐层拆包识别本包装器，
+     * 不再依赖它处于最外层
      */
-    @SuppressWarnings({ "rawtypes", "unchecked" })
     @Bean
-    public FilterRegistrationBean someFilterRegistration() {
-        FilterRegistrationBean registration = new FilterRegistrationBean();
+    public FilterRegistrationBean<RepeatableFilter> repeatableFilterRegistration() {
+        FilterRegistrationBean<RepeatableFilter> registration = new FilterRegistrationBean<>();
         registration.setFilter(new RepeatableFilter());
         registration.addUrlPatterns("/*");
         registration.setName("repeatableFilter");
-        registration.setOrder(FilterRegistrationBean.LOWEST_PRECEDENCE);
+        registration.setOrder(FilterRegistrationBean.HIGHEST_PRECEDENCE + 1);
         return registration;
     }
 

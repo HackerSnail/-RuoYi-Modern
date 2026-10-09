@@ -27,6 +27,9 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils {
     /** 星号 */
     private static final char ASTERISK = '*';
 
+    /** Ant 路径匹配器：无状态、线程安全且内部缓存已解析 pattern，复用避免每次 new */
+    private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
+
     /**
      * 获取参数不为空值
      * 
@@ -267,8 +270,9 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils {
         final int start = str.indexOf(open);
         if (start != INDEX_NOT_FOUND) {
             final int end = str.lastIndexOf(close);
-            if (end != INDEX_NOT_FOUND) {
-                return str.substring(start + open.length(), end);
+            final int begin = start + open.length();
+            if (end != INDEX_NOT_FOUND && end >= begin) {
+                return str.substring(begin, end);
             }
         }
         return NULLSTR;
@@ -653,8 +657,8 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils {
      * @return 截取后的字符串
      */
     public static String lastStringDel(String str, String spit) {
-        if (!StringUtils.isEmpty(str) && str.endsWith(spit)) {
-            return str.subSequence(0, str.length() - 1).toString();
+        if (!isEmpty(str) && !isEmpty(spit) && str.endsWith(spit)) {
+            return str.substring(0, str.length() - spit.length());
         }
         return str;
     }
@@ -749,8 +753,7 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils {
      * @return
      */
     public static boolean isMatch(String pattern, String url) {
-        AntPathMatcher matcher = new AntPathMatcher();
-        return matcher.match(pattern, url);
+        return PATH_MATCHER.match(pattern, url);
     }
 
     @SuppressWarnings("unchecked")

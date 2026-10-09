@@ -20,8 +20,6 @@ import com.ruoyi.framework.security.filter.JwtAuthenticationTokenFilter;
 import com.ruoyi.framework.security.handle.AuthenticationEntryPointImpl;
 import com.ruoyi.framework.security.handle.LogoutSuccessHandlerImpl;
 
-import static org.springframework.security.config.Customizer.withDefaults;
-
 /**
  * spring security配置
  * 
@@ -104,13 +102,12 @@ public class SecurityConfig {
         return httpSecurity
                 // CSRF禁用，因为不使用session
                 .csrf(csrf -> csrf.disable())
-                // 安全响应头：显式关闭全部默认头，仅保留 cache-control(默认 no-cache) 与 frame-options(sameOrigin)。
-                // 备注：经核 Spring Security 7.1.0 的 cacheControl().disable() 仍未废弃；本改法系按评审显式收敛，
-                // 且行为有两处变化——① defaultsDisabled() 关掉 X-Content-Type-Options/HSTS/Referrer-Policy 等默认头；
-                // ② cache-control 由原“不输出”变为“输出默认 no-cache/no-store 头”。
+                // 安全响应头：defaultsDisabled() 关闭全部默认安全头，再仅显式开启 frame-options(sameOrigin)。
+                // 备注：经核 Spring Security 7.1.0 的 cacheControl().disable() 未废弃；此处不再重新启用 cacheControl，
+                // 使 cache-control 维持原有“不输出”语义（defaultsDisabled() 默认即不含 cache-control）；
+                // 副作用：defaultsDisabled() 一并关掉了 X-Content-Type-Options/HSTS/Referrer-Policy 等默认头。
                 .headers(headers -> headers
                         .defaultsDisabled()
-                        .cacheControl(withDefaults())
                         .frameOptions(frame -> frame.sameOrigin()))
                 // 认证失败处理类
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))

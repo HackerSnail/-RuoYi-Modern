@@ -49,14 +49,18 @@ public class RateLimiterAspect {
         List<Object> keys = Collections.singletonList(combineKey);
         try {
             Long number = redisTemplate.execute(limitScript, keys, count, time);
+            // 脚本返回滑动窗口内已用量(含本次放行)，达/超阈值时返回 current+1(即 >count)，故用 >count 判拒绝、
+            // <=count 放行；勿改成 >=——那会把第 count 次合法请求误拒。number 为 null 表示脚本执行异常，按拒绝处理。
             if (StringUtils.isNull(number) || number.intValue() > count) {
                 throw new ServiceException("访问过于频繁，请稍候再试");
             }
-            log.info("限制请求'{}',当前请求'{}',缓存key'{}'", count, number.intValue(), combineKey);
+            log.debug("限制请求'{}',当前请求'{}',缓存key'{}'", count, number.intValue(), combineKey);
         } catch (ServiceException e) {
             throw e;
         } catch (Exception e) {
-            throw new RuntimeException("服务器限流异常，请稍候再试");
+            // 保留真实原因作 cause 并落 error 日志，避免 Redis 抖动/脚本错误/序列化失败被无声吞掉
+            log.error("限流脚本执行异常, key:{}", combineKey, e);
+            throw new RuntimeException("服务器限流异常，请稍候再试", e);
         }
     }
 
@@ -70,7 +74,8 @@ public class RateLimiterAspect {
         }
         MethodSignature signature = (MethodSignature) point.getSignature();
         Method method = signature.getMethod();
-        Class<?> targetClass = method.getDeclaringClass();
+        // 取实际目标类而非 method.getDeclaringClass()（后者在接口/继承场景可能是父类或接口），与 DataSourceAspect 一致
+        Class<?> targetClass = point.getTarget().getClass();
         stringBuffer.append(targetClass.getName()).append("-").append(method.getName());
         return stringBuffer.toString();
     }

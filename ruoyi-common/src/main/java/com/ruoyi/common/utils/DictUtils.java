@@ -1,8 +1,8 @@
 package com.ruoyi.common.utils;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import com.alibaba.fastjson2.JSONArray;
 import com.ruoyi.common.constant.CacheConstants;
 import com.ruoyi.common.core.domain.entity.SysDictData;
@@ -85,8 +85,8 @@ public class DictUtils {
         if (StringUtils.isNull(datas) || StringUtils.isEmpty(dictValue)) {
             return StringUtils.EMPTY;
         }
-        Map<String, String> dictMap = datas.stream().collect(HashMap::new,
-                (map, dict) -> map.put(dict.getDictValue(), dict.getDictLabel()), Map::putAll);
+        Map<String, String> dictMap = datas.stream().collect(Collectors.toMap(
+                dict -> dict.getDictValue(), dict -> dict.getDictLabel(), (v1, v2) -> v1));
         if (!StringUtils.contains(dictValue, separator)) {
             return dictMap.getOrDefault(dictValue, StringUtils.EMPTY);
         }
@@ -112,8 +112,8 @@ public class DictUtils {
         if (StringUtils.isNull(datas) || StringUtils.isEmpty(dictLabel)) {
             return StringUtils.EMPTY;
         }
-        Map<String, String> dictMap = datas.stream().collect(HashMap::new,
-                (map, dict) -> map.put(dict.getDictLabel(), dict.getDictValue()), Map::putAll);
+        Map<String, String> dictMap = datas.stream().collect(Collectors.toMap(
+                dict -> dict.getDictLabel(), dict -> dict.getDictValue(), (v1, v2) -> v1));
         if (!StringUtils.contains(dictLabel, separator)) {
             return dictMap.getOrDefault(dictLabel, StringUtils.EMPTY);
         }

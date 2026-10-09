@@ -13,8 +13,16 @@ import org.slf4j.LoggerFactory;
  * 
  * @author ruoyi
  */
-public class Threads {
+public final class Threads {
     private static final Logger logger = LoggerFactory.getLogger(Threads.class);
+
+    /**
+     * 线程池终止等待超时时间（秒），两处 awaitTermination 统一引用，便于调参、避免两个值改得不一致
+     */
+    private static final long TERMINATION_TIMEOUT_SECONDS = 120L;
+
+    private Threads() {
+    }
 
     /**
      * sleep等待,单位为毫秒
@@ -23,7 +31,9 @@ public class Threads {
         try {
             Thread.sleep(milliseconds);
         } catch (InterruptedException e) {
-            return;
+            // 恢复中断标志：Thread.sleep 抛 InterruptedException 时已清除中断位，
+            // 若直接 return 会吞掉中断信号，导致上层优雅停机/任务循环无法感知；保持 void 不外抛。
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -38,9 +48,9 @@ public class Threads {
         if (pool != null && !pool.isShutdown()) {
             pool.shutdown();
             try {
-                if (!pool.awaitTermination(120, TimeUnit.SECONDS)) {
+                if (!pool.awaitTermination(TERMINATION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
                     pool.shutdownNow();
-                    if (!pool.awaitTermination(120, TimeUnit.SECONDS)) {
+                    if (!pool.awaitTermination(TERMINATION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
                         logger.info("Pool did not terminate");
                     }
                 }

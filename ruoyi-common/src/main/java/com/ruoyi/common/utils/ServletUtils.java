@@ -1,9 +1,9 @@
 package com.ruoyi.common.utils;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -26,8 +26,11 @@ import com.ruoyi.common.core.text.Convert;
  * 
  * @author ruoyi
  */
-public class ServletUtils {
+public final class ServletUtils {
     private static final Logger log = LoggerFactory.getLogger(ServletUtils.class);
+
+    private ServletUtils() {
+    }
 
     /**
      * 获取String参数
@@ -119,6 +122,11 @@ public class ServletUtils {
 
     public static ServletRequestAttributes getRequestAttributes() {
         RequestAttributes attributes = RequestContextHolder.getRequestAttributes();
+        // 定时任务/异步线程/单元测试/启动初始化等非 Web 线程下 attributes 为 null，
+        // 在此源头快速失败给出明确文案，getRequest()/getResponse()/getSession() 自动继承该守卫。
+        if (attributes == null) {
+            throw new IllegalStateException("当前线程不在 Web 请求上下文中");
+        }
         return (ServletRequestAttributes) attributes;
     }
 
@@ -171,11 +179,7 @@ public class ServletUtils {
      * @return 编码后的内容
      */
     public static String urlEncode(String str) {
-        try {
-            return URLEncoder.encode(str, Constants.UTF8);
-        } catch (UnsupportedEncodingException e) {
-            return StringUtils.EMPTY;
-        }
+        return URLEncoder.encode(str, StandardCharsets.UTF_8);
     }
 
     /**
@@ -185,10 +189,6 @@ public class ServletUtils {
      * @return 解码后的内容
      */
     public static String urlDecode(String str) {
-        try {
-            return URLDecoder.decode(str, Constants.UTF8);
-        } catch (UnsupportedEncodingException e) {
-            return StringUtils.EMPTY;
-        }
+        return URLDecoder.decode(str, StandardCharsets.UTF_8);
     }
 }

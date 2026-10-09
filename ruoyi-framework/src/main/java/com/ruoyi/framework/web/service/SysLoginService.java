@@ -18,6 +18,7 @@ import com.ruoyi.common.exception.user.UserNotExistsException;
 import com.ruoyi.common.exception.user.UserPasswordNotMatchException;
 import java.time.LocalDateTime;
 import com.ruoyi.common.utils.MessageUtils;
+import com.ruoyi.common.utils.ServletUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.ip.IpUtils;
 import com.ruoyi.framework.manager.AsyncManager;
@@ -62,6 +63,9 @@ public class SysLoginService {
      * @return 结果
      */
     public String login(String username, String password, String code, String uuid) {
+        // 在当前（请求）线程提前抓取 IP/UA，传入异步任务，避免任务在线程池执行时再访问已销毁的 Request 上下文
+        final String ip = IpUtils.getIpAddr();
+        final String userAgent = ServletUtils.getRequest().getHeader("User-Agent");
         // 验证码校验
         validateCaptcha(username, code, uuid);
         // 登录前置校验
@@ -75,16 +79,16 @@ public class SysLoginService {
             authentication = authenticationManager.authenticate(authenticationToken);
         } catch (Exception e) {
             if (e instanceof BadCredentialsException) {
-                AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("user.password.not.match")));
+                AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("user.password.not.match"), ip, userAgent));
                 throw new UserPasswordNotMatchException();
             } else {
-                AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, e.getMessage()));
+                AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, e.getMessage(), ip, userAgent));
                 throw new ServiceException(e.getMessage());
             }
         } finally {
             AuthenticationContextHolder.clearContext();
         }
-        AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_SUCCESS, MessageUtils.message("user.login.success")));
+        AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_SUCCESS, MessageUtils.message("user.login.success"), ip, userAgent));
         LoginUser loginUser = (LoginUser) authentication.getPrincipal();
         recordLoginInfo(loginUser.getUserId());
         // 生成token
@@ -102,15 +106,18 @@ public class SysLoginService {
     public void validateCaptcha(String username, String code, String uuid) {
         boolean captchaEnabled = configService.selectCaptchaEnabled();
         if (captchaEnabled) {
+            // 请求线程提前抓取 IP/UA 传入异步任务
+            final String ip = IpUtils.getIpAddr();
+            final String userAgent = ServletUtils.getRequest().getHeader("User-Agent");
             String verifyKey = CacheConstants.CAPTCHA_CODE_KEY + StringUtils.nvl(uuid, "");
             String captcha = redisCache.getCacheObject(verifyKey);
             if (captcha == null) {
-                AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("user.jcaptcha.expire")));
+                AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("user.jcaptcha.expire"), ip, userAgent));
                 throw new CaptchaExpireException();
             }
             redisCache.deleteObject(verifyKey);
             if (!code.equalsIgnoreCase(captcha)) {
-                AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("user.jcaptcha.error")));
+                AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("user.jcaptcha.error"), ip, userAgent));
                 throw new CaptchaException();
             }
         }
@@ -122,27 +129,30 @@ public class SysLoginService {
      * @param password 用户密码
      */
     public void loginPreCheck(String username, String password) {
+        // 请求线程提前抓取 IP/UA 传入异步任务（ip 同时用于黑名单校验，避免重复取值）
+        final String ip = IpUtils.getIpAddr();
+        final String userAgent = ServletUtils.getRequest().getHeader("User-Agent");
         // 用户名或密码为空 错误
         if (StringUtils.isEmpty(username) || StringUtils.isEmpty(password)) {
-            AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("not.null")));
+            AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("not.null"), ip, userAgent));
             throw new UserNotExistsException();
         }
         // 密码如果不在指定范围内 错误
         if (password.length() < UserConstants.PASSWORD_MIN_LENGTH
                 || password.length() > UserConstants.PASSWORD_MAX_LENGTH) {
-            AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("user.password.not.match")));
+            AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("user.password.not.match"), ip, userAgent));
             throw new UserPasswordNotMatchException();
         }
         // 用户名不在指定范围内 错误
         if (username.length() < UserConstants.USERNAME_MIN_LENGTH
                 || username.length() > UserConstants.USERNAME_MAX_LENGTH) {
-            AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("user.password.not.match")));
+            AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("user.password.not.match"), ip, userAgent));
             throw new UserPasswordNotMatchException();
         }
         // IP黑名单校验
         String blackStr = configService.selectConfigByKey("sys.login.blackIPList");
-        if (IpUtils.isMatchedIp(blackStr, IpUtils.getIpAddr())) {
-            AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("login.blocked")));
+        if (IpUtils.isMatchedIp(blackStr, ip)) {
+            AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("login.blocked"), ip, userAgent));
             throw new BlackListException();
         }
     }

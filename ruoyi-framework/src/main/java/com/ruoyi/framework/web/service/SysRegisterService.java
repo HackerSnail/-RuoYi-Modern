@@ -12,7 +12,9 @@ import com.ruoyi.common.exception.user.CaptchaExpireException;
 import java.time.LocalDateTime;
 import com.ruoyi.common.utils.MessageUtils;
 import com.ruoyi.common.utils.SecurityUtils;
+import com.ruoyi.common.utils.ServletUtils;
 import com.ruoyi.common.utils.StringUtils;
+import com.ruoyi.common.utils.ip.IpUtils;
 import com.ruoyi.framework.manager.AsyncManager;
 import com.ruoyi.framework.manager.factory.AsyncFactory;
 import com.ruoyi.system.service.ISysConfigService;
@@ -71,7 +73,10 @@ public class SysRegisterService {
             if (!regFlag) {
                 msg = "注册失败,请联系系统管理人员";
             } else {
-                AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.REGISTER, MessageUtils.message("user.register.success")));
+                // 请求线程提前抓取 IP/UA 传入异步任务
+                AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.REGISTER,
+                        MessageUtils.message("user.register.success"), IpUtils.getIpAddr(),
+                        ServletUtils.getRequest().getHeader("User-Agent")));
             }
         }
         return msg;

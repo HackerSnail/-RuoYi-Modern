@@ -14,6 +14,7 @@ import com.ruoyi.common.core.domain.model.LoginUser;
 import com.ruoyi.common.utils.MessageUtils;
 import com.ruoyi.common.utils.ServletUtils;
 import com.ruoyi.common.utils.StringUtils;
+import com.ruoyi.common.utils.ip.IpUtils;
 import com.ruoyi.framework.manager.AsyncManager;
 import com.ruoyi.framework.manager.factory.AsyncFactory;
 import com.ruoyi.framework.web.service.TokenService;
@@ -44,9 +45,10 @@ public class LogoutSuccessHandlerImpl implements LogoutSuccessHandler {
             String userName = loginUser.getUsername();
             // 删除用户缓存记录
             tokenService.delLoginUser(loginUser.getToken());
-            // 记录用户退出日志
+            // 记录用户退出日志（直接用入参 request 取 IP/UA，无需再回查 Request 上下文）
             AsyncManager.me().execute(AsyncFactory.recordLogininfor(userName, Constants.LOGOUT,
-                    MessageUtils.message("user.logout.success")));
+                    MessageUtils.message("user.logout.success"), IpUtils.getIpAddr(request),
+                    request.getHeader("User-Agent")));
         }
         ServletUtils.renderString(response,
                 JSON.toJSONString(AjaxResult.success(MessageUtils.message("user.logout.success"))));

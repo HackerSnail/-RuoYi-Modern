@@ -5,11 +5,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.utils.LogUtils;
-import com.ruoyi.common.utils.ServletUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.http.UserAgentUtils;
 import com.ruoyi.common.utils.ip.AddressUtils;
-import com.ruoyi.common.utils.ip.IpUtils;
 import com.ruoyi.common.utils.spring.SpringUtils;
 import com.ruoyi.system.domain.SysLogininfor;
 import com.ruoyi.system.domain.SysOperLog;
@@ -27,17 +25,16 @@ public class AsyncFactory {
     /**
      * 记录登录信息
      * 
-     * @param username 用户名
-     * @param status   状态
-     * @param message  消息
-     * @param args     列表
+     * @param username  用户名
+     * @param status    状态
+     * @param message   消息
+     * @param ip        客户端 IP（由调用方在请求线程提前取得并传入，使异步线程不再访问 Request 上下文）
+     * @param userAgent 客户端 User-Agent（由调用方在请求线程提前取得并传入）
+     * @param args      列表
      * @return 任务task
      */
     public static TimerTask recordLogininfor(final String username, final String status, final String message,
-            final Object... args) {
-        // 必须在当前（请求）线程提前抓取 IP/UA：任务将由线程池异步执行，届时 Request 上下文已销毁
-        final String userAgent = ServletUtils.getRequest().getHeader("User-Agent");
-        final String ip = IpUtils.getIpAddr();
+            final String ip, final String userAgent, final Object... args) {
         return new TimerTask() {
             @Override
             public void run() {

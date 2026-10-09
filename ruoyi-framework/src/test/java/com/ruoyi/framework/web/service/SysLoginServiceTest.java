@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.concurrent.ScheduledExecutorService;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -37,6 +39,7 @@ import com.ruoyi.common.exception.user.CaptchaExpireException;
 import com.ruoyi.common.exception.user.UserNotExistsException;
 import com.ruoyi.common.exception.user.UserPasswordNotMatchException;
 import com.ruoyi.common.utils.MessageUtils;
+import com.ruoyi.common.utils.ServletUtils;
 import com.ruoyi.common.utils.ip.IpUtils;
 import com.ruoyi.common.utils.spring.SpringUtils;
 import com.ruoyi.framework.manager.factory.AsyncFactory;
@@ -102,9 +105,13 @@ public class SysLoginServiceTest {
 
         try (MockedStatic<AsyncFactory> asyncFactory = mockStatic(AsyncFactory.class);
              MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg");
-             MockedStatic<IpUtils> ipUtils = mockStatic(IpUtils.class)) {
+             MockedStatic<IpUtils> ipUtils = mockStatic(IpUtils.class);
+             MockedStatic<ServletUtils> servletUtils = mockStatic(ServletUtils.class)) {
             ipUtils.when(IpUtils::getIpAddr).thenReturn("127.0.0.1");
             ipUtils.when(() -> IpUtils.isMatchedIp(any(), any())).thenReturn(false);
+            HttpServletRequest request = mock(HttpServletRequest.class);
+            when(request.getHeader("User-Agent")).thenReturn("junit-ua");
+            servletUtils.when(ServletUtils::getRequest).thenReturn(request);
 
             LoginUser loginUser = adminLoginUser();
             Authentication authentication = mock(Authentication.class);
@@ -127,9 +134,13 @@ public class SysLoginServiceTest {
 
         try (MockedStatic<AsyncFactory> asyncFactory = mockStatic(AsyncFactory.class);
              MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg");
-             MockedStatic<IpUtils> ipUtils = mockStatic(IpUtils.class)) {
+             MockedStatic<IpUtils> ipUtils = mockStatic(IpUtils.class);
+             MockedStatic<ServletUtils> servletUtils = mockStatic(ServletUtils.class)) {
             ipUtils.when(IpUtils::getIpAddr).thenReturn("127.0.0.1");
             ipUtils.when(() -> IpUtils.isMatchedIp(any(), any())).thenReturn(false);
+            HttpServletRequest request = mock(HttpServletRequest.class);
+            when(request.getHeader("User-Agent")).thenReturn("junit-ua");
+            servletUtils.when(ServletUtils::getRequest).thenReturn(request);
             when(authenticationManager.authenticate(any())).thenThrow(new BadCredentialsException("bad"));
 
             assertThrows(UserPasswordNotMatchException.class,
@@ -142,7 +153,13 @@ public class SysLoginServiceTest {
     @DisplayName("前置校验：空密码直接拒绝")
     void loginPreCheckRejectsBlankPassword() {
         try (MockedStatic<AsyncFactory> asyncFactory = mockStatic(AsyncFactory.class);
-             MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg")) {
+             MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg");
+             MockedStatic<IpUtils> ipUtils = mockStatic(IpUtils.class);
+             MockedStatic<ServletUtils> servletUtils = mockStatic(ServletUtils.class)) {
+            ipUtils.when(IpUtils::getIpAddr).thenReturn("127.0.0.1");
+            HttpServletRequest request = mock(HttpServletRequest.class);
+            when(request.getHeader("User-Agent")).thenReturn("junit-ua");
+            servletUtils.when(ServletUtils::getRequest).thenReturn(request);
             assertThrows(UserNotExistsException.class,
                     () -> loginService.loginPreCheck("admin", ""));
         }
@@ -155,9 +172,13 @@ public class SysLoginServiceTest {
 
         try (MockedStatic<AsyncFactory> asyncFactory = mockStatic(AsyncFactory.class);
              MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg");
-             MockedStatic<IpUtils> ipUtils = mockStatic(IpUtils.class)) {
+             MockedStatic<IpUtils> ipUtils = mockStatic(IpUtils.class);
+             MockedStatic<ServletUtils> servletUtils = mockStatic(ServletUtils.class)) {
             ipUtils.when(IpUtils::getIpAddr).thenReturn("1.2.3.4");
             ipUtils.when(() -> IpUtils.isMatchedIp(any(), any())).thenReturn(true);
+            HttpServletRequest request = mock(HttpServletRequest.class);
+            when(request.getHeader("User-Agent")).thenReturn("junit-ua");
+            servletUtils.when(ServletUtils::getRequest).thenReturn(request);
 
             assertThrows(BlackListException.class,
                     () -> loginService.loginPreCheck("admin", "123456"));
@@ -192,7 +213,13 @@ public class SysLoginServiceTest {
         when(redisCache.getCacheObject(anyString())).thenReturn("abcd");
 
         try (MockedStatic<AsyncFactory> asyncFactory = mockStatic(AsyncFactory.class);
-             MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg")) {
+             MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg");
+             MockedStatic<IpUtils> ipUtils = mockStatic(IpUtils.class);
+             MockedStatic<ServletUtils> servletUtils = mockStatic(ServletUtils.class)) {
+            ipUtils.when(IpUtils::getIpAddr).thenReturn("127.0.0.1");
+            HttpServletRequest request = mock(HttpServletRequest.class);
+            when(request.getHeader("User-Agent")).thenReturn("junit-ua");
+            servletUtils.when(ServletUtils::getRequest).thenReturn(request);
             assertThrows(CaptchaException.class,
                     () -> loginService.validateCaptcha("admin", "zzzz", "uuid"));
             verify(redisCache).deleteObject(CacheConstants.CAPTCHA_CODE_KEY + "uuid");
@@ -206,7 +233,13 @@ public class SysLoginServiceTest {
         when(redisCache.getCacheObject(anyString())).thenReturn(null);
 
         try (MockedStatic<AsyncFactory> asyncFactory = mockStatic(AsyncFactory.class);
-             MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg")) {
+             MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg");
+             MockedStatic<IpUtils> ipUtils = mockStatic(IpUtils.class);
+             MockedStatic<ServletUtils> servletUtils = mockStatic(ServletUtils.class)) {
+            ipUtils.when(IpUtils::getIpAddr).thenReturn("127.0.0.1");
+            HttpServletRequest request = mock(HttpServletRequest.class);
+            when(request.getHeader("User-Agent")).thenReturn("junit-ua");
+            servletUtils.when(ServletUtils::getRequest).thenReturn(request);
             assertThrows(CaptchaExpireException.class,
                     () -> loginService.validateCaptcha("admin", "1234", "uuid"));
         }

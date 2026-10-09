@@ -14,6 +14,7 @@ import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.TimeZone;
 import org.apache.commons.lang3.time.DateFormatUtils;
 
 /**
@@ -24,6 +25,9 @@ import org.apache.commons.lang3.time.DateFormatUtils;
 public class DateUtils {
     /** 默认时区：固定东八区，避免随容器/CI 的 JVM 默认时区漂移导致 Date↔Local 转换结果偏移 */
     private static final ZoneId DEFAULT_ZONE = ZoneId.of("Asia/Shanghai");
+
+    /** {@code DEFAULT_ZONE} 对应的 TimeZone 形式，供 SimpleDateFormat / DateFormatUtils 显式设时区复用 */
+    private static final TimeZone DEFAULT_TZ = TimeZone.getTimeZone(DEFAULT_ZONE);
 
     public static String YYYY = "yyyy";
 
@@ -87,12 +91,16 @@ public class DateUtils {
     }
 
     public static final String parseDateToStr(final String format, final Date date) {
-        return new SimpleDateFormat(format).format(date);
+        SimpleDateFormat sdf = new SimpleDateFormat(format);
+        sdf.setTimeZone(DEFAULT_TZ);
+        return sdf.format(date);
     }
 
     public static final Date dateTime(final String format, final String ts) {
+        SimpleDateFormat sdf = new SimpleDateFormat(format);
+        sdf.setTimeZone(DEFAULT_TZ);
         try {
-            return new SimpleDateFormat(format).parse(ts);
+            return sdf.parse(ts);
         } catch (ParseException e) {
             throw new IllegalArgumentException("日期解析失败: " + ts, e);
         }
@@ -103,7 +111,7 @@ public class DateUtils {
      */
     public static final String datePath() {
         Date now = new Date();
-        return DateFormatUtils.format(now, "yyyy/MM/dd");
+        return DateFormatUtils.format(now, "yyyy/MM/dd", DEFAULT_TZ);
     }
 
     /**
@@ -111,7 +119,7 @@ public class DateUtils {
      */
     public static final String dateTime() {
         Date now = new Date();
-        return DateFormatUtils.format(now, "yyyyMMdd");
+        return DateFormatUtils.format(now, "yyyyMMdd", DEFAULT_TZ);
     }
 
     /**

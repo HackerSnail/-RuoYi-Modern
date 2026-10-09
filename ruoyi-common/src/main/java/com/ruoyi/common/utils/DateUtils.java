@@ -16,7 +16,7 @@ import org.apache.commons.lang3.time.DateFormatUtils;
  * 
  * @author ruoyi
  */
-public class DateUtils extends org.apache.commons.lang3.time.DateUtils {
+public class DateUtils {
     /** 默认时区：固定东八区，避免随容器/CI 的 JVM 默认时区漂移导致 Date↔Local 转换结果偏移 */
     private static final ZoneId DEFAULT_ZONE = ZoneId.of("Asia/Shanghai");
 
@@ -110,7 +110,9 @@ public class DateUtils extends org.apache.commons.lang3.time.DateUtils {
             return null;
         }
         try {
-            return parseDate(str.toString(), parsePatterns);
+            // 组合而非继承：不再 extends commons DateUtils，此处直接全限定委托其多格式解析
+            //（本类自身就叫 DateUtils，与父类同名，无法简单 import，故用 FQN）
+            return org.apache.commons.lang3.time.DateUtils.parseDate(str.toString(), parsePatterns);
         } catch (ParseException e) {
             return null;
         }

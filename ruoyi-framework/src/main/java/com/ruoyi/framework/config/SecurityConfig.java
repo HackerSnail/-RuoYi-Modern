@@ -20,12 +20,14 @@ import com.ruoyi.framework.security.filter.JwtAuthenticationTokenFilter;
 import com.ruoyi.framework.security.handle.AuthenticationEntryPointImpl;
 import com.ruoyi.framework.security.handle.LogoutSuccessHandlerImpl;
 
+import static org.springframework.security.config.Customizer.withDefaults;
+
 /**
  * spring security配置
  * 
  * @author ruoyi
  */
-@EnableMethodSecurity(prePostEnabled = true, securedEnabled = true)
+@EnableMethodSecurity(prePostEnabled = true)
 @Configuration
 public class SecurityConfig {
     /**
@@ -102,17 +104,22 @@ public class SecurityConfig {
         return httpSecurity
                 // CSRF禁用，因为不使用session
                 .csrf(csrf -> csrf.disable())
-                // 禁用HTTP响应标头
-                .headers((headersCustomizer) -> {
-                    headersCustomizer.cacheControl(cache -> cache.disable())
-                            .frameOptions(options -> options.sameOrigin());
-                })
+                // 安全响应头：显式关闭全部默认头，仅保留 cache-control(默认 no-cache) 与 frame-options(sameOrigin)。
+                // 备注：经核 Spring Security 7.1.0 的 cacheControl().disable() 仍未废弃；本改法系按评审显式收敛，
+                // 且行为有两处变化——① defaultsDisabled() 关掉 X-Content-Type-Options/HSTS/Referrer-Policy 等默认头；
+                // ② cache-control 由原“不输出”变为“输出默认 no-cache/no-store 头”。
+                .headers(headers -> headers
+                        .defaultsDisabled()
+                        .cacheControl(withDefaults())
+                        .frameOptions(frame -> frame.sameOrigin()))
                 // 认证失败处理类
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
                 // 基于token，所以不需要session
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // 注解标记允许匿名访问的url
                 .authorizeHttpRequests((requests) -> {
+                    // 纵深防御：显式放行 CORS 预检 OPTIONS（实际预检请求已由 CorsFilter 早于鉴权短路应答）
+                    requests.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
                     permitAllUrl.getUrls().forEach(url -> requests.requestMatchers(url).permitAll());
                     // 对于登录login 注册register 验证码captchaImage 允许匿名访问
                     requests.requestMatchers("/login", "/register", "/captchaImage").permitAll()

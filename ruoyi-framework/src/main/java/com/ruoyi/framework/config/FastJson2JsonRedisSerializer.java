@@ -5,10 +5,6 @@ import java.nio.charset.StandardCharsets;
 import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.data.redis.serializer.SerializationException;
 import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.JSONReader;
-import com.alibaba.fastjson2.JSONWriter;
-import com.alibaba.fastjson2.filter.Filter;
-import com.ruoyi.common.constant.Constants;
 
 /**
  * Redis使用FastJson序列化
@@ -17,12 +13,6 @@ import com.ruoyi.common.constant.Constants;
  */
 public class FastJson2JsonRedisSerializer<T> implements RedisSerializer<T> {
     private static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
-
-    /**
-     * 反序列化白名单过滤器：仅允许 Constants.JSON_WHITELIST_STR 中的包参与 autoType，
-     * 防止依赖 fastjson 的 @type 自动装类机制构造反序列化 RCE 链。
-     */
-    static final Filter AUTO_TYPE_FILTER = JSONReader.autoTypeFilter(Constants.JSON_WHITELIST_STR);
 
     private final Class<T> clazz;
 
@@ -39,8 +29,8 @@ public class FastJson2JsonRedisSerializer<T> implements RedisSerializer<T> {
         if (t == null) {
             return new byte[0];
         }
-        // WriteClassName 写入实际类型，以便反序列化时能还原多态对象（配合下面白名单过滤器）
-        return JSON.toJSONString(t, JSONWriter.Feature.WriteClassName).getBytes(DEFAULT_CHARSET);
+        // 不再写入 @type：消除 fastjson autoType 反序列化攻击面；具体类型由调用方在读取时显式提供
+        return JSON.toJSONString(t).getBytes(DEFAULT_CHARSET);
     }
 
     @Override
@@ -50,6 +40,14 @@ public class FastJson2JsonRedisSerializer<T> implements RedisSerializer<T> {
         }
         String str = new String(bytes, DEFAULT_CHARSET);
 
-        return JSON.parseObject(str, clazz, AUTO_TYPE_FILTER);
+        // clazz 为 Object（本仓 RedisTemplate<Object,Object> 的默认）时解析为通用结构
+        // （JSONObject/JSONArray/基本类型），由 RedisCache 的带类型读按调用方目标类再转换；
+        // 指定了具体 clazz 时直接按该类型绑定。全程不启用 autoType、不识别 @type。
+        if (clazz == null || Object.class.equals(clazz)) {
+            @SuppressWarnings("unchecked")
+            T value = (T) JSON.parse(str);
+            return value;
+        }
+        return JSON.parseObject(str, clazz);
     }
 }

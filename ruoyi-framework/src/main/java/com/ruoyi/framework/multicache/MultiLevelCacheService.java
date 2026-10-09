@@ -7,6 +7,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import com.ruoyi.common.core.redis.RedisJson;
 
 /**
  * 二级缓存服务：L1 本地 Caffeine（进程内、纳秒级、无网络开销）+ L2 分布式 Redis（跨进程共享）。
@@ -55,19 +56,20 @@ public class MultiLevelCacheService {
      *
      * @param key      逻辑缓存键
      * @param l2Ttl    L2 存活时间
+     * @param clazz    目标类型（L2 反序列化为通用结构后据此还原）
      * @param dbLoader 回源加载器
      * @return 值（DB 也不存在时返回 null，不缓存）
      */
-    @SuppressWarnings("unchecked")
-    public <T> T get(String key, Duration l2Ttl, Supplier<T> dbLoader) {
+    public <T> T get(String key, Duration l2Ttl, Class<T> clazz, Supplier<T> dbLoader) {
         Object value = l1Cache.getIfPresent(key);
         if (value != null) {
-            return (T) value;
+            return RedisJson.convert(value, clazz);
         }
         value = redisTemplate.opsForValue().get(L2_PREFIX + key);
         if (value != null) {
-            l1Cache.put(key, value);
-            return (T) value;
+            T typed = RedisJson.convert(value, clazz);
+            l1Cache.put(key, typed);
+            return typed;
         }
         T loaded = dbLoader.get();
         if (loaded != null) {

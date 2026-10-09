@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import com.alibaba.fastjson2.TypeReference;
 import org.springframework.data.redis.core.BoundSetOperations;
 import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.HashOperations;
@@ -99,7 +100,11 @@ public class RedisCache {
     }
 
     /**
-     * 获得缓存的基本对象。
+     * 获得缓存的基本对象（无类型）。
+     * <p>
+     * 序列化层已不写 {@code @type}，故本方法对 POJO 只会返回通用结构（JSONObject/JSONArray），
+     * 仅适用于 String/Integer 等基本类型，或调用方自行按 Map/JSONArray 处理的场景；
+     * 需要还原成具体 POJO 时请改用 {@link #getCacheObject(String, Class)} 或 TypeReference 重载。
      *
      * @param key 缓存键值
      * @return 缓存键值对应的数据
@@ -107,6 +112,28 @@ public class RedisCache {
     public <T> T getCacheObject(final String key) {
         ValueOperations<Object, Object> operation = redisTemplate.opsForValue();
         return (T) operation.get(key);
+    }
+
+    /**
+     * 获得缓存的具体对象（按目标 Class 还原）。
+     *
+     * @param key   缓存键值
+     * @param clazz 目标类型
+     * @return 目标类型实例（不存在返回 null）
+     */
+    public <T> T getCacheObject(final String key, final Class<T> clazz) {
+        return RedisJson.convert(redisTemplate.opsForValue().get(key), clazz);
+    }
+
+    /**
+     * 获得缓存的具体对象（按 TypeReference 还原，适用于含泛型的 List/Map 等）。
+     *
+     * @param key  缓存键值
+     * @param type 目标泛型类型，如 {@code new TypeReference<List<SysDictData>>(){}}
+     * @return 目标类型实例（不存在返回 null）
+     */
+    public <T> T getCacheObject(final String key, final TypeReference<T> type) {
+        return RedisJson.convert(redisTemplate.opsForValue().get(key), type);
     }
 
     /**
@@ -373,7 +400,6 @@ public class RedisCache {
         return values;
     }
 
-    @SuppressWarnings("unchecked")
     private static <T> void collectNonNull(List<T> values, List<Object> batchValues) {
         if (batchValues == null) {
             return;

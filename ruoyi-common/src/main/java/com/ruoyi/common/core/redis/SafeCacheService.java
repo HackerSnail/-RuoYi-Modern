@@ -53,30 +53,30 @@ public class SafeCacheService {
      * @param key         缓存键
      * @param baseTtl     基础存活时间（会叠加抖动以打散过期点）
      * @param jitterRatio 抖动比例（0~1），实际 TTL = baseTtl * (1 ± jitterRatio 内的随机值)
+     * @param clazz       目标类型（缓存反序列化为通用结构后据此还原）
      * @param dbLoader    回源加载器（返回 null 表示 DB 中确实不存在，将缓存空值哨兵）
      * @param <T>         值类型
      * @return 缓存或回源得到的值；DB 不存在时返回 null
      */
-    @SuppressWarnings("unchecked")
-    public <T> T get(final String key, final Duration baseTtl, final double jitterRatio, final Supplier<T> dbLoader) {
+    public <T> T get(final String key, final Duration baseTtl, final double jitterRatio, final Class<T> clazz,
+            final Supplier<T> dbLoader) {
         Object cached = redisTemplate.opsForValue().get(key);
         if (NULL_SENTINEL.equals(cached)) {
             // 命中空值哨兵：穿透被拦截，直接返回 null，不打 DB
             return null;
         }
         if (cached != null) {
-            return (T) cached;
+            return RedisJson.convert(cached, clazz);
         }
         // 缓存未命中，进入回源流程
-        return rebuildWithMutex(key, baseTtl, jitterRatio, dbLoader);
+        return rebuildWithMutex(key, baseTtl, jitterRatio, clazz, dbLoader);
     }
 
     /**
      * 互斥重建：仅一个线程回源并回填，其余线程等待读回填结果。
      */
-    @SuppressWarnings("unchecked")
     private <T> T rebuildWithMutex(final String key, final Duration baseTtl, final double jitterRatio,
-            final Supplier<T> dbLoader) {
+            final Class<T> clazz, final Supplier<T> dbLoader) {
         String lockKey = key + LOCK_SUFFIX;
         Boolean locked = redisTemplate.opsForValue().setIfAbsent(lockKey, "1", LOCK_TTL);
         if (Boolean.TRUE.equals(locked)) {
@@ -84,7 +84,7 @@ public class SafeCacheService {
                 // 双重检查：拿到锁后可能已被别的线程回填
                 Object existing = redisTemplate.opsForValue().get(key);
                 if (existing != null && !NULL_SENTINEL.equals(existing)) {
-                    return (T) existing;
+                    return RedisJson.convert(existing, clazz);
                 }
                 T value = dbLoader.get();
                 if (value == null) {
@@ -108,7 +108,7 @@ public class SafeCacheService {
                 return null;
             }
             if (cached != null) {
-                return (T) cached;
+                return RedisJson.convert(cached, clazz);
             }
         }
         // 等待超时仍无结果（持锁线程可能异常）：降级为各自回源，保证可用性

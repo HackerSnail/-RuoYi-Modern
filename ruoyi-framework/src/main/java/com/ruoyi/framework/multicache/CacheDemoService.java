@@ -34,7 +34,7 @@ public class CacheDemoService {
      * 三防演示：命中不存在返回 null（写空值哨兵），命中存在返回模拟值；每次真正回源 safeDbHits++。
      */
     public String getSafe(String key, boolean existsInDb) {
-        return safeCacheService.get("demo:safe:" + key, Duration.ofSeconds(60), 0.2, () -> {
+        return safeCacheService.get("demo:safe:" + key, Duration.ofSeconds(60), 0.2, String.class, () -> {
             safeDbHits.incrementAndGet();
             sleep(30);
             return existsInDb ? ("value-of-" + key) : null;
@@ -45,7 +45,7 @@ public class CacheDemoService {
      * 二级缓存演示：L1→L2→DB，真正回源时 mlcDbHits++。
      */
     public String getMultiLevel(String key, boolean existsInDb) {
-        return multiLevelCacheService.get("demo:" + key, Duration.ofSeconds(120), () -> {
+        return multiLevelCacheService.get("demo:" + key, Duration.ofSeconds(120), String.class, () -> {
             mlcDbHits.incrementAndGet();
             sleep(30);
             return existsInDb ? ("mlc-value-of-" + key) : null;

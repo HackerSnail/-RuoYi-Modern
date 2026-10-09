@@ -27,10 +27,17 @@ public abstract class RepeatSubmitInterceptor implements HandlerInterceptor {
             throws Exception {
         if (handler instanceof HandlerMethod handlerMethod) {
             Method method = handlerMethod.getMethod();
+            // 优先取方法级 @RepeatSubmit；未命中时回退到类级(@Target 已含 TYPE)，便于对整个控制器统一开启防重
             RepeatSubmit annotation = method.getAnnotation(RepeatSubmit.class);
+            if (annotation == null) {
+                annotation = handlerMethod.getBeanType().getAnnotation(RepeatSubmit.class);
+            }
             if (annotation != null) {
                 if (this.isRepeatSubmit(request, annotation)) {
                     AjaxResult ajaxResult = AjaxResult.error(annotation.message());
+                    // 显式声明 JSON 内容类型与字符集：renderString 内部亦会设置(且其 setCharacterEncoding 在
+                    // setContentType 之后、不被无 charset 的二次 setContentType 清除)，此处按评审再显式化作为双保险
+                    response.setContentType("application/json;charset=UTF-8");
                     ServletUtils.renderString(response, JSON.toJSONString(ajaxResult));
                     return false;
                 }

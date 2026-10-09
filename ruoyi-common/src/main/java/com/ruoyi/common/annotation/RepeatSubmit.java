@@ -14,7 +14,7 @@ import java.lang.annotation.Target;
  *
  */
 @Inherited
-@Target(ElementType.METHOD)
+@Target({ ElementType.METHOD, ElementType.TYPE })
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 public @interface RepeatSubmit {

@@ -40,7 +40,7 @@ public class FastJson2JsonRedisSerializer<T> implements RedisSerializer<T> {
         }
         String str = new String(bytes, DEFAULT_CHARSET);
 
-        // clazz 为 Object（本仓 RedisTemplate<Object,Object> 的默认）时解析为通用结构
+        // clazz 为 Object（本仓 RedisTemplate<String,Object> 的 value 序列化器）时解析为通用结构
         // （JSONObject/JSONArray/基本类型），由 RedisCache 的带类型读按调用方目标类再转换；
         // 指定了具体 clazz 时直接按该类型绑定。全程不启用 autoType、不识别 @type。
         if (clazz == null || Object.class.equals(clazz)) {

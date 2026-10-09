@@ -1,6 +1,5 @@
 package com.ruoyi.framework.config;
 
-import org.springframework.cache.annotation.CachingConfigurerSupport;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,21 +13,19 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
  * 
  * @author ruoyi
  */
-@SuppressWarnings("deprecation")
 @Configuration
 @EnableCaching
-public class RedisConfig extends CachingConfigurerSupport {
+public class RedisConfig {
     /**
      * 配置 RedisTemplate：key/Hash-key 用 String 序列化便于直观浏览与排查，
-     * value/Hash-value 用 FastJson2 序列化以保留类型信息。
+     * value/Hash-value 用 FastJson2 序列化（不写 @type，具体类型由调用方读取时显式指定）。
      */
     @Bean
-    @SuppressWarnings(value = { "unchecked", "rawtypes" })
-    public RedisTemplate<Object, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
-        RedisTemplate<Object, Object> template = new RedisTemplate<>();
+    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
+        RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
 
-        FastJson2JsonRedisSerializer serializer = new FastJson2JsonRedisSerializer(Object.class);
+        FastJson2JsonRedisSerializer<Object> serializer = new FastJson2JsonRedisSerializer<>(Object.class);
 
         // 使用StringRedisSerializer来序列化和反序列化redis的key值
         template.setKeySerializer(new StringRedisSerializer());

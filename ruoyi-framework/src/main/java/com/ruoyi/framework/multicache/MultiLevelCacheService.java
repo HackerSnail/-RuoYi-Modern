@@ -41,11 +41,11 @@ public class MultiLevelCacheService {
             .recordStats()
             .build();
 
-    private final RedisTemplate<Object, Object> redisTemplate;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     private final StringRedisTemplate stringRedisTemplate;
 
-    public MultiLevelCacheService(RedisTemplate<Object, Object> redisTemplate,
+    public MultiLevelCacheService(RedisTemplate<String, Object> redisTemplate,
             StringRedisTemplate stringRedisTemplate) {
         this.redisTemplate = redisTemplate;
         this.stringRedisTemplate = stringRedisTemplate;

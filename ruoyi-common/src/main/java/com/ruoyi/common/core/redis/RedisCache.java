@@ -28,9 +28,9 @@ import org.springframework.stereotype.Component;
 @SuppressWarnings(value = { "unchecked", "rawtypes" })
 @Component
 public class RedisCache {
-    public final RedisTemplate<Object, Object> redisTemplate;
+    public final RedisTemplate<String, Object> redisTemplate;
 
-    public RedisCache(RedisTemplate<Object, Object> redisTemplate) {
+    public RedisCache(RedisTemplate<String, Object> redisTemplate) {
         this.redisTemplate = redisTemplate;
     }
 
@@ -110,7 +110,7 @@ public class RedisCache {
      * @return 缓存键值对应的数据
      */
     public <T> T getCacheObject(final String key) {
-        ValueOperations<Object, Object> operation = redisTemplate.opsForValue();
+        ValueOperations<String, Object> operation = redisTemplate.opsForValue();
         return (T) operation.get(key);
     }
 
@@ -162,7 +162,7 @@ public class RedisCache {
      * @param collection 多个对象
      * @return 至少删除一个则 true
      */
-    public boolean deleteObject(final Collection collection) {
+    public boolean deleteObject(final Collection<String> collection) {
         return unlinkObjects(collection) > 0;
     }
 
@@ -255,7 +255,7 @@ public class RedisCache {
      * @return Hash中的对象
      */
     public <T> T getCacheMapValue(final String key, final String hKey) {
-        HashOperations<Object, Object, Object> opsForHash = redisTemplate.opsForHash();
+        HashOperations<String, Object, Object> opsForHash = redisTemplate.opsForHash();
         return (T) opsForHash.get(key, hKey);
     }
 
@@ -386,7 +386,7 @@ public class RedisCache {
         if (keys == null || keys.isEmpty()) {
             return values;
         }
-        List<Object> batch = new ArrayList<>(MGET_BATCH_SIZE);
+        List<String> batch = new ArrayList<>(MGET_BATCH_SIZE);
         for (String key : keys) {
             batch.add(key);
             if (batch.size() >= MGET_BATCH_SIZE) {
@@ -417,13 +417,13 @@ public class RedisCache {
      * DEL 同步行释内存，大 value / 大集合时容易拖主线程；UNLINK 只从 keyspace 摘除，
      * 实际回收交给 Redis 后台 IO 线程。本方法不区分 key 存在与否，返回实际删除数。
      */
-    public long unlinkObjects(final Collection<?> collection) {
+    public long unlinkObjects(final Collection<String> collection) {
         if (collection == null || collection.isEmpty()) {
             return 0L;
         }
         long total = 0L;
-        List<Object> batch = new ArrayList<>(UNLINK_BATCH_SIZE);
-        for (Object k : collection) {
+        List<String> batch = new ArrayList<>(UNLINK_BATCH_SIZE);
+        for (String k : collection) {
             batch.add(k);
             if (batch.size() >= UNLINK_BATCH_SIZE) {
                 total += nullToZero(redisTemplate.unlink(batch));

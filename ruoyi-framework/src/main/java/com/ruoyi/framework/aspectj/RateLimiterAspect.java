@@ -28,11 +28,11 @@ import com.ruoyi.common.utils.ip.IpUtils;
 public class RateLimiterAspect {
     private static final Logger log = LoggerFactory.getLogger(RateLimiterAspect.class);
 
-    private final RedisTemplate<Object, Object> redisTemplate;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     private final RedisScript<Long> limitScript;
 
-    public RateLimiterAspect(RedisTemplate<Object, Object> redisTemplate, RedisScript<Long> limitScript) {
+    public RateLimiterAspect(RedisTemplate<String, Object> redisTemplate, RedisScript<Long> limitScript) {
         this.redisTemplate = redisTemplate;
         this.limitScript = limitScript;
     }
@@ -46,7 +46,7 @@ public class RateLimiterAspect {
         int count = rateLimiter.count();
 
         String combineKey = getCombineKey(rateLimiter, point);
-        List<Object> keys = Collections.singletonList(combineKey);
+        List<String> keys = Collections.singletonList(combineKey);
         try {
             Long number = redisTemplate.execute(limitScript, keys, count, time);
             // 脚本返回滑动窗口内已用量(含本次放行)，达/超阈值时返回 current+1(即 >count)，故用 >count 判拒绝、

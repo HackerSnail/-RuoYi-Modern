@@ -18,9 +18,9 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class RedisBloomFilter {
-    private final RedisTemplate<Object, Object> redisTemplate;
+    private final RedisTemplate<String, Object> redisTemplate;
 
-    public RedisBloomFilter(RedisTemplate<Object, Object> redisTemplate) {
+    public RedisBloomFilter(RedisTemplate<String, Object> redisTemplate) {
         this.redisTemplate = redisTemplate;
     }
 

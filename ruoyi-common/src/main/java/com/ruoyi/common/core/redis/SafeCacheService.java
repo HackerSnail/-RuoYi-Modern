@@ -41,9 +41,9 @@ public class SafeCacheService {
     /** 每次自旋等待间隔（毫秒） */
     private static final long WAIT_INTERVAL_MILLIS = 50L;
 
-    private final RedisTemplate<Object, Object> redisTemplate;
+    private final RedisTemplate<String, Object> redisTemplate;
 
-    public SafeCacheService(RedisTemplate<Object, Object> redisTemplate) {
+    public SafeCacheService(RedisTemplate<String, Object> redisTemplate) {
         this.redisTemplate = redisTemplate;
     }
 

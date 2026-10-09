@@ -1,6 +1,5 @@
 package com.ruoyi.framework.aspectj;
 
-import java.lang.reflect.Method;
 import java.util.concurrent.TimeUnit;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -10,16 +9,18 @@ import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
-import org.springframework.expression.spel.support.StandardEvaluationContext;
+import org.springframework.expression.spel.support.SimpleEvaluationContext;
 import org.springframework.stereotype.Component;
 import com.ruoyi.common.annotation.DistributedLock;
 import com.ruoyi.common.exception.ServiceException;
+import com.ruoyi.common.utils.StringUtils;
 
 /**
  * 分布式锁切面：环绕 {@link DistributedLock} 方法，基于 Redisson 可重入锁实现互斥。
  *
  * <p>
- * leaseTime &lt; 0 走 {@code tryLock(waitTime, unit)} 由看门狗自动续期；否则走
+ * leaseTime &lt; 0 走 {@code tryLock(waitTime, -1, unit)} 由看门狗自动续期（Redisson 对
+ * leaseTime&lt;=0 启用看门狗，与不传 leaseTime 的二参重载等价）；否则走
  * {@code tryLock(waitTime, leaseTime, unit)} 固定持有。仅由当前线程持锁时才解锁，
  * 避免误释放他人锁；获取失败抛出业务异常提示重试。
  * </p>
@@ -59,7 +60,8 @@ public class DistributedLockAspect {
     private boolean doTryLock(RLock lock, DistributedLock annotation) throws InterruptedException {
         TimeUnit unit = annotation.timeUnit();
         if (annotation.leaseTime() < 0) {
-            return lock.tryLock(annotation.waitTime(), unit);
+            // 显式传 -1：Redisson 对 leaseTime<=0 走看门狗自动续期（与不传 leaseTime 的二参重载等价）
+            return lock.tryLock(annotation.waitTime(), -1, unit);
         }
         return lock.tryLock(annotation.waitTime(), annotation.leaseTime(), unit);
     }
@@ -69,23 +71,35 @@ public class DistributedLockAspect {
      */
     private String buildLockKey(ProceedingJoinPoint joinPoint, DistributedLock annotation) {
         String rawKey = annotation.key();
+        String prefix = annotation.prefix();
+        if (StringUtils.isBlank(prefix)) {
+            throw new ServiceException("分布式锁 prefix 不能为空，key=" + rawKey);
+        }
         String resolvedKey;
         if (rawKey.contains("#")) {
             MethodSignature signature = (MethodSignature) joinPoint.getSignature();
-            Method method = signature.getMethod();
             String[] paramNames = signature.getParameterNames();
             Object[] args = joinPoint.getArgs();
-            StandardEvaluationContext context = new StandardEvaluationContext();
-            if (paramNames != null) {
-                for (int i = 0; i < paramNames.length && i < args.length; i++) {
-                    context.setVariable(paramNames[i], args[i]);
-                }
+            if (paramNames == null || paramNames.length != args.length) {
+                // 参数名不可用/长度不匹配时不能静默跳过，否则 #xxx 解析为 null 会把不同业务塌成同一把锁
+                throw new ServiceException("分布式锁 SpEL 解析失败：方法参数名不可用，请确认已开启 -parameters 编译选项或改用字面量 key");
+            }
+            // 受限上下文：仅只读数据绑定 + 实例方法，禁用类型引用/构造器/Bean 引用，收敛 SpEL 注入面
+            SimpleEvaluationContext context = SimpleEvaluationContext
+                    .forReadOnlyDataBinding()
+                    .withInstanceMethods()
+                    .build();
+            for (int i = 0; i < paramNames.length; i++) {
+                context.setVariable(paramNames[i], args[i]);
             }
             ExpressionParser parser = new SpelExpressionParser();
             resolvedKey = parser.parseExpression(rawKey).getValue(context, String.class);
         } else {
             resolvedKey = rawKey;
         }
-        return annotation.prefix() + ":" + resolvedKey;
+        if (StringUtils.isBlank(resolvedKey)) {
+            throw new ServiceException("分布式锁 key 解析结果为空: " + rawKey);
+        }
+        return prefix + ":" + resolvedKey;
     }
 }

@@ -22,9 +22,10 @@ public class ServerConfig {
     }
 
     /**
-     * 从当前请求推导出服务访问根地址：截掉 URL 中的请求 URI 部分，再拼上上下文路径
+     * 从当前请求推导出服务访问根地址（内部辅助）：截掉 URL 中的请求 URI 部分，再拼上上下文路径。
+     * 仅由 getUrl() 调用，改为 private 实例方法以消除静态工具方法暴露与 HttpServletRequest 的隐式全局传播。
      */
-    public static String getDomain(HttpServletRequest request) {
+    private String getDomain(HttpServletRequest request) {
         StringBuffer url = request.getRequestURL();
         String contextPath = request.getServletContext().getContextPath();
         return url.delete(url.length() - request.getRequestURI().length(), url.length()).append(contextPath).toString();

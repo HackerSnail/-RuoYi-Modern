@@ -117,9 +117,10 @@ public class SecurityConfig {
                     // 对于登录login 注册register 验证码captchaImage 允许匿名访问
                     requests.requestMatchers("/login", "/register", "/captchaImage").permitAll()
                             // 静态资源，可匿名访问
-                            .requestMatchers(HttpMethod.GET, "/", "/*.html", "/**.html", "/**.css", "/**.js",
-                                    "/profile/**")
+                            .requestMatchers(HttpMethod.GET, "/", "/*.html", "/**.html", "/**.css", "/**.js")
                             .permitAll();
+                    // 上传目录 /profile/**：按安全评审要求改为需鉴权，不再匿名放行。
+                    // 注意：本仓为无状态 JWT，<img> 直连不带 Authorization，前端须改为带 token 的取图方式，否则头像/图片会 401。
                     // 接口文档与连接池监控仅在非生产环境匿名放行；生产环境（active profile 包含 prod）需鉴权
                     if (!env.acceptsProfiles(Profiles.of("prod"))) {
                         requests.requestMatchers("/swagger-ui.html", "/v3/api-docs/**", "/swagger-ui/**", "/druid/**")

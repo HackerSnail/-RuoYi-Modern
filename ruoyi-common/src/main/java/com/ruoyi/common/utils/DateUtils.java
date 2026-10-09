@@ -6,8 +6,13 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
+import java.util.Arrays;
 import java.util.Date;
 import org.apache.commons.lang3.time.DateFormatUtils;
 
@@ -34,6 +39,18 @@ public class DateUtils {
             "yyyy-MM-dd", "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm", "yyyy-MM",
             "yyyy/MM/dd", "yyyy/MM/dd HH:mm:ss", "yyyy/MM/dd HH:mm", "yyyy/MM",
             "yyyy.MM.dd", "yyyy.MM.dd HH:mm:ss", "yyyy.MM.dd HH:mm", "yyyy.MM" };
+
+    /**
+     * parsePatterns 的预编译形式（DateTimeFormatter 不可变且线程安全，避免每次解析都重建）。
+     * <p>
+     * 采用 {@link ResolverStyle#STRICT}：日历上不存在的日期（如 2 月 30 日、 13 月）一律解析失败而非静默进位/钳位，
+     * 最终由 parseDate 归为 null。注意 STRICT 下 yyyy 是 year-of-era、缺 era 无法解析为 proleptic year，
+     * 故模式里的 yyyy 统一换为 uuuu（proleptic-year）；对正常年份两者数值等价。
+     */
+    private static final DateTimeFormatter[] FORMATTERS = Arrays.stream(parsePatterns)
+            .map(p -> p.replace("yyyy", "uuuu"))
+            .map(p -> DateTimeFormatter.ofPattern(p).withResolverStyle(ResolverStyle.STRICT))
+            .toArray(DateTimeFormatter[]::new);
 
     /**
      * 获取当前Date型日期
@@ -109,13 +126,30 @@ public class DateUtils {
         if (str == null) {
             return null;
         }
-        try {
-            // 组合而非继承：不再 extends commons DateUtils，此处直接全限定委托其多格式解析
-            //（本类自身就叫 DateUtils，与父类同名，无法简单 import，故用 FQN）
-            return org.apache.commons.lang3.time.DateUtils.parseDate(str.toString(), parsePatterns);
-        } catch (ParseException e) {
+        String s = str.toString().trim();
+        if (s.isEmpty()) {
             return null;
         }
+        // 彻底拆继承：用 JDK DateTimeFormatter 逐格式尝试，不再委托 commons。
+        // 每个模式依次试：带时分秒(LocalDateTime) -> 纯日期(LocalDate) -> 年月(YearMonth)。
+        // YearMonth 分支专供 parsePatterns 里的 yyyy-MM / yyyy/MM / yyyy.MM 三个不含"日"的模式，
+        // 否则纯年月串在 LocalDateTime/LocalDate 两条 try 下都会失败而漏解析（原 commons 能解为当月 1 号零点）。
+        // 全部不匹配则返回 null，保持"宽松解析器失败返 null"契约不变（见上方 javadoc）。
+        for (DateTimeFormatter fmt : FORMATTERS) {
+            try {
+                return Date.from(LocalDateTime.parse(s, fmt).atZone(DEFAULT_ZONE).toInstant());
+            } catch (DateTimeParseException ignored) {
+            }
+            try {
+                return Date.from(LocalDate.parse(s, fmt).atStartOfDay(DEFAULT_ZONE).toInstant());
+            } catch (DateTimeParseException ignored) {
+            }
+            try {
+                return Date.from(YearMonth.parse(s, fmt).atDay(1).atStartOfDay(DEFAULT_ZONE).toInstant());
+            } catch (DateTimeParseException ignored) {
+            }
+        }
+        return null;
     }
 
     /**

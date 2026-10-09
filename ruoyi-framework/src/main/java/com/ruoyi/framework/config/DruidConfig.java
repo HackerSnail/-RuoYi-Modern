@@ -61,6 +61,13 @@ public class DruidConfig {
         if (slaveDataSource != null) {
             targetDataSources.put(DataSourceType.SLAVE.name(), slaveDataSource);
         }
-        return new DynamicDataSource(masterDataSource, targetDataSources);
+        // DynamicDataSource 保持为纯路由壳：默认库与目标映射在此显式装配；
+        // 它作为 @Bean 返回且继承 AbstractRoutingDataSource(实现 InitializingBean)，
+        // Spring 会在工厂方法返回后自动回调 afterPropertiesSet() 完成 targetDataSources → resolvedDataSources 解析，
+        // 无需在此手动调用。
+        DynamicDataSource dynamicDataSource = new DynamicDataSource();
+        dynamicDataSource.setDefaultTargetDataSource(masterDataSource);
+        dynamicDataSource.setTargetDataSources(targetDataSources);
+        return dynamicDataSource;
     }
 }

@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -35,7 +36,6 @@ import com.ruoyi.generator.domain.GenTableColumn;
 import com.ruoyi.generator.mapper.GenTableColumnMapper;
 import com.ruoyi.generator.mapper.GenTableMapper;
 import com.ruoyi.generator.util.GenUtils;
-import com.ruoyi.generator.util.VelocityInitializer;
 import com.ruoyi.generator.util.VelocityUtils;
 
 /**
@@ -46,6 +46,9 @@ import com.ruoyi.generator.util.VelocityUtils;
 @Service
 public class GenTableServiceImpl implements IGenTableService {
     private static final Logger log = LoggerFactory.getLogger(GenTableServiceImpl.class);
+
+    /** 单次批量生成的表数上限：防止一次传入过多表逐表渲染全量驻留内存 + zip 触发 OOM/超时 */
+    private static final int MAX_BATCH_GEN_TABLES = 50;
 
     private final GenTableMapper genTableMapper;
 
@@ -69,6 +72,9 @@ public class GenTableServiceImpl implements IGenTableService {
     @Override
     public GenTable selectGenTableById(Long id) {
         GenTable genTable = genTableMapper.selectGenTableById(id);
+        if (genTable == null) {
+            throw new ServiceException("生成表不存在，ID：" + id);
+        }
         setTableFromOptions(genTable);
         return genTable;
     }
@@ -129,9 +135,14 @@ public class GenTableServiceImpl implements IGenTableService {
         String options = JSON.toJSONString(genTable.getParams());
         genTable.setOptions(options);
         int row = genTableMapper.updateGenTable(genTable);
-        if (row > 0) {
+        if (row > 0 && StringUtils.isNotEmpty(genTable.getColumns())) {
             // 主表更新成功后才级联刷列，避免主表失败时列已改的不一致
+            Long tableId = genTable.getTableId();
             for (GenTableColumn genTableColumn : genTable.getColumns()) {
+                // 归属校验：只允许改本表的列，杜绝把别的表的 columnId 混进 columns 跨表越权改写
+                if (genTableColumn.getTableId() == null || !genTableColumn.getTableId().equals(tableId)) {
+                    throw new ServiceException("列[" + genTableColumn.getColumnName() + "]不属于当前生成表，禁止跨表修改");
+                }
                 genTableColumnMapper.updateGenTableColumn(genTableColumn);
             }
         }
@@ -173,6 +184,15 @@ public class GenTableServiceImpl implements IGenTableService {
         return genTableMapper.checkTableExist(tableName) > 0;
     }
 
+    /** 按表名查询生成表并校验存在：不存在(未导入/表名错)即抛业务异常，杜绝下游解引用 null 触发 500 */
+    private GenTable requireTableByName(String tableName) {
+        GenTable table = genTableMapper.selectGenTableByName(tableName);
+        if (table == null) {
+            throw new ServiceException("表不存在或尚未导入：" + tableName);
+        }
+        return table;
+    }
+
     /**
      * 导入表结构：逐表初始化元数据并写主表，主表写入成功后再从 information_schema 回读列并逐列初始化入库
      * 
@@ -206,6 +226,7 @@ public class GenTableServiceImpl implements IGenTableService {
                 }
             }
         } catch (Exception e) {
+            log.error("导入表结构失败", e);
             throw new ServiceException("导入失败：" + e.getMessage());
         }
     }
@@ -219,13 +240,15 @@ public class GenTableServiceImpl implements IGenTableService {
     @Override
     public Map<String, String> previewCode(Long tableId) {
         Map<String, String> dataMap = new LinkedHashMap<>();
-        // 查询表信息
+        // 查询表信息（不存在即抛，杜绝下游解引用 null）
         GenTable table = genTableMapper.selectGenTableById(tableId);
+        if (table == null) {
+            throw new ServiceException("生成表不存在，ID：" + tableId);
+        }
         // 设置主子表信息
         setSubTable(table);
         // 设置主键列信息
         setPkColumn(table);
-        VelocityInitializer.initVelocity();
 
         VelocityContext context = VelocityUtils.prepareContext(table);
 
@@ -259,14 +282,12 @@ public class GenTableServiceImpl implements IGenTableService {
      */
     @Override
     public void generatorCode(String tableName) {
-        // 查询表信息
-        GenTable table = genTableMapper.selectGenTableByName(tableName);
+        // 查询表信息（不存在即抛，杜绝下游解引用 null）
+        GenTable table = requireTableByName(tableName);
         // 设置主子表信息
         setSubTable(table);
         // 设置主键列信息
         setPkColumn(table);
-
-        VelocityInitializer.initVelocity();
 
         VelocityContext context = VelocityUtils.prepareContext(table);
 
@@ -299,7 +320,7 @@ public class GenTableServiceImpl implements IGenTableService {
     @Override
     @Transactional
     public void synchDb(String tableName) {
-        GenTable table = genTableMapper.selectGenTableByName(tableName);
+        GenTable table = requireTableByName(tableName);
         List<GenTableColumn> tableColumns = table.getColumns();
         Map<String, GenTableColumn> tableColumnMap = tableColumns.stream()
                 .collect(Collectors.toMap(GenTableColumn::getColumnName, Function.identity()));
@@ -353,34 +374,45 @@ public class GenTableServiceImpl implements IGenTableService {
      */
     @Override
     public byte[] downloadCode(String[] tableNames) {
+        if (tableNames == null || tableNames.length == 0) {
+            throw new ServiceException("请选择要生成的表");
+        }
+        // 单次批量上限：避免一次传入过多表全量驻留内存 + zip 触发 OOM/超时
+        if (tableNames.length > MAX_BATCH_GEN_TABLES) {
+            throw new ServiceException("单次批量生成不得超过 " + MAX_BATCH_GEN_TABLES + " 张表，请分批生成");
+        }
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         ZipOutputStream zip = new ZipOutputStream(outputStream);
         // typeFiles 缓存需跨表合并的 index-bak.ts（多表 export 行追加到同一文件）
         Map<String, StringBuilder> typeFiles = new HashMap<>();
+        // zipFailures 累积写入失败条目：不再静默返回残缺 zip，末尾统一抛出
+        List<String> zipFailures = new ArrayList<>();
         for (String tableName : tableNames) {
-            generatorCode(tableName, zip, typeFiles);
+            generatorCode(tableName, zip, typeFiles, zipFailures);
         }
         // 合并完后再把聚合结果作为一个条目写入 zip
         for (Map.Entry<String, StringBuilder> entry : typeFiles.entrySet()) {
-            writeToZip(zip, entry.getKey(), entry.getValue().toString());
+            writeToZip(zip, entry.getKey(), entry.getValue().toString(), zipFailures);
         }
         // closeQuietly 确保 zip 中央目录写入完成（不写则 zip 不可解压）
         IOUtils.closeQuietly(zip);
+        if (!zipFailures.isEmpty()) {
+            throw new ServiceException("部分文件写入ZIP失败：" + zipFailures);
+        }
         return outputStream.toByteArray();
     }
 
     /**
      * 查询表信息并生成代码
      */
-    private void generatorCode(String tableName, ZipOutputStream zip, Map<String, StringBuilder> typeFiles) {
-        // 查询表信息
-        GenTable table = genTableMapper.selectGenTableByName(tableName);
+    private void generatorCode(String tableName, ZipOutputStream zip, Map<String, StringBuilder> typeFiles,
+            List<String> zipFailures) {
+        // 查询表信息（不存在即抛，杜绝下游解引用 null）
+        GenTable table = requireTableByName(tableName);
         // 设置主子表信息
         setSubTable(table);
         // 设置主键列信息
         setPkColumn(table);
-
-        VelocityInitializer.initVelocity();
 
         VelocityContext context = VelocityUtils.prepareContext(table);
 
@@ -404,7 +436,7 @@ public class GenTableServiceImpl implements IGenTableService {
                 }
             } else {
                 // 其他文件正常添加
-                writeToZip(zip, fileName, sw.toString());
+                writeToZip(zip, fileName, sw.toString(), zipFailures);
             }
         }
     }
@@ -416,14 +448,16 @@ public class GenTableServiceImpl implements IGenTableService {
      * @param fileName ZIP条目名称（即文件名）
      * @param content  要写入的内容
      */
-    private void writeToZip(ZipOutputStream zip, String fileName, String content) {
+    private void writeToZip(ZipOutputStream zip, String fileName, String content, List<String> zipFailures) {
         try {
             zip.putNextEntry(new ZipEntry(fileName));
             IOUtils.write(content, zip, Constants.UTF8);
             zip.flush();
             zip.closeEntry();
         } catch (IOException e) {
+            // 不吞异常：记录并累积，由 downloadCode 在关闭 zip 后统一抛出，避免静默返回残缺 zip
             log.error("写入ZIP文件失败，文件名: " + fileName, e);
+            zipFailures.add(fileName);
         }
     }
 
@@ -459,7 +493,11 @@ public class GenTableServiceImpl implements IGenTableService {
      * @param table 业务表信息
      */
     public void setPkColumn(GenTable table) {
-        for (GenTableColumn column : table.getColumns()) {
+        List<GenTableColumn> columns = table.getColumns();
+        if (StringUtils.isEmpty(columns)) {
+            throw new ServiceException("表未配置任何列，无法生成：" + table.getTableName());
+        }
+        for (GenTableColumn column : columns) {
             if (column.isPk()) {
                 table.setPkColumn(column);
                 break;
@@ -467,17 +505,21 @@ public class GenTableServiceImpl implements IGenTableService {
         }
         if (StringUtils.isNull(table.getPkColumn())) {
             // 未标记主键时降级取第一列，保证模板渲染不因 pkColumn 为空而 NPE
-            table.setPkColumn(table.getColumns().get(0));
+            table.setPkColumn(columns.get(0));
         }
         if (GenConstants.TPL_SUB.equals(table.getTplCategory())) {
-            for (GenTableColumn column : table.getSubTable().getColumns()) {
+            GenTable subTable = table.getSubTable();
+            if (subTable == null || StringUtils.isEmpty(subTable.getColumns())) {
+                throw new ServiceException("主子表模板要求子表已导入且含列配置，请检查子表：" + table.getSubTableName());
+            }
+            for (GenTableColumn column : subTable.getColumns()) {
                 if (column.isPk()) {
-                    table.getSubTable().setPkColumn(column);
+                    subTable.setPkColumn(column);
                     break;
                 }
             }
-            if (StringUtils.isNull(table.getSubTable().getPkColumn())) {
-                table.getSubTable().setPkColumn(table.getSubTable().getColumns().get(0));
+            if (StringUtils.isNull(subTable.getPkColumn())) {
+                subTable.setPkColumn(subTable.getColumns().get(0));
             }
         }
     }
@@ -490,7 +532,12 @@ public class GenTableServiceImpl implements IGenTableService {
     public void setSubTable(GenTable table) {
         String subTableName = table.getSubTableName();
         if (StringUtils.isNotEmpty(subTableName)) {
-            table.setSubTable(genTableMapper.selectGenTableByName(subTableName));
+            GenTable subTable = genTableMapper.selectGenTableByName(subTableName);
+            if (subTable == null) {
+                // 子表名指向未导入的表：及早抛错，杜绝下游 setPkColumn/prepareContext 解引用 null NPE
+                throw new ServiceException("关联子表不存在或尚未导入：" + subTableName);
+            }
+            table.setSubTable(subTable);
         }
     }
 

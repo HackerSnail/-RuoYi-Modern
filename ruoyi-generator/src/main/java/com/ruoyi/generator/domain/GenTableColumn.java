@@ -1,6 +1,7 @@
 package com.ruoyi.generator.domain;
 
 import jakarta.validation.constraints.NotBlank;
+import org.apache.commons.lang3.ArrayUtils;
 import com.ruoyi.common.constant.GenConstants;
 import com.ruoyi.common.core.domain.BaseEntity;
 import com.ruoyi.common.utils.StringUtils;
@@ -127,7 +128,13 @@ public class GenTableColumn extends BaseEntity {
     }
 
     public String getCapJavaField() {
-        return StringUtils.capitalize(javaField);
+        // javaField 理论上由 @NotBlank 守卫，但 DB 反查的脏列可能为空；空值原样返回，避免 capitalize 产出意外结果
+        return StringUtils.isNotEmpty(javaField) ? StringUtils.capitalize(javaField) : javaField;
+    }
+
+    /** 列标志是否取"是"(COLUMN_FLAG_YES)：统一 7 组 isXxx 判定，从根上消除复制粘贴错 */
+    private static boolean isYes(String flag) {
+        return flag != null && StringUtils.equals(GenConstants.COLUMN_FLAG_YES, flag);
     }
 
     public void setIsPk(String isPk) {
@@ -139,11 +146,11 @@ public class GenTableColumn extends BaseEntity {
     }
 
     public boolean isPk() {
-        return isPk(this.isPk);
+        return isYes(this.isPk);
     }
 
     public boolean isPk(String isPk) {
-        return isPk != null && StringUtils.equals(GenConstants.COLUMN_FLAG_YES, isPk);
+        return isYes(isPk);
     }
 
     public String getIsIncrement() {
@@ -155,11 +162,11 @@ public class GenTableColumn extends BaseEntity {
     }
 
     public boolean isIncrement() {
-        return isIncrement(this.isIncrement);
+        return isYes(this.isIncrement);
     }
 
     public boolean isIncrement(String isIncrement) {
-        return isIncrement != null && StringUtils.equals(GenConstants.COLUMN_FLAG_YES, isIncrement);
+        return isYes(isIncrement);
     }
 
     public void setIsRequired(String isRequired) {
@@ -171,11 +178,11 @@ public class GenTableColumn extends BaseEntity {
     }
 
     public boolean isRequired() {
-        return isRequired(this.isRequired);
+        return isYes(this.isRequired);
     }
 
     public boolean isRequired(String isRequired) {
-        return isRequired != null && StringUtils.equals(GenConstants.COLUMN_FLAG_YES, isRequired);
+        return isYes(isRequired);
     }
 
     public void setIsInsert(String isInsert) {
@@ -187,11 +194,11 @@ public class GenTableColumn extends BaseEntity {
     }
 
     public boolean isInsert() {
-        return isInsert(this.isInsert);
+        return isYes(this.isInsert);
     }
 
     public boolean isInsert(String isInsert) {
-        return isInsert != null && StringUtils.equals(GenConstants.COLUMN_FLAG_YES, isInsert);
+        return isYes(isInsert);
     }
 
     public void setIsEdit(String isEdit) {
@@ -203,11 +210,11 @@ public class GenTableColumn extends BaseEntity {
     }
 
     public boolean isEdit() {
-        return isInsert(this.isEdit);
+        return isYes(this.isEdit);
     }
 
     public boolean isEdit(String isEdit) {
-        return isEdit != null && StringUtils.equals(GenConstants.COLUMN_FLAG_YES, isEdit);
+        return isYes(isEdit);
     }
 
     public void setIsList(String isList) {
@@ -219,11 +226,11 @@ public class GenTableColumn extends BaseEntity {
     }
 
     public boolean isList() {
-        return isList(this.isList);
+        return isYes(this.isList);
     }
 
     public boolean isList(String isList) {
-        return isList != null && StringUtils.equals(GenConstants.COLUMN_FLAG_YES, isList);
+        return isYes(isList);
     }
 
     public void setIsQuery(String isQuery) {
@@ -235,11 +242,11 @@ public class GenTableColumn extends BaseEntity {
     }
 
     public boolean isQuery() {
-        return isQuery(this.isQuery);
+        return isYes(this.isQuery);
     }
 
     public boolean isQuery(String isQuery) {
-        return isQuery != null && StringUtils.equals(GenConstants.COLUMN_FLAG_YES, isQuery);
+        return isYes(isQuery);
     }
 
     public void setQueryType(String queryType) {
@@ -284,13 +291,12 @@ public class GenTableColumn extends BaseEntity {
      *
      * @param javaField Java 字段名
      * @return true 表示由 BaseEntity/TreeEntity 提供，无需生成
+     * @apiNote 名单统一引用 GenConstants.BASE_ENTITY/TREE_ENTITY，与 GenTable.isSuperColumn 共用同一真相，
+     *          杜绝字面量双份维护导致的不一致（含 TreeEntity.children）。
      */
     public static boolean isSuperColumn(String javaField) {
         return StringUtils.equalsAnyIgnoreCase(javaField,
-                // BaseEntity
-                "createBy", "createTime", "updateBy", "updateTime", "remark",
-                // TreeEntity
-                "parentName", "parentId", "orderNum", "ancestors");
+                ArrayUtils.addAll(GenConstants.TREE_ENTITY, GenConstants.BASE_ENTITY));
     }
 
     /** 当前列虽属父类字段但生成页面仍需使用（白名单） */
@@ -313,7 +319,7 @@ public class GenTableColumn extends BaseEntity {
     /**
      * 解析列注释中的取值表达式：从“（）”内提取形如“0=否 1=是”的映射，转为“0=否,1=是”供模板回显
      *
-     * @return 转换后的表达式；若注释无括号补充则原样返回列注释
+     * @return 转换后的表达式；若注释为空/无全角括号补充则兜底返回空串
      */
     public String readConverterExp() {
         String remarks = StringUtils.substringBetween(this.columnComment, "（", "）");
@@ -321,14 +327,15 @@ public class GenTableColumn extends BaseEntity {
         if (StringUtils.isNotEmpty(remarks)) {
             for (String value : remarks.split(" ")) {
                 if (StringUtils.isNotEmpty(value)) {
-                    Object startStr = value.subSequence(0, 1);
+                    String startStr = value.substring(0, 1);
                     String endStr = value.substring(1);
-                    sb.append("").append(startStr).append("=").append(endStr).append(",");
+                    sb.append(startStr).append("=").append(endStr).append(",");
                 }
             }
             return sb.deleteCharAt(sb.length() - 1).toString();
         } else {
-            return this.columnComment;
+            // 注释为空/无全角括号补充时兜底空串，避免把 null 传到模板字符串拼接处
+            return StringUtils.defaultString(this.columnComment);
         }
     }
 }

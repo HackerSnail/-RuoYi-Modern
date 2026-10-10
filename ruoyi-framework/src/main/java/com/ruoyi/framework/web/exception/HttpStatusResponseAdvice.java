@@ -1,6 +1,7 @@
 package com.ruoyi.framework.web.exception;
 
 import java.util.Set;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
@@ -32,6 +33,12 @@ import com.ruoyi.common.core.domain.AjaxResult;
  * （本 advice 见响应状态已非 200 便不覆写），从而把两者在传输层区分开。
  * </p>
  *
+ * <p>
+ * 与 {@link GlobalExceptionHandler} 刻意强耦合：其兜底 handler 依赖本 advice“见响应状态已非 200 便不覆写”
+ * 这一约定来保住真·系统故障的 HTTP 500；改动本类的映射或守卫前须同步查看该类，反之亦然。
+ * 可用配置项 {@code ruoyi.http-status-advice.enabled=false} 整体停用本 advice（退回“恒 HTTP 200 + body.code”旧行为）。
+ *
+ * @see GlobalExceptionHandler
  * @author ruoyi
  */
 @RestControllerAdvice
@@ -50,10 +57,17 @@ public class HttpStatusResponseAdvice implements ResponseBodyAdvice<Object> {
     /** 白名单之外统一回退的客户端错误码 */
     private static final int FALLBACK_CLIENT_ERROR = HttpStatus.BAD_REQUEST;
 
+    /**
+     * 总开关：默认开启。设为 {@code false}（{@code ruoyi.http-status-advice.enabled=false}）整体停用状态码改写，
+     * 退回“传输层恒 HTTP 200 + body.code”的旧行为（例如改由网关统一处理状态码时）。
+     */
+    @Value("${ruoyi.http-status-advice.enabled:true}")
+    private boolean enabled;
+
     @Override
     public boolean supports(MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {
-        // 覆盖所有转换器；是否实际改写状态在 beforeBodyWrite 内按 body 类型判定（仅 AjaxResult 生效）
-        return true;
+        // 由开关控制是否启用；启用时覆盖所有转换器，是否实际改写状态在 beforeBodyWrite 内按 body 类型判定（仅 AjaxResult 生效）
+        return enabled;
     }
 
     @Override
@@ -70,6 +84,7 @@ public class HttpStatusResponseAdvice implements ResponseBodyAdvice<Object> {
                 response.setStatusCode(resolveHttpStatus(codeNumber.intValue()));
             }
         }
+        // 非 AjaxResult 的返回体（String/分页/其他自定义类型等）一律原样返回、不改写传输状态，属有意为之
         return body;
     }
 

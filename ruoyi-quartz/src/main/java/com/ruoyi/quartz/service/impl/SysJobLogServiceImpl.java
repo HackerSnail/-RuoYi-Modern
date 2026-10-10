@@ -2,6 +2,7 @@ package com.ruoyi.quartz.service.impl;
 
 import java.util.List;
 import org.springframework.stereotype.Service;
+import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.quartz.domain.SysJobLog;
 import com.ruoyi.quartz.mapper.SysJobLogMapper;
 import com.ruoyi.quartz.service.ISysJobLogService;
@@ -13,6 +14,9 @@ import com.ruoyi.quartz.service.ISysJobLogService;
  */
 @Service
 public class SysJobLogServiceImpl implements ISysJobLogService {
+    /** 单次批量删除调度日志的最大条数上限：收口于 Service，覆盖所有调用方（含非 HTTP 入口） */
+    private static final int MAX_DELETE_BATCH = 500;
+
     private final SysJobLogMapper jobLogMapper;
 
     public SysJobLogServiceImpl(SysJobLogMapper jobLogMapper) {
@@ -59,6 +63,13 @@ public class SysJobLogServiceImpl implements ISysJobLogService {
      */
     @Override
     public int deleteJobLogByIds(Long[] logIds) {
+        // 批量删除收口于 Service：空选与超上限均拒（抛 ServiceException 由全局异常处理转友好 error），与任务删除同一口径
+        if (logIds == null || logIds.length == 0) {
+            throw new ServiceException("请选择要删除的调度日志");
+        }
+        if (logIds.length > MAX_DELETE_BATCH) {
+            throw new ServiceException("单次最多删除 " + MAX_DELETE_BATCH + " 条调度日志，当前 " + logIds.length + " 条");
+        }
         return jobLogMapper.deleteJobLogByIds(logIds);
     }
 

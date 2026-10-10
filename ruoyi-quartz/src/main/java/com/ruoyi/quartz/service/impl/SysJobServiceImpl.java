@@ -9,6 +9,7 @@ import org.quartz.SchedulerException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.ruoyi.common.constant.ScheduleConstants;
+import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.exception.job.TaskException;
 import com.ruoyi.quartz.domain.SysJob;
 import com.ruoyi.quartz.mapper.SysJobMapper;
@@ -23,6 +24,9 @@ import com.ruoyi.quartz.util.ScheduleUtils;
  */
 @Service
 public class SysJobServiceImpl implements ISysJobService {
+    /** 单次批量删除任务的最大条数上限：收口于 Service，与调度日志删除同一口径 */
+    private static final int MAX_DELETE_BATCH = 500;
+
     private final Scheduler scheduler;
 
     private final SysJobMapper jobMapper;
@@ -131,6 +135,14 @@ public class SysJobServiceImpl implements ISysJobService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteJobByIds(Long[] jobIds) throws SchedulerException {
+        // 批量删除收口于 Service：空选与超上限均拒（抛 ServiceException 由全局异常处理转友好 error），
+        // 防止逐个 select+delete+unschedule 放大调度器/数据库压力
+        if (jobIds == null || jobIds.length == 0) {
+            throw new ServiceException("请选择要删除的任务");
+        }
+        if (jobIds.length > MAX_DELETE_BATCH) {
+            throw new ServiceException("单次最多删除 " + MAX_DELETE_BATCH + " 条任务，当前 " + jobIds.length + " 条");
+        }
         for (Long jobId : jobIds) {
             SysJob job = jobMapper.selectJobById(jobId);
             deleteJob(job);

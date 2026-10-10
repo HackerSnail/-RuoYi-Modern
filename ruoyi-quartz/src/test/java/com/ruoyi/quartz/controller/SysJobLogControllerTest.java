@@ -1,10 +1,11 @@
 package com.ruoyi.quartz.controller;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -12,15 +13,16 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.ruoyi.common.core.domain.AjaxResult;
+import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.quartz.domain.SysJobLog;
 import com.ruoyi.quartz.service.ISysJobLogService;
 
 /**
- * SysJobLogController 查询判空 + 批量删除限长测试。
+ * SysJobLogController 查询判空 + 批量删除委托测试。
  *
  * <p>
- * 覆盖本次修复点：① getInfo 查回 null 返回 error 而非 success(null)；② remove 对空选与超上限
- * （&gt;500）拒绝，且未通过校验时不调用 Service。清空/列表等其余分支不在本轮改动范围。
+ * 覆盖：① getInfo 查回 null 返回 error 而非 success(null)；② remove 现为薄委托——空选/限长校验已
+ * 下沉 {@code SysJobLogServiceImpl.deleteJobLogByIds}，Controller 只调用 Service 并透传其 ServiceException。
  * </p>
  */
 public class SysJobLogControllerTest {
@@ -50,39 +52,24 @@ public class SysJobLogControllerTest {
     }
 
     @Test
-    @DisplayName("remove：空选拒绝，不调 Service")
-    void removeEmptyRejected() {
-        ISysJobLogService svc = mock(ISysJobLogService.class);
-        SysJobLogController controller = new SysJobLogController(svc);
-
-        AjaxResult r = controller.remove(new Long[0]);
-        assertFalse(r.isSuccess());
-        verify(svc, never()).deleteJobLogByIds(any());
-    }
-
-    @Test
-    @DisplayName("remove：超 500 上限拒绝，不调 Service")
-    void removeOverLimitRejected() {
-        ISysJobLogService svc = mock(ISysJobLogService.class);
-        SysJobLogController controller = new SysJobLogController(svc);
-
-        Long[] ids = new Long[501];
-        for (int i = 0; i < ids.length; i++) {
-            ids[i] = (long) i;
-        }
-        AjaxResult r = controller.remove(ids);
-        assertFalse(r.isSuccess());
-        verify(svc, never()).deleteJobLogByIds(any());
-    }
-
-    @Test
-    @DisplayName("remove：限长内正常删除")
-    void removeWithinLimit() {
+    @DisplayName("remove：委托 Service 删除并返回 success")
+    void removeDelegatesToService() {
         ISysJobLogService svc = mock(ISysJobLogService.class);
         when(svc.deleteJobLogByIds(any())).thenReturn(2);
         SysJobLogController controller = new SysJobLogController(svc);
 
         AjaxResult r = controller.remove(new Long[] { 1L, 2L });
         assertTrue(r.isSuccess());
+        verify(svc).deleteJobLogByIds(any());
+    }
+
+    @Test
+    @DisplayName("remove：Service 抛出的校验异常原样透传（Controller 不吞异常）")
+    void removePropagatesServiceException() {
+        ISysJobLogService svc = mock(ISysJobLogService.class);
+        doThrow(new ServiceException("请选择要删除的调度日志")).when(svc).deleteJobLogByIds(any());
+        SysJobLogController controller = new SysJobLogController(svc);
+
+        assertThrows(ServiceException.class, () -> controller.remove(new Long[0]));
     }
 }

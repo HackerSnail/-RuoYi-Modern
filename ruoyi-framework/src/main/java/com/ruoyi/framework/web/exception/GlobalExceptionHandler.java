@@ -45,13 +45,15 @@ public class GlobalExceptionHandler {
 
     /**
      * 请求方式不支持
+     * <p>
+     * 用 {@code BAD_METHOD(405)} 作业务码，经 HttpStatusResponseAdvice 透传为真实 HTTP 405（语义比默认 500→400 更精确）。
      */
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public AjaxResult handleHttpRequestMethodNotSupported(HttpRequestMethodNotSupportedException e,
             HttpServletRequest request) {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',不支持'{}'请求", requestURI, e.getMethod());
-        return AjaxResult.error(e.getMessage());
+        return AjaxResult.error(HttpStatus.BAD_METHOD, e.getMessage());
     }
 
     /**

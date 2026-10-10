@@ -28,6 +28,7 @@ import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.text.Convert;
 import com.ruoyi.common.exception.DemoModeException;
 import com.ruoyi.common.exception.ServiceException;
+import com.ruoyi.common.exception.base.BaseException;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.html.EscapeUtil;
 
@@ -73,6 +74,28 @@ public class GlobalExceptionHandler {
         log.warn("业务异常: code={}, msg={}", e.getCode(), e.getMessage(), e);
         Integer code = e.getCode();
         return StringUtils.isNotNull(code) ? AjaxResult.error(code, e.getMessage()) : AjaxResult.error(e.getMessage());
+    }
+
+    /**
+     * 用户/文件等基础异常（{@link BaseException} 及其子类：登录鉴权失败、验证码失效、上传超限等）
+     * <p>
+     * {@link BaseException#getMessage()} 已把 i18n code 解析为面向用户的明确文案，属预期内业务失败，
+     * 应与 {@link ServiceException} 同档处理：warn 记录、返回普通 {@code AjaxResult}（默认 code=500），
+     * 经 {@code HttpStatusResponseAdvice} 映射为真实 HTTP 400。否则这类异常会落到兜底
+     * {@link #handleRuntimeException} 被伪装成 HTTP 500 “系统繁忙”，前端既拿不到文案、状态码语义也错。
+     * {@code BaseException} 比 {@code RuntimeException} 更 specific，Spring 按最具体匹配稳选本方法，
+     * 不影响既有 {@code ServiceException} 等分支。
+     */
+    @ExceptionHandler(BaseException.class)
+    public AjaxResult handleBaseException(BaseException e, HttpServletRequest request) {
+        String requestURI = request.getRequestURI();
+        String msg = e.getMessage();
+        if (StringUtils.isEmpty(msg)) {
+            // 兜底：code 未在 messages.properties 命中且无 defaultMessage 时给通用文案，避免返回空 msg
+            msg = "操作失败";
+        }
+        log.warn("请求地址'{}',业务异常: {}", requestURI, msg, e);
+        return AjaxResult.error(msg);
     }
 
     /**

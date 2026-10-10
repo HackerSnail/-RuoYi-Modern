@@ -6,6 +6,7 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -106,22 +107,27 @@ public class GlobalExceptionHandler {
 
     /**
      * 拦截未知的运行时异常
+     * <p>
+     * 真·系统故障：以 {@code ResponseEntity} 显式返回 HTTP 500（而非普通 {@code AjaxResult}），
+     * 以免被 {@code HttpStatusResponseAdvice} 把业务默认的 code=500 回退成 400——系统故障应保留 500。
      */
     @ExceptionHandler(RuntimeException.class)
-    public AjaxResult handleRuntimeException(RuntimeException e, HttpServletRequest request) {
+    public ResponseEntity<AjaxResult> handleRuntimeException(RuntimeException e, HttpServletRequest request) {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',发生未知异常.", requestURI, e);
-        return AjaxResult.error("系统繁忙，请稍后再试");
+        return ResponseEntity.status(HttpStatus.ERROR).body(AjaxResult.error("系统繁忙，请稍后再试"));
     }
 
     /**
      * 系统异常
+     * <p>
+     * 同 {@link #handleRuntimeException}：真·系统故障显式返回 HTTP 500，与业务失败的 code=500→HTTP 400 区分开。
      */
     @ExceptionHandler(Exception.class)
-    public AjaxResult handleException(Exception e, HttpServletRequest request) {
+    public ResponseEntity<AjaxResult> handleException(Exception e, HttpServletRequest request) {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',发生系统异常.", requestURI, e);
-        return AjaxResult.error("系统繁忙，请稍后再试");
+        return ResponseEntity.status(HttpStatus.ERROR).body(AjaxResult.error("系统繁忙，请稍后再试"));
     }
 
     /**

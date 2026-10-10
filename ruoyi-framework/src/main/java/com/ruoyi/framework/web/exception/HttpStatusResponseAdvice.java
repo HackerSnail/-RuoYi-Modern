@@ -7,6 +7,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
+import org.springframework.http.server.ServletServerHttpResponse;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 import com.ruoyi.common.constant.HttpStatus;
@@ -25,19 +26,21 @@ import com.ruoyi.common.core.domain.AjaxResult;
  * <p>
  * 映射策略：白名单内的已知 HTTP 语义码原样生效；白名单之外（含非 HTTP 业务码 {@code WARN=601}、
  * {@code ServiceException} 的任意码、越界值）统一回退 HTTP 400，不把业务拒绝伪装成 500 服务端故障。
- * 注意残留：RuoYi 通用 {@code AjaxResult.error(msg)} 默认 code=500，与真·系统故障同码、无法在本层区分，
- * 故这类业务失败仍会映射为 HTTP 500（要彻底分离须回改控制器业务码，另议）。
+ * 关于 code=500：{@code AjaxResult.error(msg)} 的默认 code=500 与真·系统故障同码、无法在 advice 层按 code 区分，
+ * 故白名单<b>不含 500</b>——普通业务失败（内联 error()/校验类）携带的 500 一律回退 HTTP 400；真正的系统故障由
+ * {@code GlobalExceptionHandler} 的 RuntimeException/Exception handler 以 {@code ResponseEntity} 显式返回 HTTP 500
+ * （本 advice 见响应状态已非 200 便不覆写），从而把两者在传输层区分开。
  * </p>
  *
  * @author ruoyi
  */
 @RestControllerAdvice
 public class HttpStatusResponseAdvice implements ResponseBodyAdvice<Object> {
-    /** 原样透传为 HTTP 状态的已知语义码 */
+    /** 原样透传为 HTTP 状态的已知语义码（刻意不含 500：业务失败的默认码 500 应回退 400，系统故障改由 ResponseEntity 显式置 500） */
     private static final Set<Integer> PASS_THROUGH_CODES = Set.of(
             HttpStatus.SUCCESS, HttpStatus.BAD_REQUEST, HttpStatus.UNAUTHORIZED, HttpStatus.FORBIDDEN,
             HttpStatus.NOT_FOUND, HttpStatus.BAD_METHOD, HttpStatus.CONFLICT, HttpStatus.UNSUPPORTED_TYPE,
-            HttpStatus.ERROR, HttpStatus.NOT_IMPLEMENTED);
+            HttpStatus.NOT_IMPLEMENTED);
 
     /** 白名单之外统一回退的客户端错误码 */
     private static final int FALLBACK_CLIENT_ERROR = HttpStatus.BAD_REQUEST;
@@ -54,7 +57,11 @@ public class HttpStatusResponseAdvice implements ResponseBodyAdvice<Object> {
             ServerHttpResponse response) {
         if (body instanceof AjaxResult ajaxResult) {
             Object code = ajaxResult.get(AjaxResult.CODE_TAG);
-            if (code instanceof Number codeNumber) {
+            // 仅当响应状态仍是默认 200（普通返回体）时才按业务码改写；真·系统故障已由 handler 以
+            // ResponseEntity 显式置 500，此处状态非 200 便不覆写、保留 500。
+            if (code instanceof Number codeNumber
+                    && response instanceof ServletServerHttpResponse servletResponse
+                    && servletResponse.getServletResponse().getStatus() == HttpStatus.SUCCESS) {
                 response.setStatusCode(resolveHttpStatus(codeNumber.intValue()));
             }
         }
@@ -62,7 +69,9 @@ public class HttpStatusResponseAdvice implements ResponseBodyAdvice<Object> {
     }
 
     /**
-     * 业务码 → HTTP 状态：白名单原样，其余（含 601/任意业务码/越界）回退 400。
+     * 业务码 → HTTP 状态：白名单原样；其余（含通用业务失败默认 code=500、WARN=601、任意越界码）回退 400。
+     * 真·系统故障不走此路径——由 GlobalExceptionHandler 的 RuntimeException/Exception handler 以
+     * ResponseEntity 显式置 HTTP 500，beforeBodyWrite 见状态已非 200 便不覆写。
      */
     private HttpStatusCode resolveHttpStatus(int code) {
         if (PASS_THROUGH_CODES.contains(code)) {

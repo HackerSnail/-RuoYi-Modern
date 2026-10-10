@@ -1,12 +1,15 @@
 package com.ruoyi.quartz.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Method;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.quartz.domain.SysJob;
 
 /**
@@ -37,5 +40,51 @@ public class ScheduleUtilsTest {
     @DisplayName("并发=禁止(1) 选用 QuartzDisallowConcurrentExecution")
     void denyConcurrent() throws Exception {
         assertEquals(QuartzDisallowConcurrentExecution.class, invokeGetQuartzJobClass("1"));
+    }
+
+    private static SysJob job(String cron, String invokeTarget) {
+        SysJob job = new SysJob();
+        job.setJobName("t");
+        job.setCronExpression(cron);
+        job.setInvokeTarget(invokeTarget);
+        return job;
+    }
+
+    @Test
+    @DisplayName("下沉校验：空 invokeTarget 被拒且不再击穿 whiteList 触发 NPE")
+    void blankInvokeTargetRejectedNotNpe() {
+        // 旧代码：空 invokeTarget 穿过 containsIgnoreCase(false) 直达 whiteList(null) → NPE 500
+        // 现下沉收口：首步判空抛 ServiceException（非 NPE）
+        ServiceException ex = assertThrows(ServiceException.class,
+                () -> ScheduleUtils.validateJob(job("0 0 0 * * ?", "")));
+        assertTrue(ex.getMessage().contains("调用目标字符串不能为空"));
+    }
+
+    @Test
+    @DisplayName("下沉校验：空/空白 cron 被拒")
+    void blankCronRejected() {
+        assertThrows(ServiceException.class, () -> ScheduleUtils.validateJob(job(null, "com.ruoyi.quartz.task.RyTask.ryParams('ry')")));
+        assertThrows(ServiceException.class, () -> ScheduleUtils.validateJob(job("  ", "com.ruoyi.quartz.task.RyTask.ryParams('ry')")));
+    }
+
+    @Test
+    @DisplayName("下沉校验：rmi/ldap/http 远程加载被拒")
+    void remoteLookupRejected() {
+        assertThrows(ServiceException.class, () -> ScheduleUtils.validateJob(job("0 0 0 * * ?", "rmi://evil/x")));
+        assertThrows(ServiceException.class, () -> ScheduleUtils.validateJob(job("0 0 0 * * ?", "ldap://evil/x")));
+        assertThrows(ServiceException.class, () -> ScheduleUtils.validateJob(job("0 0 0 * * ?", "http://evil/x")));
+    }
+
+    @Test
+    @DisplayName("下沉校验：非白名单全类名被拒")
+    void nonWhitelistRejected() {
+        assertThrows(ServiceException.class,
+                () -> ScheduleUtils.validateJob(job("0 0 0 * * ?", "java.lang.Runtime.exec('calc')")));
+    }
+
+    @Test
+    @DisplayName("下沉校验：白名单全类名通过（走 count>1 前缀分支，不依赖 Spring 容器）")
+    void whitelistPasses() {
+        ScheduleUtils.validateJob(job("0 0 0 * * ?", "com.ruoyi.quartz.task.RyTask.ryParams('ry')"));
     }
 }

@@ -156,9 +156,15 @@ public class SysJobServiceImpl implements ISysJobService {
     }
 
     /**
-     * 立即运行任务
-     * 
-     * @param job 调度信息
+     * 立即运行任务。
+     *
+     * <p>
+     * 安全契约：仅按 {@code job.getJobId()} 从库重载完整记录（{@code selectJobById}）并以该库记录构造
+     * JobDataMap 触发，且只有 {@code checkExists} 命中（即已注册、入库时已过白名单校验）才会执行；
+     * 请求体的 invokeTarget 等字段一律不被采用，故本方法不构成绕过白名单的 RCE 通道。
+     * </p>
+     *
+     * @param job 调度信息（实际仅取 jobId/jobGroup 定位已注册任务）
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -188,6 +194,8 @@ public class SysJobServiceImpl implements ISysJobService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public int insertJob(SysJob job) throws SchedulerException, TaskException {
+        // 安全校验收口于入库/更新：cron/invokeTarget 判空 + rmi/ldap/http 拒绝 + 白名单，覆盖所有非 HTTP 入口
+        ScheduleUtils.validateJob(job);
         // 新增任务默认置为暂停状态，交由用户手动启动，避免入库即意外触发
         job.setStatus(ScheduleConstants.Status.PAUSE.getValue());
         int rows = jobMapper.insertJob(job);
@@ -205,6 +213,8 @@ public class SysJobServiceImpl implements ISysJobService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public int updateJob(SysJob job) throws SchedulerException, TaskException {
+        // 与新增走同一套入库/更新安全校验收口
+        ScheduleUtils.validateJob(job);
         SysJob properties = selectJobById(job.getJobId());
         int rows = jobMapper.updateJob(job);
         if (rows > 0) {

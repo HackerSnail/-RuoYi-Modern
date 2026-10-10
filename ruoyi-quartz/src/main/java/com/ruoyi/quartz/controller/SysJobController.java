@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.common.annotation.Log;
-import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.page.TableDataInfo;
@@ -23,8 +22,6 @@ import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.quartz.domain.SysJob;
 import com.ruoyi.quartz.service.ISysJobService;
-import com.ruoyi.quartz.util.CronUtils;
-import com.ruoyi.quartz.util.ScheduleUtils;
 
 /**
  * 调度任务信息操作处理
@@ -75,56 +72,27 @@ public class SysJobController extends BaseController {
     /**
      * 新增定时任务
      * <p>
-     * 入库前对 invokeTarget 做多级安全校验（防止调度表被利用为 RCE 入口）：
-     * cron 合法性 → 拒绝 rmi/ldap(s)/http(s) 远程加载 → 拒绝违规特征字符串 → 必须命中白名单包。
-     * edit 采用完全相同的校验链。
+     * invokeTarget/cron 的多级安全校验（防调度表被用作 RCE 入口）已下沉 {@code SysJobServiceImpl.insertJob}
+     * 收口，覆盖所有入库路径（含非 HTTP 入口），Controller 不再重复校验。此处仅补 createBy（不信任前端）。
+     * </p>
      */
     @PreAuthorize("@ss.hasPermi('monitor:job:add')")
     @Log(title = "定时任务", businessType = BusinessType.INSERT)
     @PostMapping
     public AjaxResult add(@RequestBody SysJob job) throws SchedulerException, TaskException {
-        if (!CronUtils.isValid(job.getCronExpression())) {
-            return error("新增任务'" + job.getJobName() + "'失败，Cron表达式不正确");
-        } else if (StringUtils.containsIgnoreCase(job.getInvokeTarget(), Constants.LOOKUP_RMI)) {
-            return error("新增任务'" + job.getJobName() + "'失败，目标字符串不允许'rmi'调用");
-        } else if (StringUtils.containsAnyIgnoreCase(job.getInvokeTarget(),
-                new String[] { Constants.LOOKUP_LDAP, Constants.LOOKUP_LDAPS })) {
-            return error("新增任务'" + job.getJobName() + "'失败，目标字符串不允许'ldap(s)'调用");
-        } else if (StringUtils.containsAnyIgnoreCase(job.getInvokeTarget(),
-                new String[] { Constants.HTTP, Constants.HTTPS })) {
-            return error("新增任务'" + job.getJobName() + "'失败，目标字符串不允许'http(s)'调用");
-        } else if (StringUtils.containsAnyIgnoreCase(job.getInvokeTarget(), Constants.JOB_ERROR_STR)) {
-            return error("新增任务'" + job.getJobName() + "'失败，目标字符串存在违规");
-        } else if (!ScheduleUtils.whiteList(job.getInvokeTarget())) {
-            return error("新增任务'" + job.getJobName() + "'失败，目标字符串不在白名单内");
-        }
-        // 校验均通过后，以当前登录用户为创建人入库（不信任前端传入的 createBy）
+        // 以当前登录用户为创建人入库（不信任前端传入的 createBy）；cron/invokeTarget 校验在 Service 收口
         job.setCreateBy(getUsername());
         return toAjax(jobService.insertJob(job));
     }
 
     /**
      * 修改定时任务
+     * <p>校验同新增，已下沉 {@code SysJobServiceImpl.updateJob} 收口。此处仅补 updateBy（不信任前端）。</p>
      */
     @PreAuthorize("@ss.hasPermi('monitor:job:edit')")
     @Log(title = "定时任务", businessType = BusinessType.UPDATE)
     @PutMapping
     public AjaxResult edit(@RequestBody SysJob job) throws SchedulerException, TaskException {
-        if (!CronUtils.isValid(job.getCronExpression())) {
-            return error("修改任务'" + job.getJobName() + "'失败，Cron表达式不正确");
-        } else if (StringUtils.containsIgnoreCase(job.getInvokeTarget(), Constants.LOOKUP_RMI)) {
-            return error("修改任务'" + job.getJobName() + "'失败，目标字符串不允许'rmi'调用");
-        } else if (StringUtils.containsAnyIgnoreCase(job.getInvokeTarget(),
-                new String[] { Constants.LOOKUP_LDAP, Constants.LOOKUP_LDAPS })) {
-            return error("修改任务'" + job.getJobName() + "'失败，目标字符串不允许'ldap(s)'调用");
-        } else if (StringUtils.containsAnyIgnoreCase(job.getInvokeTarget(),
-                new String[] { Constants.HTTP, Constants.HTTPS })) {
-            return error("修改任务'" + job.getJobName() + "'失败，目标字符串不允许'http(s)'调用");
-        } else if (StringUtils.containsAnyIgnoreCase(job.getInvokeTarget(), Constants.JOB_ERROR_STR)) {
-            return error("修改任务'" + job.getJobName() + "'失败，目标字符串存在违规");
-        } else if (!ScheduleUtils.whiteList(job.getInvokeTarget())) {
-            return error("修改任务'" + job.getJobName() + "'失败，目标字符串不在白名单内");
-        }
         job.setUpdateBy(getUsername());
         return toAjax(jobService.updateJob(job));
     }
@@ -138,12 +106,20 @@ public class SysJobController extends BaseController {
     public AjaxResult changeStatus(@RequestBody SysJob job) throws SchedulerException {
         // 以库中完整记录为基准仅改 status，避免前端只传部分字段导致其他配置被置空
         SysJob newJob = jobService.selectJobById(job.getJobId());
+        if (newJob == null) {
+            return error("任务不存在：" + job.getJobId());
+        }
+        if (StringUtils.isEmpty(job.getStatus())) {
+            return error("状态不能为空");
+        }
         newJob.setStatus(job.getStatus());
         return toAjax(jobService.changeStatus(newJob));
     }
 
     /**
      * 定时任务立即执行一次
+     * <p>安全说明：Service 侧仅按 jobId 从库重载记录并触发已注册任务，不使用请求体的 invokeTarget，
+     * 故不构成绕过白名单的执行通道；详见 {@code SysJobServiceImpl.run}。</p>
      */
     @PreAuthorize("@ss.hasPermi('monitor:job:changeStatus')")
     @Log(title = "定时任务", businessType = BusinessType.UPDATE)

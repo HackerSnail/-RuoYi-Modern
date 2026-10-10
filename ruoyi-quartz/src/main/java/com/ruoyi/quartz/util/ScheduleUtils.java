@@ -12,6 +12,7 @@ import org.quartz.TriggerBuilder;
 import org.quartz.TriggerKey;
 import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.constant.ScheduleConstants;
+import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.exception.job.TaskException;
 import com.ruoyi.common.exception.job.TaskException.Code;
 import com.ruoyi.common.utils.StringUtils;
@@ -131,5 +132,46 @@ public class ScheduleUtils {
         String beanPackageName = obj.getClass().getPackage().getName();
         return StringUtils.startsWithAny(beanPackageName, Constants.JOB_WHITELIST_STR)
                 && !StringUtils.startsWithAny(beanPackageName, Constants.JOB_ERROR_STR);
+    }
+
+    /**
+     * 调度任务安全校验：入库/更新前的统一收口，防止调度表被利用为 RCE 入口。
+     *
+     * <p>
+     * 校验顺序：先判 cron 与 invokeTarget 非空（空 invokeTarget 会一路穿过特征匹配最终击穿
+     * {@link #whiteList(String)} 触发 NPE，且必然不合法，须最早拒绝）→ cron 语法合法 →
+     * 拒绝 rmi/ldap(s)/http(s) 远程加载 → 拒绝违规特征字符串 → 必须命中白名单包。
+     * 由 {@code SysJobServiceImpl.insertJob/updateJob} 调用，覆盖所有写库收口（含非 HTTP 入口），
+     * 不再依赖 Controller 层的按 HTTP 动词重复校验。
+     * </p>
+     *
+     * @param job 待入库/更新的调度任务
+     * @throws ServiceException 校验不通过（消息与原 Controller 校验链语义一致）
+     */
+    public static void validateJob(SysJob job) {
+        String jobName = job.getJobName();
+        String cron = job.getCronExpression();
+        String invokeTarget = job.getInvokeTarget();
+        if (StringUtils.isBlank(cron)) {
+            throw new ServiceException("定时任务'" + jobName + "'保存失败，Cron表达式不能为空");
+        }
+        if (StringUtils.isBlank(invokeTarget)) {
+            throw new ServiceException("定时任务'" + jobName + "'保存失败，调用目标字符串不能为空");
+        }
+        if (!CronUtils.isValid(cron)) {
+            throw new ServiceException("定时任务'" + jobName + "'保存失败，Cron表达式不正确");
+        } else if (StringUtils.containsIgnoreCase(invokeTarget, Constants.LOOKUP_RMI)) {
+            throw new ServiceException("定时任务'" + jobName + "'保存失败，目标字符串不允许'rmi'调用");
+        } else if (StringUtils.containsAnyIgnoreCase(invokeTarget,
+                new String[] { Constants.LOOKUP_LDAP, Constants.LOOKUP_LDAPS })) {
+            throw new ServiceException("定时任务'" + jobName + "'保存失败，目标字符串不允许'ldap(s)'调用");
+        } else if (StringUtils.containsAnyIgnoreCase(invokeTarget,
+                new String[] { Constants.HTTP, Constants.HTTPS })) {
+            throw new ServiceException("定时任务'" + jobName + "'保存失败，目标字符串不允许'http(s)'调用");
+        } else if (StringUtils.containsAnyIgnoreCase(invokeTarget, Constants.JOB_ERROR_STR)) {
+            throw new ServiceException("定时任务'" + jobName + "'保存失败，目标字符串存在违规");
+        } else if (!whiteList(invokeTarget)) {
+            throw new ServiceException("定时任务'" + jobName + "'保存失败，目标字符串不在白名单内");
+        }
     }
 }

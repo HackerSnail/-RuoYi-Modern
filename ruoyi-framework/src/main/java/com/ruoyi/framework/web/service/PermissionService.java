@@ -1,5 +1,6 @@
 package com.ruoyi.framework.web.service;
 
+import java.util.HashSet;
 import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -28,7 +29,7 @@ public class PermissionService {
             return false;
         }
         LoginUser loginUser = SecurityUtils.getLoginUser();
-        if (StringUtils.isNull(loginUser) || CollectionUtils.isEmpty(loginUser.getPermissions())) {
+        if (CollectionUtils.isEmpty(loginUser.getPermissions())) {
             return false;
         }
         PermissionContextHolder.setContext(permission);
@@ -42,7 +43,7 @@ public class PermissionService {
      * @return 用户是否不具备某权限
      */
     public boolean lacksPermi(String permission) {
-        return hasPermi(permission) != true;
+        return !hasPermi(permission);
     }
 
     /**
@@ -56,7 +57,7 @@ public class PermissionService {
             return false;
         }
         LoginUser loginUser = SecurityUtils.getLoginUser();
-        if (StringUtils.isNull(loginUser) || CollectionUtils.isEmpty(loginUser.getPermissions())) {
+        if (CollectionUtils.isEmpty(loginUser.getPermissions())) {
             return false;
         }
         PermissionContextHolder.setContext(permissions);
@@ -80,12 +81,13 @@ public class PermissionService {
             return false;
         }
         LoginUser loginUser = SecurityUtils.getLoginUser();
-        if (StringUtils.isNull(loginUser) || CollectionUtils.isEmpty(loginUser.getUser().getRoles())) {
+        if (CollectionUtils.isEmpty(loginUser.getUser().getRoles())) {
             return false;
         }
+        String target = StringUtils.trim(role);
         for (SysRole sysRole : loginUser.getUser().getRoles()) {
-            String roleKey = sysRole.getRoleKey();
-            if (Constants.SUPER_ADMIN.equals(roleKey) || roleKey.equals(StringUtils.trim(role))) {
+            String roleKey = StringUtils.trim(sysRole.getRoleKey());
+            if (Constants.SUPER_ADMIN.equals(roleKey) || roleKey.equals(target)) {
                 return true;
             }
         }
@@ -99,7 +101,7 @@ public class PermissionService {
      * @return 用户是否不具备某角色
      */
     public boolean lacksRole(String role) {
-        return hasRole(role) != true;
+        return !hasRole(role);
     }
 
     /**
@@ -113,11 +115,25 @@ public class PermissionService {
             return false;
         }
         LoginUser loginUser = SecurityUtils.getLoginUser();
-        if (StringUtils.isNull(loginUser) || CollectionUtils.isEmpty(loginUser.getUser().getRoles())) {
+        if (CollectionUtils.isEmpty(loginUser.getUser().getRoles())) {
             return false;
         }
+        // 一次性收集当前用户角色键（含超管短路），避免循环内反复 getLoginUser 与全量遍历角色列表
+        Set<String> roleKeys = new HashSet<>();
+        boolean superAdmin = false;
+        for (SysRole sysRole : loginUser.getUser().getRoles()) {
+            String roleKey = StringUtils.trim(sysRole.getRoleKey());
+            if (Constants.SUPER_ADMIN.equals(roleKey)) {
+                superAdmin = true;
+            }
+            roleKeys.add(roleKey);
+        }
         for (String role : roles.split(Constants.ROLE_DELIMITER)) {
-            if (hasRole(role)) {
+            String target = StringUtils.trim(role);
+            if (StringUtils.isEmpty(target)) {
+                continue;
+            }
+            if (superAdmin || roleKeys.contains(target)) {
                 return true;
             }
         }

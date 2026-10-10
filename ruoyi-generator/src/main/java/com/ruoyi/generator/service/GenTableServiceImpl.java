@@ -24,6 +24,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.alibaba.druid.DbType;
+import com.alibaba.druid.sql.SQLUtils;
+import com.alibaba.druid.sql.ast.SQLStatement;
+import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlCreateTableStatement;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.ruoyi.common.constant.Constants;
@@ -31,6 +35,7 @@ import com.ruoyi.common.constant.GenConstants;
 import com.ruoyi.common.core.text.CharsetKit;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.StringUtils;
+import com.ruoyi.common.utils.sql.SqlUtil;
 import com.ruoyi.generator.domain.GenTable;
 import com.ruoyi.generator.domain.GenTableColumn;
 import com.ruoyi.generator.mapper.GenTableColumnMapper;
@@ -162,15 +167,22 @@ public class GenTableServiceImpl implements IGenTableService {
     }
 
     /**
-     * 创建表：mapper 执行 DDL 返回 0 视为成功
+     * 创建表：契约层不接受任意 SQL，执行前在本方法内独立做纵深防御（不依赖调用方已做白名单）
      *
      * @param sql 创建表语句
      * @return 建表是否成功
      */
     @Override
     public boolean createTable(String sql) {
+        // 纵深防御：先滤危险关键字（与 Controller 一致），再用 Druid 按 MySQL 方言解析
+        SqlUtil.filterKeyword(sql);
+        List<SQLStatement> statements = SQLUtils.parseStatements(sql, DbType.mysql);
+        // 仅允许单条 CREATE TABLE：多语句/DROP/ALTER/非建表一律拒绝，并按 AST 重序列化后执行，杜绝拼接注入
+        if (statements.size() != 1 || !(statements.get(0) instanceof MySqlCreateTableStatement createStatement)) {
+            throw new ServiceException("非法建表语句：仅允许执行单条 CREATE TABLE");
+        }
         // execute 对 DDL 语句固定返回 0，== 0 即成功
-        return genTableMapper.createTable(sql) == 0;
+        return genTableMapper.createTable(createStatement.toString()) == 0;
     }
 
     /**

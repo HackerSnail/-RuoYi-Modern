@@ -2,6 +2,7 @@ package com.ruoyi.generator.service;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -144,5 +145,29 @@ public class GenTableServiceImplTest {
     @DisplayName("downloadCode(String[])：空数组即拒绝")
     void downloadCodeRejectsEmpty() {
         assertThrows(ServiceException.class, () -> service.downloadCode(new String[0]));
+    }
+
+    @Test
+    @DisplayName("createTable：合法单条 CREATE TABLE 经 AST 重序列化后下发执行并返回成功")
+    void createTableAcceptsSingleCreate() {
+        when(genTableMapper.createTable(anyString())).thenReturn(0);
+        boolean ok = service.createTable("create table demo_gen (id bigint, name varchar(20))");
+        assertTrue(ok, "单条 CREATE TABLE 应被接受并执行");
+        verify(genTableMapper).createTable(anyString());
+    }
+
+    @Test
+    @DisplayName("createTable：非建表语句(DROP)即拒绝，绝不下发 mapper")
+    void createTableRejectsNonCreateStatement() {
+        assertThrows(ServiceException.class, () -> service.createTable("drop table demo_gen"));
+        verify(genTableMapper, never()).createTable(anyString());
+    }
+
+    @Test
+    @DisplayName("createTable：多语句(两条 CREATE)即拒绝，杜绝拼接注入，绝不下发 mapper")
+    void createTableRejectsMultiStatement() {
+        assertThrows(ServiceException.class,
+                () -> service.createTable("create table a (id int); create table b (id int)"));
+        verify(genTableMapper, never()).createTable(anyString());
     }
 }

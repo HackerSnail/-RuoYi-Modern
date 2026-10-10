@@ -26,6 +26,9 @@ import com.ruoyi.quartz.service.ISysJobLogService;
 @RestController
 @RequestMapping("/monitor/jobLog")
 public class SysJobLogController extends BaseController {
+    /** 单次批量删除调度日志的最大条数上限，防止超长 IN 子句放大数据库压力 */
+    private static final int MAX_DELETE_BATCH = 500;
+
     private final ISysJobLogService jobLogService;
 
     public SysJobLogController(ISysJobLogService jobLogService) {
@@ -61,7 +64,12 @@ public class SysJobLogController extends BaseController {
     @PreAuthorize("@ss.hasPermi('monitor:job:query')")
     @GetMapping(value = "/{jobLogId}")
     public AjaxResult getInfo(@PathVariable Long jobLogId) {
-        return success(jobLogService.selectJobLogById(jobLogId));
+        // 不存在时返回 error，与查询类接口的判空口径统一（避免 success(null) 让前端拿空对象）
+        SysJobLog jobLog = jobLogService.selectJobLogById(jobLogId);
+        if (jobLog == null) {
+            return error("调度日志不存在：" + jobLogId);
+        }
+        return success(jobLog);
     }
 
     /**
@@ -71,6 +79,13 @@ public class SysJobLogController extends BaseController {
     @Log(title = "定时任务调度日志", businessType = BusinessType.DELETE)
     @DeleteMapping("/{jobLogIds}")
     public AjaxResult remove(@PathVariable Long[] jobLogIds) {
+        // 限长：空选拒绝；单次超上限拒绝，避免拼超长 IN 子句冲击大表
+        if (jobLogIds == null || jobLogIds.length == 0) {
+            return error("请选择要删除的调度日志");
+        }
+        if (jobLogIds.length > MAX_DELETE_BATCH) {
+            return error("单次最多删除 " + MAX_DELETE_BATCH + " 条调度日志，当前 " + jobLogIds.length + " 条");
+        }
         return toAjax(jobLogService.deleteJobLogByIds(jobLogIds));
     }
 

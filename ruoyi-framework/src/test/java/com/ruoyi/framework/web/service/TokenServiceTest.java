@@ -40,9 +40,8 @@ public class TokenServiceTest {
 
     @BeforeEach
     void setUp() {
-        tokenService = new TokenService(mock(RedisCache.class));
+        tokenService = new TokenService(mock(RedisCache.class), VALID_SECRET);
         ReflectionTestUtils.setField(tokenService, "header", "Authorization");
-        ReflectionTestUtils.setField(tokenService, "secret", VALID_SECRET);
         ReflectionTestUtils.setField(tokenService, "expireTime", 30);
     }
 
@@ -94,21 +93,20 @@ public class TokenServiceTest {
     }
 
     @Test
-    @DisplayName("HS512 密钥被缓存复用且算法正确")
-    void secretKeyIsCachedAndStable() {
-        SecretKey first = ReflectionTestUtils.invokeMethod(tokenService, "getSecretKey");
-        SecretKey second = ReflectionTestUtils.invokeMethod(tokenService, "getSecretKey");
+    @DisplayName("HMAC 签名密钥为 final、构造期生成且算法/强度正确")
+    void secretKeyIsFinalAndStable() {
+        SecretKey first = (SecretKey) ReflectionTestUtils.getField(tokenService, "secretKey");
+        SecretKey second = (SecretKey) ReflectionTestUtils.getField(tokenService, "secretKey");
 
         assertNotNull(first);
-        assertSame(first, second, "双检锁应保证同一密钥实例被复用");
+        assertSame(first, second, "final 字段应始终为同一密钥实例");
         assertEquals("HmacSHA512", first.getAlgorithm());
         assertTrue(first.getEncoded().length >= 64, "HS512 要求密钥不少于 64 字节");
     }
 
     @Test
-    @DisplayName("密钥过短无法构建 HMAC 签名密钥（强度约束）")
-    void shortSecretIsRejected() {
-        ReflectionTestUtils.setField(tokenService, "secret", "too-short");
-        assertThrows(Exception.class, () -> issueToken(sampleClaims()));
+    @DisplayName("密钥过短：构造期即 fail-fast（HS512 强度约束）")
+    void shortSecretFailsFastAtConstruction() {
+        assertThrows(Exception.class, () -> new TokenService(mock(RedisCache.class), "too-short"));
     }
 }

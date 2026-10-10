@@ -14,13 +14,12 @@ import com.ruoyi.common.constant.CacheConstants;
 import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.core.domain.model.LoginUser;
 import com.ruoyi.common.core.redis.RedisCache;
-import com.ruoyi.common.utils.ServletUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.http.UserAgentUtils;
 import com.ruoyi.common.utils.ip.AddressUtils;
-import com.ruoyi.common.utils.ip.IpUtils;
 import com.ruoyi.common.utils.uuid.IdUtils;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.HttpServletRequest;
@@ -39,10 +38,6 @@ public class TokenService {
     @Value("${token.header}")
     private String header;
 
-    // 令牌秘钥
-    @Value("${token.secret}")
-    private String secret;
-
     // 令牌有效期（默认30分钟）
     @Value("${token.expireTime}")
     private int expireTime;
@@ -55,25 +50,13 @@ public class TokenService {
 
     private final RedisCache redisCache;
 
-    public TokenService(RedisCache redisCache) {
+    // HMAC 签名密钥：构造期一次性生成、final 不可变；密钥不合规在启动即 fail-fast
+    private final SecretKey secretKey;
+
+    public TokenService(RedisCache redisCache, @Value("${token.secret}") String secret) {
         this.redisCache = redisCache;
-    }
-
-    // 缓存的 HMAC 签名密钥（首次使用时构建）
-    private volatile SecretKey secretKey;
-
-    /**
-     * 构建并缓存 JWT 签名密钥，HS512 要求密钥不少于 64 字节
-     */
-    private SecretKey getSecretKey() {
-        if (secretKey == null) {
-            synchronized (this) {
-                if (secretKey == null) {
-                    secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-                }
-            }
-        }
-        return secretKey;
+        // HS512 要求密钥不少于 64 字节，过短将在此抛 WeakKeyException 阻断启动
+        this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
     /**
@@ -91,9 +74,14 @@ public class TokenService {
                 String uuid = (String) claims.get(Constants.LOGIN_USER_KEY);
                 String userKey = getTokenKey(uuid);
                 LoginUser user = redisCache.getCacheObject(userKey, LoginUser.class);
+                // Redis 取不到（会话已过期或被强制下线）属正常路径：直接返回 null，交由鉴权过滤器回 401，不打日志
                 return user;
+            } catch (JwtException e) {
+                // 令牌本身非法（篡改/签名不符/格式错误）：安全相关，warn 仅记异常类型，不拼可能含令牌片段的原文
+                log.warn("令牌校验失败'{}'", e.getClass().getSimpleName());
             } catch (Exception e) {
-                log.error("获取用户信息异常'{}'", e.getMessage());
+                // 兜底：Redis 不可达等基础设施异常，记 error 供排查
+                log.error("获取登录用户信息异常'{}'", e.getClass().getSimpleName());
             }
         }
         return null;
@@ -159,10 +147,10 @@ public class TokenService {
      * @param loginUser 用户信息
      * @return 令牌
      */
-    public String createToken(LoginUser loginUser) {
+    public String createToken(LoginUser loginUser, String ip, String userAgent) {
         String token = IdUtils.fastUUID();
         loginUser.setToken(token);
-        setUserAgent(loginUser);
+        setUserAgent(loginUser, ip, userAgent);
         refreshToken(loginUser);
 
         Map<String, Object> claims = new HashMap<>();
@@ -202,10 +190,10 @@ public class TokenService {
      * 设置用户代理信息
      * 
      * @param loginUser 登录信息
+     * @param ip 客户端 IP（由调用方在请求线程抓取后传入，避免异步/内部调用取不到 Request 上下文）
+     * @param userAgent 浏览器 UA（同上）
      */
-    public void setUserAgent(LoginUser loginUser) {
-        String userAgent = ServletUtils.getRequest().getHeader("User-Agent");
-        String ip = IpUtils.getIpAddr();
+    public void setUserAgent(LoginUser loginUser, String ip, String userAgent) {
         loginUser.setIpaddr(ip);
         loginUser.setLoginLocation(AddressUtils.getRealAddressByIP(ip));
         loginUser.setBrowser(UserAgentUtils.getBrowser(userAgent));
@@ -221,7 +209,7 @@ public class TokenService {
     private String createToken(Map<String, Object> claims) {
         return Jwts.builder()
                 .claims(claims)
-                .signWith(getSecretKey(), Jwts.SIG.HS512)
+                .signWith(secretKey, Jwts.SIG.HS512)
                 .compact();
     }
 
@@ -233,7 +221,7 @@ public class TokenService {
      */
     private Claims parseToken(String token) {
         return Jwts.parser()
-                .verifyWith(getSecretKey())
+                .verifyWith(secretKey)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();

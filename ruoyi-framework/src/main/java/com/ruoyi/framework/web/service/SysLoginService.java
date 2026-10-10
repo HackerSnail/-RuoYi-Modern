@@ -94,8 +94,8 @@ public class SysLoginService {
         asyncManager.execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_SUCCESS, MessageUtils.message("user.login.success"), ip, userAgent));
         LoginUser loginUser = (LoginUser) authentication.getPrincipal();
         recordLoginInfo(loginUser.getUserId(), ip);
-        // 生成token
-        return tokenService.createToken(loginUser);
+        // 生成token（复用方法开头已抓好的 ip/userAgent，TokenService 不再自行读 Request 上下文）
+        return tokenService.createToken(loginUser, ip, userAgent);
     }
 
     /**

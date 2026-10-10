@@ -105,12 +105,13 @@ public class SysLoginServiceTest {
             Authentication authentication = mock(Authentication.class);
             when(authentication.getPrincipal()).thenReturn(loginUser);
             when(authenticationManager.authenticate(any())).thenReturn(authentication);
-            when(tokenService.createToken(loginUser)).thenReturn("jwt-token");
+            when(tokenService.createToken(loginUser, "127.0.0.1", "junit-ua")).thenReturn("jwt-token");
 
             String result = loginService.login("admin", "123456", null, null);
 
             assertEquals("jwt-token", result);
-            verify(tokenService).createToken(loginUser);
+            // 断言 createToken 复用请求线程已抓好的 ip/userAgent（TokenService 不再自行读 Request）
+            verify(tokenService).createToken(loginUser, "127.0.0.1", "junit-ua");
             verify(userService).updateLoginInfo(any(), any(), any());
         }
     }
@@ -133,7 +134,7 @@ public class SysLoginServiceTest {
 
             assertThrows(UserPasswordNotMatchException.class,
                     () -> loginService.login("admin", "123456", null, null));
-            verify(tokenService, never()).createToken(any());
+            verify(tokenService, never()).createToken(any(), any(), any());
         }
     }
 

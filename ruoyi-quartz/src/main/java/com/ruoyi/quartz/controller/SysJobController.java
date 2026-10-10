@@ -31,6 +31,9 @@ import com.ruoyi.quartz.service.ISysJobService;
 @RestController
 @RequestMapping("/monitor/job")
 public class SysJobController extends BaseController {
+    /** 单次批量删除任务的最大条数上限，与调度日志删除同一口径，防止逐个 unschedule 放大调度器/数据库压力 */
+    private static final int MAX_DELETE_BATCH = 500;
+
     private final ISysJobService jobService;
 
     public SysJobController(ISysJobService jobService) {
@@ -136,6 +139,13 @@ public class SysJobController extends BaseController {
     @Log(title = "定时任务", businessType = BusinessType.DELETE)
     @DeleteMapping("/{jobIds}")
     public AjaxResult remove(@PathVariable Long[] jobIds) throws SchedulerException {
+        // 与调度日志删除同一限长口径：空选拒绝、单次超上限拒绝，避免逐个 unschedule+delete 放大压力
+        if (jobIds == null || jobIds.length == 0) {
+            return error("请选择要删除的任务");
+        }
+        if (jobIds.length > MAX_DELETE_BATCH) {
+            return error("单次最多删除 " + MAX_DELETE_BATCH + " 条任务，当前 " + jobIds.length + " 条");
+        }
         jobService.deleteJobByIds(jobIds);
         return success();
     }

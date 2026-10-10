@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,8 +17,9 @@ import com.ruoyi.generator.domain.GenTableColumn;
 import com.ruoyi.generator.mapper.GenTableColumnMapper;
 
 /**
- * {@link GenTableColumnMapper} 本轮改动（批量插入 batchInsertGenTableColumn、按主键收窄的
- * deleteGenTableColumns、以及两个批量删除的空集合守卫）的集成测试，连真实 MySQL、方法级事务自动回滚。
+ * {@link GenTableColumnMapper} 本轮改动的集成测试（批量插入 batchInsertGenTableColumn、按主键收窄的
+ * deleteGenTableColumns、两个批量删除的空集合守卫、以及多表批量反读列 selectDbTableColumnsByNames），
+ * 连真实 MySQL、方法级事务自动回滚。
  *
  * <p>
  * 用唯一哨兵 tableId + create_by='itest' 自建列 fixture，不依赖也不污染共享库既有数据。空集合守卫用例
@@ -88,5 +91,37 @@ public class GenTableColumnMapperIntegrationTest extends BaseMapperIntegrationTe
         assertEquals(0, genTableColumnMapper.deleteGenTableColumns(null));
         assertEquals(0, genTableColumnMapper.deleteGenTableColumnByIds(new Long[0]));
         assertEquals(0, genTableColumnMapper.deleteGenTableColumnByIds(null));
+    }
+
+    @Test
+    @DisplayName("批量反读多表列：行数等于逐表单查之和，并按 tableName 正确分组")
+    void batchReadMatchesPerTableAndGroups() {
+        // 借用共享库中必定存在的两张元数据表作为只读 fixture（information_schema 反读，不写库）
+        String[] names = { "gen_table", "gen_table_column" };
+        List<GenTableColumn> batch = genTableColumnMapper.selectDbTableColumnsByNames(names);
+        List<GenTableColumn> genTableCols = genTableColumnMapper.selectDbTableColumnsByName("gen_table");
+        List<GenTableColumn> genColumnCols = genTableColumnMapper.selectDbTableColumnsByName("gen_table_column");
+
+        assertEquals(genTableCols.size() + genColumnCols.size(), batch.size(),
+                "批量反读行数应等于两表单查之和");
+
+        // 分组键：批量结果应携非空 tableName（单查结果不 select table_name，故为 null）
+        assertTrue(batch.stream().allMatch(c -> c.getTableName() != null),
+                "批量结果每列都应携带归属表名分组键");
+        Map<String, Long> counts = batch.stream()
+                .collect(Collectors.groupingBy(GenTableColumn::getTableName, Collectors.counting()));
+        assertEquals((long) genTableCols.size(), counts.getOrDefault("gen_table", 0L), "gen_table 分组行数应一致");
+        assertEquals((long) genColumnCols.size(), counts.getOrDefault("gen_table_column", 0L),
+                "gen_table_column 分组行数应一致");
+    }
+
+    @Test
+    @DisplayName("空/null 表名数组批量读退化为 1=0：不抛语法错、返回空")
+    void emptyNamesBatchReadReturnsEmpty() {
+        // 未加守卫前会生成 `table_name in ()`，MySQL 语法报错；现应退化为 1=0 返回空
+        assertTrue(genTableColumnMapper.selectDbTableColumnsByNames(new String[0]).isEmpty(),
+                "空数组应返回空且不报错");
+        assertTrue(genTableColumnMapper.selectDbTableColumnsByNames(null).isEmpty(),
+                "null 应返回空且不报错");
     }
 }

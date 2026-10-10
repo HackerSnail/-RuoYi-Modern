@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -181,14 +182,20 @@ public class GenTableServiceImpl implements IGenTableService {
     @Transactional
     public void importGenTable(List<GenTable> tableList, String tplWebType, String operName) {
         try {
+            // 一次批量反读所有待导入表的列结构并按表名分组，避免逐表 N+1（导 N 表仅 1 次 information_schema 查询）
+            String[] tableNames = tableList.stream().map(GenTable::getTableName).toArray(String[]::new);
+            Map<String, List<GenTableColumn>> columnsByTable = tableNames.length == 0 ? Collections.emptyMap()
+                    : genTableColumnMapper.selectDbTableColumnsByNames(tableNames).stream()
+                            .collect(Collectors.groupingBy(GenTableColumn::getTableName));
             for (GenTable table : tableList) {
                 String tableName = table.getTableName();
                 table.setTplWebType(tplWebType);
                 genUtils.initTable(table, operName);
                 int row = genTableMapper.insertGenTable(table);
                 if (row > 0) {
-                    // 保存列信息
-                    List<GenTableColumn> genTableColumns = genTableColumnMapper.selectDbTableColumnsByName(tableName);
+                    // 保存列信息：从预取的分组结果中取该表的列，逐列初始化后合并为一条多值 INSERT
+                    List<GenTableColumn> genTableColumns = columnsByTable.getOrDefault(tableName,
+                            Collections.emptyList());
                     if (StringUtils.isNotEmpty(genTableColumns)) {
                         for (GenTableColumn column : genTableColumns) {
                             GenUtils.initColumnField(column, table);

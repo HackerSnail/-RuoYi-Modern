@@ -2,6 +2,7 @@ package com.ruoyi.generator.domain;
 
 import jakarta.validation.constraints.NotBlank;
 import org.apache.commons.lang3.ArrayUtils;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.ruoyi.common.constant.GenConstants;
 import com.ruoyi.common.core.domain.BaseEntity;
 import com.ruoyi.common.utils.StringUtils;
@@ -70,6 +71,13 @@ public class GenTableColumn extends BaseEntity {
 
     /** 排序 */
     private Integer sort;
+
+    /**
+     * 所属表名：仅在批量反读 information_schema.columns（导入多表）时用作按表分组列的键，
+     * 非 gen_table_column 持久化字段（batchInsert 未列该字段），且不参与 JSON 序列化
+     */
+    @JsonIgnore
+    private transient String tableName;
 
     public void setColumnId(Long columnId) {
         this.columnId = columnId;
@@ -279,6 +287,14 @@ public class GenTableColumn extends BaseEntity {
 
     public Integer getSort() {
         return sort;
+    }
+
+    public void setTableName(String tableName) {
+        this.tableName = tableName;
+    }
+
+    public String getTableName() {
+        return tableName;
     }
 
     /** 当前列是否为父类(BaseEntity/TreeEntity)自带字段，是则不重复生成 Domain 属性 */

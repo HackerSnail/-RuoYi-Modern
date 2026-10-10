@@ -20,6 +20,16 @@ public interface GenTableColumnMapper {
     public List<GenTableColumn> selectDbTableColumnsByName(@Param("tableName") String tableName);
 
     /**
+     * 从 information_schema.columns 批量反向读取多个实表的列结构（多表导入时一次查回，避免逐表 N+1）。
+     * 结果按 table_name、ordinal_position 排序，并以 {@link GenTableColumn#getTableName()} 携带归属表名供分组；
+     * tableNames 为空时 XML 内退化为 1=0，不报错也不返任何列。
+     * 
+     * @param tableNames 表名称数组
+     * @return 列信息集合（含 tableName 分组键）
+     */
+    public List<GenTableColumn> selectDbTableColumnsByNames(@Param("tableNames") String[] tableNames);
+
+    /**
      * 按生成表ID查询其已保存的列配置（按 sort 排序，用于预览/编辑时加载）
      * 
      * @param tableId 生成表ID

@@ -5,6 +5,7 @@
     <resultMap type="GenTableColumn" id="GenTableColumnResult">
         <id property="columnId" column="column_id" />
         <result property="tableId" column="table_id" />
+        <result property="tableName" column="table_name" />
         <result property="columnName" column="column_name" />
         <result property="columnComment" column="column_comment" />
         <result property="columnType" column="column_type" />
@@ -46,6 +47,23 @@
         ordinal_position as sort, column_comment, (case when extra = 'auto_increment' then '1' else
         '0' end) as is_increment, column_type from information_schema.columns where table_schema =
         (select database()) and table_name = (#{tableName}) order by ordinal_position </select>
+
+    <!-- 多表导入：从 information_schema.columns 一次查回多个实表的列（按 table_name、ordinal_position 排序），
+         额外 select table_name 并映射到 GenTableColumn.tableName 作为分组键。tableNames 为空时退化为 1=0，
+         既避免 IN () 语法错，也不跨库泄露（table_schema 恒定限定当前库） -->
+    <select id="selectDbTableColumnsByNames" resultMap="GenTableColumnResult">
+        select table_name, column_name, (case when (is_nullable = 'no' <![CDATA[ && ]]> column_key != 'PRI')
+        then '1' else '0' end) as is_required, (case when column_key = 'PRI' then '1' else '0' end) as
+        is_pk, ordinal_position as sort, column_comment, (case when extra = 'auto_increment' then '1'
+        else '0' end) as is_increment, column_type from information_schema.columns where table_schema
+        = (select database())
+        <choose>
+            <when test="tableNames != null and tableNames.length > 0"> and table_name in <foreach
+                    collection="tableNames" item="name" open="(" separator="," close=")"> #{name} </foreach>
+            </when>
+            <otherwise> and 1 = 0</otherwise>
+        </choose>
+        order by table_name, ordinal_position </select>
 
     <!-- 新增列配置：useGeneratedKeys 回写自增主键到 columnId，动态列仅插非空字段 -->
     <insert id="insertGenTableColumn" parameterType="GenTableColumn" useGeneratedKeys="true"

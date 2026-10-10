@@ -2,9 +2,12 @@ package com.ruoyi.framework.manager;
 
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import com.ruoyi.common.utils.Threads;
+import jakarta.annotation.PreDestroy;
 
 /**
  * 异步任务管理器
@@ -13,6 +16,8 @@ import com.ruoyi.common.utils.Threads;
  */
 @Component
 public class AsyncManager {
+    private static final Logger log = LoggerFactory.getLogger("sys-user");
+
     /**
      * 操作延迟10毫秒
      */
@@ -39,11 +44,14 @@ public class AsyncManager {
     }
 
     /**
-     * 停止任务线程池：容器关闭时由 ShutdownManager 的 @PreDestroy 调用，
-     * 走 shutdown + awaitTermination 等待在途异步任务跑完（比 Spring 推断的裸
-     * shutdown() 更完整，后者只发起不等待）。
+     * 优雅停机：本 bean 构造依赖 scheduledExecutorService，销毁顺序上必然先于该池 bean，
+     * 故此处池尚未被 Spring 推断式 shutdown()，走 shutdown + awaitTermination 等待在途
+     * 异步日志(登录/操作日志的 DB 插入)跑完——这是池线程为 daemon 时唯一能防止 JVM 提前
+     * 退出把它们拦腰砍断的一步（裸 shutdown() 只发起、不等待）。
      */
+    @PreDestroy
     public void shutdown() {
+        log.info("====关闭后台任务线程池====");
         Threads.shutdownAndAwaitTermination(executor);
     }
 }

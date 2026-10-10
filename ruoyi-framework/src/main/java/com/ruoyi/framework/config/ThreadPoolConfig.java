@@ -84,7 +84,8 @@ public class ThreadPoolConfig {
         executor.setRemoveOnCancelPolicy(true);
         // 关闭后不再执行已排期的延迟任务、也不再延续周期任务。
         // 注意：本池承载 10ms 延迟的一次性异步日志(登录/操作日志)，executeDelayedTasks=false 会使停机
-        // 瞬间在途的少量异步任务被丢弃而非执行完；现有 ShutdownManager 已做优雅关停，此处按评审进一步收紧，如实标注该取舍。
+        // 瞬间在途的少量异步任务被丢弃而非执行完；本 bean 的关闭由拥有该池的 AsyncManager 的 @PreDestroy
+        // 走 shutdownAndAwaitTermination 优雅等待，此处按评审进一步收紧，如实标注该取舍。
         executor.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
         executor.setContinueExistingPeriodicTasksAfterShutdownPolicy(false);
         return executor;

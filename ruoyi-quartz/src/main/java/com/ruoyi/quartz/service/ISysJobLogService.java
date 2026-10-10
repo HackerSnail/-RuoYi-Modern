@@ -4,7 +4,7 @@ import java.util.List;
 import com.ruoyi.quartz.domain.SysJobLog;
 
 /**
- * 定时任务调度日志信息信息 服务层
+ * 定时任务调度日志信息 服务层
  * 
  * @author ruoyi
  */
@@ -35,8 +35,9 @@ public interface ISysJobLogService {
     /**
      * 批量删除调度日志信息
      * 
-     * @param logIds 需要删除的日志ID
+     * @param logIds 需要删除的日志ID（单次不超过 500 条）
      * @return 结果
+     * @throws com.ruoyi.common.exception.ServiceException 空选或单次超过 500 条上限
      */
     public int deleteJobLogByIds(Long[] logIds);
 

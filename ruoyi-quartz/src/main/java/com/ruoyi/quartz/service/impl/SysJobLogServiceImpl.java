@@ -65,11 +65,11 @@ public class SysJobLogServiceImpl implements ISysJobLogService {
     /**
      * 删除任务日志
      * 
-     * @param jobId 调度日志ID
+     * @param jobLogId 调度日志ID
      */
     @Override
-    public int deleteJobLogById(Long jobId) {
-        return jobLogMapper.deleteJobLogById(jobId);
+    public int deleteJobLogById(Long jobLogId) {
+        return jobLogMapper.deleteJobLogById(jobLogId);
     }
 
     /**

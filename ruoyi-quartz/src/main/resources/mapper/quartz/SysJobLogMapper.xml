@@ -40,11 +40,6 @@
 		</where>
 		order by create_time desc </select>
 
-	<!-- 查询全部调度日志（无过滤） -->
-	<select id="selectJobLogAll" resultMap="SysJobLogResult">
-		<include refid="selectJobLogVo" />
-	</select>
-
 	<!-- 按ID查询单条调度日志（详情弹窗用） -->
 	<select id="selectJobLogById" parameterType="Long" resultMap="SysJobLogResult">
 		<include refid="selectJobLogVo" /> where job_log_id = #{jobLogId} </select>

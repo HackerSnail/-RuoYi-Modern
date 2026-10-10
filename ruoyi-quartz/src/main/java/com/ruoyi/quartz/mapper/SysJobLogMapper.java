@@ -18,13 +18,6 @@ public interface SysJobLogMapper {
     public List<SysJobLog> selectJobLogList(SysJobLog jobLog);
 
     /**
-     * 查询所有调度任务日志
-     *
-     * @return 调度任务日志列表
-     */
-    public List<SysJobLog> selectJobLogAll();
-
-    /**
      * 通过调度任务日志ID查询调度信息
      * 
      * @param jobLogId 调度任务日志ID
@@ -51,10 +44,10 @@ public interface SysJobLogMapper {
     /**
      * 删除任务日志
      * 
-     * @param jobId 调度日志ID
+     * @param jobLogId 调度日志ID
      * @return 结果
      */
-    public int deleteJobLogById(Long jobId);
+    public int deleteJobLogById(Long jobLogId);
 
     /**
      * 清空任务日志

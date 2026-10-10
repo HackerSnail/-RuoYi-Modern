@@ -43,10 +43,10 @@ public interface ISysJobLogService {
     /**
      * 删除任务日志
      * 
-     * @param jobId 调度日志ID
+     * @param jobLogId 调度日志ID
      * @return 结果
      */
-    public int deleteJobLogById(Long jobId);
+    public int deleteJobLogById(Long jobLogId);
 
     /**
      * 清空任务日志

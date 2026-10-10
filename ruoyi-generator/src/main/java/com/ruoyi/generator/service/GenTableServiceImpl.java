@@ -158,7 +158,7 @@ public class GenTableServiceImpl implements IGenTableService {
     @Transactional
     public void deleteGenTableByIds(Long[] tableIds) {
         genTableMapper.deleteGenTableByIds(tableIds);
-        genTableColumnMapper.deleteGenTableColumnByIds(tableIds);
+        genTableColumnMapper.deleteGenTableColumnByTableIds(tableIds);
     }
 
     /**

@@ -70,10 +70,10 @@ public interface GenTableColumnMapper {
     public int deleteGenTableColumns(@Param("columnIds") List<Long> columnIds);
 
     /**
-     * 按生成表ID批量删除其列配置（删除/重新导入生成表时级联清理；空数组时 XML 内退化为 1=0）
+     * 按生成表ID（table_id）批量删除其列配置（删除/重新导入生成表时级联清理；空数组时 XML 内退化为 1=0）
      * 
-     * @param ids 需要删除的生成表ID
+     * @param tableIds 需要清理列配置的生成表ID
      * @return 结果
      */
-    public int deleteGenTableColumnByIds(@Param("ids") Long[] ids);
+    public int deleteGenTableColumnByTableIds(@Param("tableIds") Long[] tableIds);
 }

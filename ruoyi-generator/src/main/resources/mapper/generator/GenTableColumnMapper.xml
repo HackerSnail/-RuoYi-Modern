@@ -175,12 +175,12 @@
             <if test="updateBy != null">update_by
         = #{updateBy},</if> update_time = sysdate() </set> where column_id = #{columnId} </update>
 
-    <!-- 按生成表ID批量删除其列配置：加空数组守卫，ids 为空时条件退化为 1=0（避免 IN () 语法错、也不全表删） -->
-    <delete id="deleteGenTableColumnByIds"> delete from gen_table_column <where>
-            <if test="ids != null and ids.length > 0">table_id in <foreach collection="ids"
+    <!-- 按生成表ID(table_id)批量删除其列配置：加空数组守卫，tableIds 为空时条件退化为 1=0（避免 IN () 语法错、也不全表删） -->
+    <delete id="deleteGenTableColumnByTableIds"> delete from gen_table_column <where>
+            <if test="tableIds != null and tableIds.length > 0">table_id in <foreach collection="tableIds"
                     item="tableId" open="(" separator="," close=")"> #{tableId} </foreach>
             </if>
-            <if test="ids == null or ids.length == 0">1 = 0</if>
+            <if test="tableIds == null or tableIds.length == 0">1 = 0</if>
         </where>
     </delete>
 

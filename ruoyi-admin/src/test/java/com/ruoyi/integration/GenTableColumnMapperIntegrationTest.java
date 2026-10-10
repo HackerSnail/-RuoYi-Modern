@@ -89,8 +89,8 @@ public class GenTableColumnMapperIntegrationTest extends BaseMapperIntegrationTe
         // 这些调用在加空集合守卫前会生成 `... in ()`，MySQL 直接语法报错；现应安全返回 0
         assertEquals(0, genTableColumnMapper.deleteGenTableColumns(Collections.emptyList()));
         assertEquals(0, genTableColumnMapper.deleteGenTableColumns(null));
-        assertEquals(0, genTableColumnMapper.deleteGenTableColumnByIds(new Long[0]));
-        assertEquals(0, genTableColumnMapper.deleteGenTableColumnByIds(null));
+        assertEquals(0, genTableColumnMapper.deleteGenTableColumnByTableIds(new Long[0]));
+        assertEquals(0, genTableColumnMapper.deleteGenTableColumnByTableIds(null));
     }
 
     @Test

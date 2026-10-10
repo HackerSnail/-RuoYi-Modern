@@ -57,7 +57,7 @@ public class GenTableColumnServiceImpl implements IGenTableColumnService {
 	}
 
 	/**
-	 * 按生成表ID批量删除其列配置
+	 * 按生成表ID（table_id）批量删除其列配置
 	 * 
 	 * <p>
 	 * 入参是「生成表ID(table_id)」的逗号分隔串（非列主键 column_id）：底层 mapper 以
@@ -69,8 +69,8 @@ public class GenTableColumnServiceImpl implements IGenTableColumnService {
 	 * @return 结果
 	 */
 	@Override
-	public int deleteGenTableColumnByIds(String tableIds) {
+	public int deleteGenTableColumnByTableIds(String tableIds) {
 		// 前端传逗号分隔的生成表ID串，转 Long[] 后交由 mapper 按 table_id 批量删除
-		return genTableColumnMapper.deleteGenTableColumnByIds(Convert.toLongArray(tableIds));
+		return genTableColumnMapper.deleteGenTableColumnByTableIds(Convert.toLongArray(tableIds));
 	}
 }

@@ -6,8 +6,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.ruoyi.common.constant.GenConstants;
 import com.ruoyi.generator.config.GenConfig;
 import com.ruoyi.generator.domain.GenTable;
+import com.ruoyi.generator.domain.GenTableColumn;
 
 /**
  * {@link GenUtils} 实例化改造后的行为测试。
@@ -61,5 +63,57 @@ public class GenUtilsTest {
 
         // 不去前缀：sys_user → 驼峰 SysUser
         assertEquals("SysUser", genUtils.convertClassName("sys_user"));
+    }
+
+    @Test
+    @DisplayName("replaceFirst：字面量剔除前缀，含正则元字符的前缀不再被当正则误匹配")
+    void replaceFirstIsLiteral() {
+        assertEquals("user", GenUtils.replaceFirst("sys_user", new String[] { "sys_", "gen_" }));
+        // 关键：前缀 "sys*" 若按正则(sy 后 s 可重复)会误删成 "*abc"；字面量截取应得 "abc"
+        assertEquals("abc", GenUtils.replaceFirst("sys*abc", new String[] { "sys*" }));
+        // 无命中前缀则原样返回
+        assertEquals("sys_user", GenUtils.replaceFirst("sys_user", new String[] { "gen_" }));
+    }
+
+    @Test
+    @DisplayName("getColumnLength：合法取数，无括号/非数字/缺右括号均降级 0 不抛异常")
+    void getColumnLengthDefensive() {
+        assertEquals(255, GenUtils.getColumnLength("varchar(255)").intValue());
+        assertEquals(0, GenUtils.getColumnLength("text").intValue()); // 无括号
+        assertEquals(0, GenUtils.getColumnLength("decimal(10,2)").intValue()); // 括号内非单一整数→NFE→0
+        assertEquals(0, GenUtils.getColumnLength("varchar(255").intValue()); // 缺右括号→substringBetween null→0
+    }
+
+    @Test
+    @DisplayName("initColumnField：数字类型 javaType 正确推导，精度畸形(非数字)降级 Long 不中断")
+    void initColumnFieldNumberDerivation() {
+        GenTable table = new GenTable();
+        table.setTableId(1L);
+        table.setCreateBy("admin");
+
+        GenTableColumn dec = new GenTableColumn();
+        dec.setColumnName("amount");
+        dec.setColumnType("decimal(10,2)");
+        GenUtils.initColumnField(dec, table);
+        assertEquals(GenConstants.TYPE_BIGDECIMAL, dec.getJavaType());
+
+        GenTableColumn small = new GenTableColumn();
+        small.setColumnName("age");
+        small.setColumnType("int(9)");
+        GenUtils.initColumnField(small, table);
+        assertEquals(GenConstants.TYPE_INTEGER, small.getJavaType());
+
+        GenTableColumn big = new GenTableColumn();
+        big.setColumnName("bigcol");
+        big.setColumnType("int(11)");
+        GenUtils.initColumnField(big, table);
+        assertEquals(GenConstants.TYPE_LONG, big.getJavaType());
+
+        // 畸形：int(abc) 解析抛 NFE，应被捕获并降级为 Long，不阻断导入
+        GenTableColumn weird = new GenTableColumn();
+        weird.setColumnName("weird");
+        weird.setColumnType("int(abc)");
+        GenUtils.initColumnField(weird, table);
+        assertEquals(GenConstants.TYPE_LONG, weird.getJavaType());
     }
 }

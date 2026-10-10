@@ -76,15 +76,20 @@ public class GenUtils {
 
             // 如果是浮点型 统一用BigDecimal
             String[] str = StringUtils.split(StringUtils.substringBetween(column.getColumnType(), "(", ")"), ",");
-            if (str != null && str.length == 2 && Integer.parseInt(str[1]) > 0) {
-                column.setJavaType(GenConstants.TYPE_BIGDECIMAL);
-            }
-            // 如果是整形（长度<=10 可容纳于 int，经验阈值）
-            else if (str != null && str.length == 1 && Integer.parseInt(str[0]) <= 10) {
-                column.setJavaType(GenConstants.TYPE_INTEGER);
-            }
-            // 长整形
-            else {
+            // 防御：精度/刻度解析失败（畸形 column_type）不应中断整表导入，降级按长整形处理
+            try {
+                if (str != null && str.length == 2 && Integer.parseInt(str[1]) > 0) {
+                    column.setJavaType(GenConstants.TYPE_BIGDECIMAL);
+                }
+                // 如果是整形（长度<=10 可容纳于 int，经验阈值）
+                else if (str != null && str.length == 1 && Integer.parseInt(str[0]) <= 10) {
+                    column.setJavaType(GenConstants.TYPE_INTEGER);
+                }
+                // 长整形
+                else {
+                    column.setJavaType(GenConstants.TYPE_LONG);
+                }
+            } catch (NumberFormatException e) {
                 column.setJavaType(GenConstants.TYPE_LONG);
             }
         }
@@ -144,7 +149,8 @@ public class GenUtils {
     }
 
     /**
-     * 获取模块名
+     * 获取模块名：取包名最后一段（最后一个 "." 之后）。
+     * <p>无分隔符（不含 "."）时 lastIndex=-1，substring 返回整个原串。</p>
      * 
      * @param packageName 包名
      * @return 模块名
@@ -156,7 +162,8 @@ public class GenUtils {
     }
 
     /**
-     * 获取业务名
+     * 获取业务名：取表名最后一段（最后一个 "_" 之后）。
+     * <p>无分隔符（不含 "_"）时 lastIndex=-1，substring 返回整个原串。</p>
      * 
      * @param tableName 表名
      * @return 业务名
@@ -193,8 +200,9 @@ public class GenUtils {
     public static String replaceFirst(String replacementm, String[] searchList) {
         String text = replacementm;
         for (String searchString : searchList) {
+            // 已用字面量 startsWith 确认前缀，直接按长度截取剔除；勿用 replaceFirst（其首参会被当正则，前缀含 . * 等元字符时误匹配）
             if (replacementm.startsWith(searchString)) {
-                text = replacementm.replaceFirst(searchString, "");
+                text = replacementm.substring(searchString.length());
                 break;
             }
         }
@@ -234,7 +242,12 @@ public class GenUtils {
     public static Integer getColumnLength(String columnType) {
         if (StringUtils.indexOf(columnType, "(") > 0) {
             String length = StringUtils.substringBetween(columnType, "(", ")");
-            return Integer.valueOf(length);
+            // 防御：长度仅用于"是否切 textarea"的经验判断，括号内非数字/缺右括号(→null)不应抛异常阻断整表导入，降级 0
+            try {
+                return Integer.valueOf(length);
+            } catch (NumberFormatException e) {
+                return 0;
+            }
         } else {
             return 0;
         }

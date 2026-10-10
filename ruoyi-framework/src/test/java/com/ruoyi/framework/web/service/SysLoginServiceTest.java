@@ -32,7 +32,7 @@ import com.ruoyi.common.core.redis.RedisCache;
 import com.ruoyi.common.exception.user.BlackListException;
 import com.ruoyi.common.exception.user.CaptchaException;
 import com.ruoyi.common.exception.user.CaptchaExpireException;
-import com.ruoyi.common.exception.user.UserNotExistsException;
+import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.exception.user.UserPasswordNotMatchException;
 import com.ruoyi.common.utils.MessageUtils;
 import com.ruoyi.common.utils.ServletUtils;
@@ -141,15 +141,9 @@ public class SysLoginServiceTest {
     @DisplayName("前置校验：空密码直接拒绝")
     void loginPreCheckRejectsBlankPassword() {
         try (MockedStatic<AsyncFactory> asyncFactory = mockStatic(AsyncFactory.class);
-             MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg");
-             MockedStatic<IpUtils> ipUtils = mockStatic(IpUtils.class);
-             MockedStatic<ServletUtils> servletUtils = mockStatic(ServletUtils.class)) {
-            ipUtils.when(IpUtils::getIpAddr).thenReturn("127.0.0.1");
-            HttpServletRequest request = mock(HttpServletRequest.class);
-            when(request.getHeader("User-Agent")).thenReturn("junit-ua");
-            servletUtils.when(ServletUtils::getRequest).thenReturn(request);
-            assertThrows(UserNotExistsException.class,
-                    () -> loginService.loginPreCheck("admin", ""));
+             MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg")) {
+            assertThrows(ServiceException.class,
+                    () -> loginService.loginPreCheck("admin", "", "127.0.0.1", "junit-ua"));
         }
     }
 
@@ -160,29 +154,18 @@ public class SysLoginServiceTest {
 
         try (MockedStatic<AsyncFactory> asyncFactory = mockStatic(AsyncFactory.class);
              MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg");
-             MockedStatic<IpUtils> ipUtils = mockStatic(IpUtils.class);
-             MockedStatic<ServletUtils> servletUtils = mockStatic(ServletUtils.class)) {
-            ipUtils.when(IpUtils::getIpAddr).thenReturn("1.2.3.4");
+             MockedStatic<IpUtils> ipUtils = mockStatic(IpUtils.class)) {
             ipUtils.when(() -> IpUtils.isMatchedIp(any(), any())).thenReturn(true);
-            HttpServletRequest request = mock(HttpServletRequest.class);
-            when(request.getHeader("User-Agent")).thenReturn("junit-ua");
-            servletUtils.when(ServletUtils::getRequest).thenReturn(request);
-
             assertThrows(BlackListException.class,
-                    () -> loginService.loginPreCheck("admin", "123456"));
+                    () -> loginService.loginPreCheck("admin", "123456", "1.2.3.4", "junit-ua"));
         }
     }
 
     @Test
     @DisplayName("recordLoginInfo：委托 userService 更新登录 IP 与时间")
     void recordLoginInfoDelegatesToUserService() {
-        try (MockedStatic<IpUtils> ipUtils = mockStatic(IpUtils.class)) {
-            ipUtils.when(IpUtils::getIpAddr).thenReturn("10.0.0.1");
-
-            loginService.recordLoginInfo(2L);
-
-            verify(userService).updateLoginInfo(eq(2L), eq("10.0.0.1"), any(LocalDateTime.class));
-        }
+        loginService.recordLoginInfo(2L, "10.0.0.1");
+        verify(userService).updateLoginInfo(eq(2L), eq("10.0.0.1"), any(LocalDateTime.class));
     }
 
     @Test
@@ -190,7 +173,7 @@ public class SysLoginServiceTest {
     void validateCaptchaSkippedWhenDisabled() {
         when(configService.selectCaptchaEnabled()).thenReturn(false);
 
-        assertDoesNotThrow(() -> loginService.validateCaptcha("admin", "1234", "uuid"));
+        assertDoesNotThrow(() -> loginService.validateCaptcha("admin", "1234", "uuid", "127.0.0.1", "junit-ua"));
         verify(redisCache, never()).getCacheObject(anyString());
     }
 
@@ -201,15 +184,9 @@ public class SysLoginServiceTest {
         when(redisCache.getCacheObject(anyString())).thenReturn("abcd");
 
         try (MockedStatic<AsyncFactory> asyncFactory = mockStatic(AsyncFactory.class);
-             MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg");
-             MockedStatic<IpUtils> ipUtils = mockStatic(IpUtils.class);
-             MockedStatic<ServletUtils> servletUtils = mockStatic(ServletUtils.class)) {
-            ipUtils.when(IpUtils::getIpAddr).thenReturn("127.0.0.1");
-            HttpServletRequest request = mock(HttpServletRequest.class);
-            when(request.getHeader("User-Agent")).thenReturn("junit-ua");
-            servletUtils.when(ServletUtils::getRequest).thenReturn(request);
+             MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg")) {
             assertThrows(CaptchaException.class,
-                    () -> loginService.validateCaptcha("admin", "zzzz", "uuid"));
+                    () -> loginService.validateCaptcha("admin", "zzzz", "uuid", "127.0.0.1", "junit-ua"));
             verify(redisCache).deleteObject(CacheConstants.CAPTCHA_CODE_KEY + "uuid");
         }
     }
@@ -221,15 +198,9 @@ public class SysLoginServiceTest {
         when(redisCache.getCacheObject(anyString())).thenReturn(null);
 
         try (MockedStatic<AsyncFactory> asyncFactory = mockStatic(AsyncFactory.class);
-             MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg");
-             MockedStatic<IpUtils> ipUtils = mockStatic(IpUtils.class);
-             MockedStatic<ServletUtils> servletUtils = mockStatic(ServletUtils.class)) {
-            ipUtils.when(IpUtils::getIpAddr).thenReturn("127.0.0.1");
-            HttpServletRequest request = mock(HttpServletRequest.class);
-            when(request.getHeader("User-Agent")).thenReturn("junit-ua");
-            servletUtils.when(ServletUtils::getRequest).thenReturn(request);
+             MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg")) {
             assertThrows(CaptchaExpireException.class,
-                    () -> loginService.validateCaptcha("admin", "1234", "uuid"));
+                    () -> loginService.validateCaptcha("admin", "1234", "uuid", "127.0.0.1", "junit-ua"));
         }
     }
 }

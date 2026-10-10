@@ -1,9 +1,11 @@
 package com.ruoyi.framework.web.service;
 
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import com.ruoyi.common.constant.CacheConstants;
 import com.ruoyi.common.constant.Constants;
@@ -14,7 +16,6 @@ import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.exception.user.BlackListException;
 import com.ruoyi.common.exception.user.CaptchaException;
 import com.ruoyi.common.exception.user.CaptchaExpireException;
-import com.ruoyi.common.exception.user.UserNotExistsException;
 import com.ruoyi.common.exception.user.UserPasswordNotMatchException;
 import java.time.LocalDateTime;
 import com.ruoyi.common.utils.MessageUtils;
@@ -34,6 +35,8 @@ import com.ruoyi.system.service.ISysUserService;
  */
 @Component
 public class SysLoginService {
+    private static final Logger log = LoggerFactory.getLogger(SysLoginService.class);
+
     private final TokenService tokenService;
 
     private final AuthenticationManager authenticationManager;
@@ -71,9 +74,9 @@ public class SysLoginService {
         final String ip = IpUtils.getIpAddr();
         final String userAgent = ServletUtils.getRequest().getHeader("User-Agent");
         // 验证码校验
-        validateCaptcha(username, code, uuid);
+        validateCaptcha(username, code, uuid, ip, userAgent);
         // 登录前置校验
-        loginPreCheck(username, password);
+        loginPreCheck(username, password, ip, userAgent);
         // 用户验证
         Authentication authentication = null;
         try {
@@ -81,20 +84,16 @@ public class SysLoginService {
             AuthenticationContextHolder.setContext(authenticationToken);
             // 该方法会去调用UserDetailsServiceImpl.loadUserByUsername
             authentication = authenticationManager.authenticate(authenticationToken);
-        } catch (Exception e) {
-            if (e instanceof BadCredentialsException) {
-                asyncManager.execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("user.password.not.match"), ip, userAgent));
-                throw new UserPasswordNotMatchException();
-            } else {
-                asyncManager.execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, e.getMessage(), ip, userAgent));
-                throw new ServiceException(e.getMessage());
-            }
+        } catch (AuthenticationException e) {
+            log.warn("登录认证失败: username={}, type={}", username, e.getClass().getSimpleName(), e);
+            asyncManager.execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("user.password.not.match"), ip, userAgent));
+            throw new UserPasswordNotMatchException();
         } finally {
             AuthenticationContextHolder.clearContext();
         }
         asyncManager.execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_SUCCESS, MessageUtils.message("user.login.success"), ip, userAgent));
         LoginUser loginUser = (LoginUser) authentication.getPrincipal();
-        recordLoginInfo(loginUser.getUserId());
+        recordLoginInfo(loginUser.getUserId(), ip);
         // 生成token
         return tokenService.createToken(loginUser);
     }
@@ -107,13 +106,15 @@ public class SysLoginService {
      * @param uuid 唯一标识
      * @return 结果
      */
-    public void validateCaptcha(String username, String code, String uuid) {
+    void validateCaptcha(String username, String code, String uuid, String ip, String userAgent) {
         boolean captchaEnabled = configService.selectCaptchaEnabled();
         if (captchaEnabled) {
-            // 请求线程提前抓取 IP/UA 传入异步任务
-            final String ip = IpUtils.getIpAddr();
-            final String userAgent = ServletUtils.getRequest().getHeader("User-Agent");
-            String verifyKey = CacheConstants.CAPTCHA_CODE_KEY + StringUtils.nvl(uuid, "");
+            // uuid 为空时 early-reject（空 key 永不命中，直接走失败分支避免共享退化）
+            if (StringUtils.isEmpty(uuid)) {
+                asyncManager.execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("user.jcaptcha.expire"), ip, userAgent));
+                throw new CaptchaExpireException();
+            }
+            String verifyKey = CacheConstants.CAPTCHA_CODE_KEY + uuid;
             String captcha = redisCache.getCacheObject(verifyKey);
             if (captcha == null) {
                 asyncManager.execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("user.jcaptcha.expire"), ip, userAgent));
@@ -132,14 +133,11 @@ public class SysLoginService {
      * @param username 用户名
      * @param password 用户密码
      */
-    public void loginPreCheck(String username, String password) {
-        // 请求线程提前抓取 IP/UA 传入异步任务（ip 同时用于黑名单校验，避免重复取值）
-        final String ip = IpUtils.getIpAddr();
-        final String userAgent = ServletUtils.getRequest().getHeader("User-Agent");
+    void loginPreCheck(String username, String password, String ip, String userAgent) {
         // 用户名或密码为空 错误
         if (StringUtils.isEmpty(username) || StringUtils.isEmpty(password)) {
             asyncManager.execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("not.null"), ip, userAgent));
-            throw new UserNotExistsException();
+            throw new ServiceException(MessageUtils.message("not.null"));
         }
         // 密码如果不在指定范围内 错误
         if (password.length() < UserConstants.PASSWORD_MIN_LENGTH
@@ -166,7 +164,7 @@ public class SysLoginService {
      *
      * @param userId 用户ID
      */
-    public void recordLoginInfo(Long userId) {
-        userService.updateLoginInfo(userId, IpUtils.getIpAddr(), LocalDateTime.now());
+    void recordLoginInfo(Long userId, String ip) {
+        userService.updateLoginInfo(userId, ip, LocalDateTime.now());
     }
 }

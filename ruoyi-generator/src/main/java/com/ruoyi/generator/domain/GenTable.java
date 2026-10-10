@@ -3,6 +3,7 @@ package com.ruoyi.generator.domain;
 import java.util.List;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import org.apache.commons.lang3.ArrayUtils;
 import com.ruoyi.common.constant.GenConstants;
 import com.ruoyi.common.core.domain.BaseEntity;
@@ -38,9 +39,11 @@ public class GenTable extends BaseEntity {
     private String className;
 
     /** 使用的模板（crud单表操作 tree树表操作 sub主子表操作） */
+    @Pattern(regexp = "^(crud|tree|sub)$", message = "模板类别非法，应为 crud/tree/sub")
     private String tplCategory;
 
     /** 前端类型（element-ui模版 element-plus模版 element-plus-typescript模版） */
+    @Pattern(regexp = "^(element-ui|element-plus|element-plus-typescript)$", message = "前端类型非法，应为 element-ui/element-plus/element-plus-typescript")
     private String tplWebType;
 
     /** 生成包路径 */
@@ -67,6 +70,7 @@ public class GenTable extends BaseEntity {
     private Integer formColNum;
 
     /** 生成代码方式（0zip压缩包 1自定义路径） */
+    @Pattern(regexp = "^(0|1)$", message = "生成方式非法，应为 0(zip压缩包)/1(自定义路径)")
     private String genType;
 
     /** 生成路径（不填默认项目路径） */
@@ -76,6 +80,7 @@ public class GenTable extends BaseEntity {
     private GenTableColumn pkColumn;
 
     /** 子表信息 */
+    @Valid
     private GenTable subTable;
 
     /** 表列信息 */
@@ -100,8 +105,8 @@ public class GenTable extends BaseEntity {
     /** 上级菜单名称字段 */
     private String parentMenuName;
 
-    /** 是否生成详情页 */
-    private boolean isView;
+    /** 是否生成详情页（JSON 属性名由 getter isView() 推导为 view，字段名不参与 Jackson 命名） */
+    private boolean view;
 
     public Long getTableId() {
         return tableId;
@@ -304,11 +309,11 @@ public class GenTable extends BaseEntity {
     }
 
     public boolean isView() {
-        return isView;
+        return view;
     }
 
-    public void setView(boolean isView) {
-        this.isView = isView;
+    public void setView(boolean view) {
+        this.view = view;
     }
 
     /** 当前表是否主子表模板 */
@@ -321,6 +326,7 @@ public class GenTable extends BaseEntity {
      *
      * @param tplCategory 模板类别
      * @return true 表示主子表
+     * @apiNote 模板内部应优先用无参实例版 isSub()；此静态版仅供拿不到 GenTable 实例的场景，调用方须自行传入正确的 tplCategory。
      */
     public static boolean isSub(String tplCategory) {
         return tplCategory != null && StringUtils.equals(GenConstants.TPL_SUB, tplCategory);
@@ -336,6 +342,7 @@ public class GenTable extends BaseEntity {
      *
      * @param tplCategory 模板类别
      * @return true 表示树表
+     * @apiNote 模板内部应优先用无参实例版 isTree()；此静态版仅供拿不到 GenTable 实例的场景，调用方须自行传入正确的 tplCategory。
      */
     public static boolean isTree(String tplCategory) {
         return tplCategory != null && StringUtils.equals(GenConstants.TPL_TREE, tplCategory);
@@ -351,6 +358,7 @@ public class GenTable extends BaseEntity {
      *
      * @param tplCategory 模板类别
      * @return true 表示 CRUD
+     * @apiNote 模板内部应优先用无参实例版 isCrud()；此静态版仅供拿不到 GenTable 实例的场景，调用方须自行传入正确的 tplCategory。
      */
     public static boolean isCrud(String tplCategory) {
         return tplCategory != null && StringUtils.equals(GenConstants.TPL_CRUD, tplCategory);
@@ -368,6 +376,7 @@ public class GenTable extends BaseEntity {
      * @param tplCategory 模板类别
      * @param javaField   Java 字段名
      * @return true 表示由基类提供，无需重复生成
+     * @apiNote 已有 GenTable 实例时优先用单参实例版 isSuperColumn(javaField)；此双参静态版仅供拿不到实例的场景，须自行传入正确的 tplCategory。
      */
     public static boolean isSuperColumn(String tplCategory, String javaField) {
         if (isTree(tplCategory)) {

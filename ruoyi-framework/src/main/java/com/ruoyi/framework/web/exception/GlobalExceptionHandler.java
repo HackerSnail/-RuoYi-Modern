@@ -1,6 +1,11 @@
 package com.ruoyi.framework.web.exception;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.StringJoiner;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -9,6 +14,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindException;
+import org.springframework.validation.FieldError;
+import org.springframework.validation.ObjectError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingPathVariableException;
@@ -58,10 +65,12 @@ public class GlobalExceptionHandler {
 
     /**
      * 业务异常
+     * <p>
+     * 属预期内失败，降为 {@code warn}（仍带栈，便于定位漏网到全局的抛出点），不再以 {@code error} 污染日志。
      */
     @ExceptionHandler(ServiceException.class)
     public AjaxResult handleServiceException(ServiceException e, HttpServletRequest request) {
-        log.error(e.getMessage(), e);
+        log.warn("业务异常: code={}, msg={}", e.getCode(), e.getMessage(), e);
         Integer code = e.getCode();
         return StringUtils.isNotNull(code) ? AjaxResult.error(code, e.getMessage()) : AjaxResult.error(e.getMessage());
     }
@@ -138,18 +147,39 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BindException.class)
     public AjaxResult handleBindException(BindException e) {
         log.error(e.getMessage(), e);
-        String message = e.getAllErrors().get(0).getDefaultMessage();
-        return AjaxResult.error(message);
+        return buildValidationError(e.getAllErrors());
     }
 
     /**
      * 自定义验证异常
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public Object handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
+    public AjaxResult handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
         log.error(e.getMessage(), e);
-        String message = e.getBindingResult().getFieldError().getDefaultMessage();
-        return AjaxResult.error(message);
+        return buildValidationError(e.getBindingResult().getAllErrors());
+    }
+
+    /**
+     * 组装参数校验失败响应：{@code msg} 为各条违规消息的分号拼接（旧前端可直接展示），
+     * {@code data} 为字段级明细列表（每项含 {@code field}/{@code message}，供前端做字段级定位）。
+     * 空违规时给固定文案，避免 {@code get(0)} 越界；非 {@code FieldError} 的全局错误 {@code field} 记空串。
+     */
+    private AjaxResult buildValidationError(List<ObjectError> errors) {
+        if (errors == null || errors.isEmpty()) {
+            return AjaxResult.error("参数校验失败");
+        }
+        List<Map<String, String>> details = new ArrayList<>(errors.size());
+        StringJoiner joiner = new StringJoiner("; ");
+        for (ObjectError error : errors) {
+            String field = (error instanceof FieldError fieldError) ? fieldError.getField() : "";
+            String message = error.getDefaultMessage();
+            Map<String, String> item = new LinkedHashMap<>();
+            item.put("field", field);
+            item.put("message", message);
+            details.add(item);
+            joiner.add(message);
+        }
+        return AjaxResult.error(joiner.toString(), details);
     }
 
     /**
@@ -157,15 +187,29 @@ public class GlobalExceptionHandler {
      * <p>
      * ConstraintViolationException 继承 RuntimeException，若不单独拦截会落到兜底
      * handleRuntimeException 返回笼统的“系统繁忙，请稍后再试”，前端拿不到字段级错误；
-     * 此处与 BindException/MethodArgumentNotValidException 对称，取首条违规的字段级消息返回。
+     * 此处与 BindException/MethodArgumentNotValidException 对称，返回全部违规的字段级明细（propertyPath + message），而非仅首条。
      */
     @ExceptionHandler(ConstraintViolationException.class)
     public AjaxResult handleConstraintViolationException(ConstraintViolationException e, HttpServletRequest request) {
         String requestURI = request.getRequestURI();
         Set<ConstraintViolation<?>> violations = e.getConstraintViolations();
-        String message = violations.isEmpty() ? e.getMessage() : violations.iterator().next().getMessage();
+        if (violations == null || violations.isEmpty()) {
+            String fallback = StringUtils.isNotEmpty(e.getMessage()) ? e.getMessage() : "参数校验失败";
+            log.error("请求地址'{}',参数校验失败'{}'", requestURI, fallback);
+            return AjaxResult.error(fallback);
+        }
+        List<Map<String, String>> details = new ArrayList<>(violations.size());
+        StringJoiner joiner = new StringJoiner("; ");
+        for (ConstraintViolation<?> violation : violations) {
+            Map<String, String> item = new LinkedHashMap<>();
+            item.put("field", violation.getPropertyPath().toString());
+            item.put("message", violation.getMessage());
+            details.add(item);
+            joiner.add(violation.getMessage());
+        }
+        String message = joiner.toString();
         log.error("请求地址'{}',参数校验失败'{}'", requestURI, message);
-        return AjaxResult.error(message);
+        return AjaxResult.error(message, details);
     }
 
     /**

@@ -63,7 +63,7 @@ public class SysJob extends BaseEntity {
     }
 
     @NotBlank(message = "任务名称不能为空")
-    @Size(min = 0, max = 64, message = "任务名称不能超过64个字符")
+    @Size(max = 64, message = "任务名称不能超过64个字符")
     public String getJobName() {
         return jobName;
     }
@@ -72,6 +72,7 @@ public class SysJob extends BaseEntity {
         this.jobName = jobName;
     }
 
+    @Size(max = 64, message = "任务组名不能超过64个字符")
     public String getJobGroup() {
         return jobGroup;
     }
@@ -81,7 +82,7 @@ public class SysJob extends BaseEntity {
     }
 
     @NotBlank(message = "调用目标字符串不能为空")
-    @Size(min = 0, max = 500, message = "调用目标字符串长度不能超过500个字符")
+    @Size(max = 500, message = "调用目标字符串长度不能超过500个字符")
     public String getInvokeTarget() {
         return invokeTarget;
     }
@@ -91,7 +92,7 @@ public class SysJob extends BaseEntity {
     }
 
     @NotBlank(message = "Cron执行表达式不能为空")
-    @Size(min = 0, max = 255, message = "Cron执行表达式不能超过255个字符")
+    @Size(max = 255, message = "Cron执行表达式不能超过255个字符")
     public String getCronExpression() {
         return cronExpression;
     }
@@ -102,14 +103,20 @@ public class SysJob extends BaseEntity {
 
     /**
      * 非持久化字段：基于 cronExpression 实时推算下一次触发时间，供列表页展示。
-     * cron 为空时返回 null（不抛异常，避免无表达式的临时对象序列化失败）。
+     * 对空/非法 cron 一律兜底返回 null：既避免列表接口 Jackson 序列化时因个别脏数据 cron
+     * 抛 IllegalArgumentException 而整体 500，也因 toString 不再引用本方法而不影响日志/调试打印。
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     public LocalDateTime getNextValidTime() {
-        if (StringUtils.isNotEmpty(cronExpression)) {
-            return DateUtils.toLocalDateTime(CronUtils.getNextExecution(cronExpression));
+        if (StringUtils.isEmpty(cronExpression)) {
+            return null;
         }
-        return null;
+        try {
+            return DateUtils.toLocalDateTime(CronUtils.getNextExecution(cronExpression));
+        } catch (RuntimeException e) {
+            // cron 语法非法（如被手动改库的脏数据）：降级为不展示下次触发时间，不阻断整个列表
+            return null;
+        }
     }
 
     public String getMisfirePolicy() {
@@ -143,7 +150,6 @@ public class SysJob extends BaseEntity {
             .append("jobName", getJobName())
             .append("jobGroup", getJobGroup())
             .append("cronExpression", getCronExpression())
-            .append("nextValidTime", getNextValidTime())
             .append("misfirePolicy", getMisfirePolicy())
             .append("concurrent", getConcurrent())
             .append("status", getStatus())

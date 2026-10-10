@@ -14,6 +14,12 @@ import jakarta.annotation.PreDestroy;
 public class ShutdownManager {
     private static final Logger logger = LoggerFactory.getLogger("sys-user");
 
+    private final AsyncManager asyncManager;
+
+    public ShutdownManager(AsyncManager asyncManager) {
+        this.asyncManager = asyncManager;
+    }
+
     @PreDestroy
     public void destroy() {
         shutdownAsyncManager();
@@ -25,7 +31,7 @@ public class ShutdownManager {
     private void shutdownAsyncManager() {
         try {
             logger.info("====关闭后台任务任务线程池====");
-            AsyncManager.me().shutdown();
+            asyncManager.shutdown();
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
         }

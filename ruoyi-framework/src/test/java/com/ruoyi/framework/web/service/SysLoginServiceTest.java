@@ -14,20 +14,16 @@ import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
-import java.util.concurrent.ScheduledExecutorService;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
-import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import com.ruoyi.common.constant.CacheConstants;
 import com.ruoyi.common.core.domain.entity.SysUser;
@@ -41,7 +37,7 @@ import com.ruoyi.common.exception.user.UserPasswordNotMatchException;
 import com.ruoyi.common.utils.MessageUtils;
 import com.ruoyi.common.utils.ServletUtils;
 import com.ruoyi.common.utils.ip.IpUtils;
-import com.ruoyi.common.utils.spring.SpringUtils;
+import com.ruoyi.framework.manager.AsyncManager;
 import com.ruoyi.framework.manager.factory.AsyncFactory;
 import com.ruoyi.system.service.ISysConfigService;
 import com.ruoyi.system.service.ISysUserService;
@@ -53,10 +49,9 @@ import com.ruoyi.system.service.ISysUserService;
  * （{@code AsyncFactory}）、国际化（{@code MessageUtils}）、取 IP（{@code IpUtils}）等静态
  * 协作用 Mockito inline 静态打桩隔离。</p>
  *
- * <p>{@code AsyncManager} 的单例在类加载时会调用 {@code SpringUtils.getBean} 拉取调度线程池，
- * 无法被 mockStatic（类初始化即失败），因此改为在 {@code @BeforeAll} 里向 {@code SpringUtils}
- * 注入一个返回 mock 线程池的 beanFactory，让真实的 {@code AsyncManager} 在无害的 mock 执行器上运行，
- * 从而在不触碰 Spring 容器 / Redis / 数据库的前提下驱动登录全链路。</p>
+ * <p>{@code AsyncManager} 已改为 Spring 管理的 Bean（构造器注入调度线程池），测试直接注入一个
+ * mock {@code AsyncManager}，无需再向 {@code SpringUtils} 塞 beanFactory；{@code execute} 在 mock 上
+ * 为空实现，配合 {@code AsyncFactory} 静态打桩，可在不触碰容器 / Redis / 数据库的前提下驱动登录全链路。</p>
  */
 public class SysLoginServiceTest {
     private SysLoginService loginService;
@@ -71,15 +66,7 @@ public class SysLoginServiceTest {
 
     private ISysConfigService configService;
 
-    /**
-     * 向 SpringUtils 注入 mock beanFactory，使 AsyncManager 的静态单例可正常初始化。
-     */
-    @BeforeAll
-    static void primeSpringUtils() {
-        ConfigurableListableBeanFactory beanFactory = mock(ConfigurableListableBeanFactory.class);
-        when(beanFactory.getBean("scheduledExecutorService")).thenReturn(mock(ScheduledExecutorService.class));
-        ReflectionTestUtils.setField(SpringUtils.class, "beanFactory", beanFactory);
-    }
+    private AsyncManager asyncManager;
 
     @BeforeEach
     void setUp() {
@@ -88,8 +75,9 @@ public class SysLoginServiceTest {
         redisCache = mock(RedisCache.class);
         userService = mock(ISysUserService.class);
         configService = mock(ISysConfigService.class);
+        asyncManager = mock(AsyncManager.class);
 
-        loginService = new SysLoginService(tokenService, authenticationManager, redisCache, userService, configService);
+        loginService = new SysLoginService(tokenService, authenticationManager, redisCache, userService, configService, asyncManager);
     }
 
     private LoginUser adminLoginUser() {

@@ -28,8 +28,11 @@ import com.ruoyi.framework.web.service.TokenService;
 public class LogoutSuccessHandlerImpl implements LogoutSuccessHandler {
     private final TokenService tokenService;
 
-    public LogoutSuccessHandlerImpl(TokenService tokenService) {
+    private final AsyncManager asyncManager;
+
+    public LogoutSuccessHandlerImpl(TokenService tokenService, AsyncManager asyncManager) {
         this.tokenService = tokenService;
+        this.asyncManager = asyncManager;
     }
 
     /**
@@ -46,7 +49,7 @@ public class LogoutSuccessHandlerImpl implements LogoutSuccessHandler {
             // 删除用户缓存记录
             tokenService.delLoginUser(loginUser.getToken());
             // 记录用户退出日志（直接用入参 request 取 IP/UA，无需再回查 Request 上下文）
-            AsyncManager.me().execute(AsyncFactory.recordLogininfor(userName, Constants.LOGOUT,
+            asyncManager.execute(AsyncFactory.recordLogininfor(userName, Constants.LOGOUT,
                     MessageUtils.message("user.logout.success"), IpUtils.getIpAddr(request),
                     request.getHeader("User-Agent")));
         }

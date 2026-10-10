@@ -33,10 +33,14 @@ public class SysRegisterService {
 
     private final RedisCache redisCache;
 
-    public SysRegisterService(ISysUserService userService, ISysConfigService configService, RedisCache redisCache) {
+    private final AsyncManager asyncManager;
+
+    public SysRegisterService(ISysUserService userService, ISysConfigService configService, RedisCache redisCache,
+            AsyncManager asyncManager) {
         this.userService = userService;
         this.configService = configService;
         this.redisCache = redisCache;
+        this.asyncManager = asyncManager;
     }
 
     /**
@@ -74,7 +78,7 @@ public class SysRegisterService {
                 msg = "注册失败,请联系系统管理人员";
             } else {
                 // 请求线程提前抓取 IP/UA 传入异步任务
-                AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.REGISTER,
+                asyncManager.execute(AsyncFactory.recordLogininfor(username, Constants.REGISTER,
                         MessageUtils.message("user.register.success"), IpUtils.getIpAddr(),
                         ServletUtils.getRequest().getHeader("User-Agent")));
             }

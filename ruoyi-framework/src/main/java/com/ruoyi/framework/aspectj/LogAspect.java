@@ -49,6 +49,12 @@ public class LogAspect {
     /** 参数最大长度限制 */
     private static final int PARAM_MAX_LENGTH = 2000;
 
+    private final AsyncManager asyncManager;
+
+    public LogAspect(AsyncManager asyncManager) {
+        this.asyncManager = asyncManager;
+    }
+
     /**
      * 环绕通知：在单一生命周期内采集耗时、返回值与异常。
      * 业务异常/错误原样向上抛出（本切面不吞异常），仅在 finally 中记录操作日志，
@@ -111,7 +117,7 @@ public class LogAspect {
             // 设置消耗时间
             operLog.setCostTime(costTime);
             // 异步写入数据库（不阻塞主请求），日志记录失败不影响业务响应
-            AsyncManager.me().execute(AsyncFactory.recordOper(operLog));
+            asyncManager.execute(AsyncFactory.recordOper(operLog));
         } catch (Exception exp) {
             // 记录本地异常日志
             log.error("记录操作日志异常", exp);

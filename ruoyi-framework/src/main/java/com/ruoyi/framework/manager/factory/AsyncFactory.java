@@ -1,6 +1,5 @@
 package com.ruoyi.framework.manager.factory;
 
-import java.util.TimerTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.ruoyi.common.constant.Constants;
@@ -33,9 +32,9 @@ public class AsyncFactory {
      * @param args      列表
      * @return 任务task
      */
-    public static TimerTask recordLogininfor(final String username, final String status, final String message,
+    public static Runnable recordLogininfor(final String username, final String status, final String message,
             final String ip, final String userAgent, final Object... args) {
-        return new TimerTask() {
+        return new Runnable() {
             @Override
             public void run() {
                 String address = AddressUtils.getRealAddressByIP(ip);
@@ -77,8 +76,8 @@ public class AsyncFactory {
      * @param operLog 操作日志信息
      * @return 任务task
      */
-    public static TimerTask recordOper(final SysOperLog operLog) {
-        return new TimerTask() {
+    public static Runnable recordOper(final SysOperLog operLog) {
+        return new Runnable() {
             @Override
             public void run() {
                 // 远程查询操作地点

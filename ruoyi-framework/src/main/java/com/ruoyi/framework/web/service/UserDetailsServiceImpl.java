@@ -2,6 +2,7 @@ package com.ruoyi.framework.web.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -12,6 +13,7 @@ import com.ruoyi.common.enums.UserStatus;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.MessageUtils;
 import com.ruoyi.common.utils.StringUtils;
+import com.ruoyi.framework.security.context.AuthenticationContextHolder;
 import com.ruoyi.system.service.ISysUserService;
 
 /**
@@ -54,7 +56,11 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             throw new ServiceException(MessageUtils.message("user.blocked"));
         }
 
-        passwordService.validate(user);
+        // 从 ThreadLocal 认证上下文取明文密码（UserDetailsService 接口签名只传 username，
+        // 这是本仓唯一的桥接点，往下游 validate() 做显式传参）
+        Authentication auth = AuthenticationContextHolder.getContext();
+        String rawPassword = auth.getCredentials().toString();
+        passwordService.validate(username, rawPassword, user);
 
         return createLoginUser(user);
     }

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import com.ruoyi.common.core.domain.entity.SysUser;
@@ -24,6 +26,7 @@ import com.ruoyi.common.core.domain.model.LoginUser;
 import com.ruoyi.common.enums.UserStatus;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.MessageUtils;
+import com.ruoyi.framework.security.context.AuthenticationContextHolder;
 import com.ruoyi.system.service.ISysUserService;
 
 /**
@@ -70,7 +73,7 @@ public class UserDetailsServiceImplTest {
 
         try (MockedStatic<MessageUtils> messageUtils = mockStatic(MessageUtils.class, inv -> "msg")) {
             assertThrows(ServiceException.class, () -> userDetailsService.loadUserByUsername("ghost"));
-            verify(passwordService, never()).validate(any());
+            verify(passwordService, never()).validate(any(), any(), any());
         }
     }
 
@@ -107,14 +110,21 @@ public class UserDetailsServiceImplTest {
         perms.add("sys:user:list");
         when(permissionService.getMenuPermission(user)).thenReturn(perms);
 
-        UserDetails userDetails = userDetailsService.loadUserByUsername("zhangsan");
+        // 模拟 SysLoginService 放入认证上下文（UserDetailsServiceImpl 现在从 ThreadLocal 取密码并显式传给 validate）
+        UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken("zhangsan", "rawPwd");
+        AuthenticationContextHolder.setContext(token);
+        try {
+            UserDetails userDetails = userDetailsService.loadUserByUsername("zhangsan");
 
-        verify(passwordService).validate(user);
-        assertInstanceOf(LoginUser.class, userDetails);
-        LoginUser loginUser = (LoginUser) userDetails;
-        assertEquals(2L, loginUser.getUserId());
-        assertEquals(5L, loginUser.getDeptId());
-        assertEquals("zhangsan", loginUser.getUsername());
-        assertEquals(perms, loginUser.getPermissions());
+            verify(passwordService).validate(eq("zhangsan"), eq("rawPwd"), eq(user));
+            assertInstanceOf(LoginUser.class, userDetails);
+            LoginUser loginUser = (LoginUser) userDetails;
+            assertEquals(2L, loginUser.getUserId());
+            assertEquals(5L, loginUser.getDeptId());
+            assertEquals("zhangsan", loginUser.getUsername());
+            assertEquals(perms, loginUser.getPermissions());
+        } finally {
+            AuthenticationContextHolder.clearContext();
+        }
     }
 }

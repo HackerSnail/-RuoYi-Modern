@@ -2,7 +2,6 @@ package com.ruoyi.framework.web.service;
 
 import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import com.ruoyi.common.constant.CacheConstants;
 import com.ruoyi.common.core.domain.entity.SysUser;
@@ -11,7 +10,6 @@ import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.exception.user.UserPasswordNotMatchException;
 import com.ruoyi.common.exception.user.UserPasswordRetryLimitExceedException;
 import com.ruoyi.common.utils.SecurityUtils;
-import com.ruoyi.framework.security.context.AuthenticationContextHolder;
 
 /**
  * 登录密码方法
@@ -22,15 +20,17 @@ import com.ruoyi.framework.security.context.AuthenticationContextHolder;
 public class SysPasswordService {
     private final RedisCache redisCache;
 
-    public SysPasswordService(RedisCache redisCache) {
+    private final int maxRetryCount;
+
+    private final int lockTime;
+
+    public SysPasswordService(RedisCache redisCache,
+            @Value("${user.password.maxRetryCount}") int maxRetryCount,
+            @Value("${user.password.lockTime}") int lockTime) {
         this.redisCache = redisCache;
+        this.maxRetryCount = maxRetryCount;
+        this.lockTime = lockTime;
     }
-
-    @Value(value = "${user.password.maxRetryCount}")
-    private int maxRetryCount;
-
-    @Value(value = "${user.password.lockTime}")
-    private int lockTime;
 
     /**
      * 登录账户密码错误次数缓存键名
@@ -43,25 +43,28 @@ public class SysPasswordService {
     }
 
     /**
-     * 密码校验：从 AuthenticationContext 取出明文密码，先查 Redis 中的失败次数是否达上限（锁定），
-     * 再用 BCrypt 比对；失败则递增计数并回写（带 lockTime 过期），成功则清除计数
+     * 密码校验：先查 Redis 中的失败次数是否达上限（锁定），
+     * 再用 BCrypt 比对；失败则递增计数并回写（带 lockTime 过期），成功则清除计数。
+     * <p>
+     * 显式接收 username/rawPassword，不再依赖 {@code AuthenticationContextHolder} ThreadLocal，
+     * 便于单测和无上下文环境调用。调用方（{@code UserDetailsServiceImpl}）负责从认证上下文取值并传入。
+     *
+     * @param username    登录用户名
+     * @param rawPassword 用户输入的明文密码
+     * @param user        用户实体（提供库中密文）
      */
-    public void validate(SysUser user) {
-        Authentication usernamePasswordAuthenticationToken = AuthenticationContextHolder.getContext();
-        String username = usernamePasswordAuthenticationToken.getName();
-        String password = usernamePasswordAuthenticationToken.getCredentials().toString();
-
+    public void validate(String username, String rawPassword, SysUser user) {
         Integer retryCount = redisCache.getCacheObject(getCacheKey(username));
 
         if (retryCount == null) {
             retryCount = 0;
         }
 
-        if (retryCount >= Integer.valueOf(maxRetryCount).intValue()) {
+        if (retryCount >= maxRetryCount) {
             throw new UserPasswordRetryLimitExceedException(maxRetryCount, lockTime);
         }
 
-        if (!matches(user, password)) {
+        if (!matches(user, rawPassword)) {
             retryCount = retryCount + 1;
             redisCache.setCacheObject(getCacheKey(username), retryCount, lockTime, TimeUnit.MINUTES);
             throw new UserPasswordNotMatchException();
@@ -108,11 +111,10 @@ public class SysPasswordService {
     }
 
     /**
-     * 登录成功后清除该用户的密码错误计数缓存
+     * 登录成功后清除该用户的密码错误计数缓存。
+     * deleteObject 走 UNLINK，key 不存在时安全返回 false，无需前置 hasKey 浪费 RTT。
      */
     public void clearLoginRecordCache(String loginName) {
-        if (redisCache.hasKey(getCacheKey(loginName))) {
-            redisCache.deleteObject(getCacheKey(loginName));
-        }
+        redisCache.deleteObject(getCacheKey(loginName));
     }
 }

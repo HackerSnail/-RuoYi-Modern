@@ -36,11 +36,16 @@ import com.ruoyi.common.core.domain.AjaxResult;
  */
 @RestControllerAdvice
 public class HttpStatusResponseAdvice implements ResponseBodyAdvice<Object> {
-    /** 原样透传为 HTTP 状态的已知语义码（刻意不含 500：业务失败的默认码 500 应回退 400，系统故障改由 ResponseEntity 显式置 500） */
+    /**
+     * 原样透传为 HTTP 状态的已知语义码：收录 {@code HttpStatus} 里所有合法 HTTP 状态常量（前瞻：
+     * 避免将来有人用这些码回体却被当成未知码打扁为 400）。刻意排除 {@code ERROR(500)}（业务失败默认码，
+     * 应回退 400；真系统故障由 handler 以 ResponseEntity 显式置 500）与非 HTTP 码 {@code WARN(601)}。
+     */
     private static final Set<Integer> PASS_THROUGH_CODES = Set.of(
-            HttpStatus.SUCCESS, HttpStatus.BAD_REQUEST, HttpStatus.UNAUTHORIZED, HttpStatus.FORBIDDEN,
-            HttpStatus.NOT_FOUND, HttpStatus.BAD_METHOD, HttpStatus.CONFLICT, HttpStatus.UNSUPPORTED_TYPE,
-            HttpStatus.NOT_IMPLEMENTED);
+            HttpStatus.SUCCESS, HttpStatus.CREATED, HttpStatus.ACCEPTED, HttpStatus.NO_CONTENT,
+            HttpStatus.MOVED_PERM, HttpStatus.SEE_OTHER, HttpStatus.NOT_MODIFIED,
+            HttpStatus.BAD_REQUEST, HttpStatus.UNAUTHORIZED, HttpStatus.FORBIDDEN, HttpStatus.NOT_FOUND,
+            HttpStatus.BAD_METHOD, HttpStatus.CONFLICT, HttpStatus.UNSUPPORTED_TYPE, HttpStatus.NOT_IMPLEMENTED);
 
     /** 白名单之外统一回退的客户端错误码 */
     private static final int FALLBACK_CLIENT_ERROR = HttpStatus.BAD_REQUEST;

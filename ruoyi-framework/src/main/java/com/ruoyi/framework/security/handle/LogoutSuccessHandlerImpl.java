@@ -4,9 +4,9 @@ import java.io.IOException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
+import org.springframework.stereotype.Component;
 import com.alibaba.fastjson2.JSON;
 import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.core.domain.AjaxResult;
@@ -24,7 +24,7 @@ import com.ruoyi.framework.web.service.TokenService;
  * 
  * @author ruoyi
  */
-@Configuration
+@Component
 public class LogoutSuccessHandlerImpl implements LogoutSuccessHandler {
     private final TokenService tokenService;
 
@@ -53,6 +53,9 @@ public class LogoutSuccessHandlerImpl implements LogoutSuccessHandler {
                     MessageUtils.message("user.logout.success"), IpUtils.getIpAddr(request),
                     request.getHeader("User-Agent")));
         }
+        // 显式声明退出成功的传输层状态与 JSON 内容类型（renderString 内部同样会设，此处作显式双保险）
+        response.setStatus(HttpServletResponse.SC_OK);
+        response.setContentType("application/json;charset=UTF-8");
         ServletUtils.renderString(response,
                 JSON.toJSONString(AjaxResult.success(MessageUtils.message("user.logout.success"))));
     }

@@ -4,10 +4,12 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.apache.velocity.VelocityContext;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.ruoyi.common.constant.GenConstants;
+import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.generator.domain.GenTable;
@@ -33,6 +35,9 @@ public class VelocityUtils {
 
     /** Vue3 Element Plus TypeScript 模版 */
     private static final String ELEMENT_PLUS_TYPESSRIPT = "element-plus-typescript";
+
+    /** 生成路径标识符合法字符白名单：字母/数字/下划线/点（点仅作包名段间分隔），不含斜杠/反斜杠 */
+    private static final Pattern SAFE_SEGMENT = Pattern.compile("^[A-Za-z0-9_.]+$");
 
     /**
      * 装配 Velocity 渲染上下文：把表元数据、列、权限前缀、字典、菜单/树/子表等模板变量一次性放入 context
@@ -82,7 +87,7 @@ public class VelocityUtils {
      * 将扩展选项（当前仅“是否生成详情页”）解析并放入上下文
      */
     public static void setExtensionsContext(VelocityContext context, String options) {
-        JSONObject paramsObj = JSONObject.parseObject(options);
+        JSONObject paramsObj = parseOptions(options);
         boolean genView = genView(paramsObj);
         context.put("genView", genView);
     }
@@ -92,7 +97,7 @@ public class VelocityUtils {
      */
     public static void setMenuVelocityContext(VelocityContext context, GenTable genTable) {
         String options = genTable.getOptions();
-        JSONObject paramsObj = JSON.parseObject(options);
+        JSONObject paramsObj = parseOptions(options);
         String parentMenuId = getParentMenuId(paramsObj);
         context.put("parentMenuId", parentMenuId);
     }
@@ -102,7 +107,7 @@ public class VelocityUtils {
      */
     public static void setTreeVelocityContext(VelocityContext context, GenTable genTable) {
         String options = genTable.getOptions();
-        JSONObject paramsObj = JSON.parseObject(options);
+        JSONObject paramsObj = parseOptions(options);
         String treeCode = getTreecode(paramsObj);
         String treeParentCode = getTreeParentCode(paramsObj);
         String treeName = getTreeName(paramsObj);
@@ -149,7 +154,7 @@ public class VelocityUtils {
     public static List<String> getTemplateList(GenTable table) {
         String tplWebType = table.getTplWebType();
         String tplCategory = table.getTplCategory();
-        JSONObject paramsObj = JSONObject.parseObject(table.getOptions());
+        JSONObject paramsObj = parseOptions(table.getOptions());
         boolean isView = genView(paramsObj);
         String useWebType = "vm/vue";
         String apiTemplate = "vm/js/api.js.vm";
@@ -187,6 +192,28 @@ public class VelocityUtils {
     }
 
     /**
+     * 统一解析 gen_table.options：其为裸 JSON 文本、可能为 null/空，兜底成空对象，
+     * 避免下游 containsKey/getString 解引用 null 触发 NPE（对齐第9轮 setTableFromOptions 判空约定）。
+     */
+    private static JSONObject parseOptions(String options) {
+        JSONObject paramsObj = JSON.parseObject(options);
+        return paramsObj != null ? paramsObj : new JSONObject();
+    }
+
+    /**
+     * 校验将拼入写盘/ZIP 路径的标识符段：仅允许 [A-Za-z0-9_.]，并显式拒绝 ".." 片段，
+     * 命中即抛业务异常，从源头堵死路径穿越。空值放行（由上游 @NotBlank 约束）。
+     */
+    private static void assertSafeSegment(String value, String label) {
+        if (StringUtils.isEmpty(value)) {
+            return;
+        }
+        if (value.contains("..") || !SAFE_SEGMENT.matcher(value).matches()) {
+            throw new ServiceException("代码生成非法" + label + "，疑似路径穿越，已拒绝：" + value);
+        }
+    }
+
+    /**
      * 获取文件名
      */
     public static String getFileName(String template, GenTable genTable) {
@@ -201,16 +228,26 @@ public class VelocityUtils {
         // 业务名称
         String businessName = genTable.getBusinessName();
 
+        // 源头防御：这些字段来自可被前端编辑的 gen_table，拼进写盘/ZIP 路径前须做字符合法性白名单，
+        // 拒绝 . / \ 与 "../" 片段，杜绝路径穿越（任意文件覆盖写）；安全校验不能只压在 getGenPath 一层
+        assertSafeSegment(packageName, "包名");
+        assertSafeSegment(moduleName, "模块名");
+        assertSafeSegment(className, "类名");
+        assertSafeSegment(businessName, "业务名");
+
         String javaPath = PROJECT_PATH + "/" + StringUtils.replace(packageName, ".", "/");
         String mybatisPath = MYBATIS_PATH + "/" + moduleName;
         String vuePath = "vue";
 
-        if (template.contains("domain.java.vm")) {
-            fileName = StringUtils.format("{}/domain/{}.java", javaPath, className);
-        }
+        // domain 与 sub-domain 显式互斥：sub-domain 先判，避免 "sub-domain.java.vm" 含 "domain.java.vm" 子串造成的顺序耦合覆盖
         if (template.contains("sub-domain.java.vm")
                 && StringUtils.equals(GenConstants.TPL_SUB, genTable.getTplCategory())) {
-            fileName = StringUtils.format("{}/domain/{}.java", javaPath, genTable.getSubTable().getClassName());
+            GenTable subTable = genTable.getSubTable();
+            String subClassName = subTable != null ? subTable.getClassName() : null;
+            assertSafeSegment(subClassName, "子表类名");
+            fileName = StringUtils.format("{}/domain/{}.java", javaPath, subClassName);
+        } else if (template.contains("domain.java.vm")) {
+            fileName = StringUtils.format("{}/domain/{}.java", javaPath, className);
         } else if (template.contains("mapper.java.vm")) {
             fileName = StringUtils.format("{}/mapper/{}Mapper.java", javaPath, className);
         } else if (template.contains("service.java.vm")) {
@@ -368,7 +405,7 @@ public class VelocityUtils {
      */
     public static boolean genView(JSONObject paramsObj) {
         if (StringUtils.isNotNull(paramsObj) && paramsObj.containsKey(GenConstants.GEN_VIEW)) {
-            return paramsObj.getBoolean(GenConstants.GEN_VIEW);
+            return paramsObj.getBooleanValue(GenConstants.GEN_VIEW);
         }
         return false;
     }
@@ -394,7 +431,7 @@ public class VelocityUtils {
      */
     public static int getExpandColumn(GenTable genTable) {
         String options = genTable.getOptions();
-        JSONObject paramsObj = JSON.parseObject(options);
+        JSONObject paramsObj = parseOptions(options);
         String treeName = paramsObj.getString(GenConstants.TREE_NAME);
         int num = 0;
         for (GenTableColumn column : genTable.getColumns()) {
@@ -415,7 +452,11 @@ public class VelocityUtils {
      * @param formColNum 表单布局方式（1单列 2双列 3三列）
      * @return span 数值字符串
      */
-    public static String getColSpan(int formColNum) {
+    public static String getColSpan(Integer formColNum) {
+        if (formColNum == null) {
+            // 表单布局未选（form_col_num 为空）时默认单列，杜绝自动拆箱 NPE
+            return "24";
+        }
         if (formColNum == 2) {
             return "12";
         } else if (formColNum == 3) {

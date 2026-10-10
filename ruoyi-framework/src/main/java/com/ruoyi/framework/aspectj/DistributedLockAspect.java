@@ -7,6 +7,8 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.SimpleEvaluationContext;
@@ -30,6 +32,8 @@ import com.ruoyi.common.utils.StringUtils;
 @Aspect
 @Component
 public class DistributedLockAspect {
+    private static final Logger log = LoggerFactory.getLogger(DistributedLockAspect.class);
+
     private final RedissonClient redissonClient;
 
     public DistributedLockAspect(RedissonClient redissonClient) {
@@ -44,12 +48,26 @@ public class DistributedLockAspect {
         try {
             acquired = doTryLock(lock, distributedLock);
             if (!acquired) {
+                log.warn("获取分布式锁失败, key={}, waitTime={} {}", lockKey, distributedLock.waitTime(), distributedLock.timeUnit());
                 throw new ServiceException("请求过于频繁，获取资源锁失败，请稍后重试");
             }
-            return joinPoint.proceed();
+            log.debug("获取分布式锁成功, key={}", lockKey);
+            long start = System.nanoTime();
+            try {
+                return joinPoint.proceed();
+            } finally {
+                log.debug("分布式锁临界区执行耗时 {} ms, key={}", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start), lockKey);
+            }
         } finally {
-            if (acquired && lock.isHeldByCurrentThread()) {
-                lock.unlock();
+            if (acquired) {
+                try {
+                    if (lock.isHeldByCurrentThread()) {
+                        lock.unlock();
+                    }
+                } catch (Exception e) {
+                    // 解锁异常(多为 Redis 连接抖动)不能覆盖业务异常，降级为 warn 记录
+                    log.warn("释放分布式锁异常, key={}", lockKey, e);
+                }
             }
         }
     }

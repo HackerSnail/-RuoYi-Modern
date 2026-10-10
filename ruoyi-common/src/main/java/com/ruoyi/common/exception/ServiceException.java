@@ -40,6 +40,15 @@ public final class ServiceException extends RuntimeException {
         this.code = code;
     }
 
+    /**
+     * 携带原始异常原因的业务异常构造器：把 cause 交给 {@code super(cause)} 以保留堆栈/异常链
+     * （本类 {@link #getMessage()} 重写为返回 {@code message} 字段，故 message 另存）。
+     */
+    public ServiceException(String message, Throwable cause) {
+        super(cause);
+        this.message = message;
+    }
+
     public String getDetailMessage() {
         return detailMessage;
     }

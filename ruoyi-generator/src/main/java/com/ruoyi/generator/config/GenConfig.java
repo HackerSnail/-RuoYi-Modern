@@ -8,7 +8,8 @@ import org.springframework.stereotype.Component;
  *
  * <p>
  * 纯实例配置 Bean：由 {@code application.yml} 的 {@code gen.*} 经
- * {@link ConfigurationProperties} 绑定到实例字段，消费方（{@code GenUtils}/{@code GenController}）
+ * {@link ConfigurationProperties}
+ * 绑定到实例字段，消费方（{@code GenUtils}/{@code GenController}）
  * 通过依赖注入获取，不再有 {@code public static} 全局可变状态，也不再靠 {@code @Value} 写静态字段。
  * 可测试、可隔离、可按环境覆盖。
  * </p>

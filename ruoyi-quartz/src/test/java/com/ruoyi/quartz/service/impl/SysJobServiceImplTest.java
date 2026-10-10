@@ -115,6 +115,27 @@ public class SysJobServiceImplTest {
     }
 
     @Test
+    @DisplayName("deleteJobByIds：返回实际删除行数")
+    void deleteJobByIdsReturnsAffectedRows() throws Exception {
+        Scheduler scheduler = mock(Scheduler.class);
+        SysJobMapper mapper = mock(SysJobMapper.class);
+        SysJobServiceImpl service = new SysJobServiceImpl(scheduler, mapper);
+
+        SysJob a = new SysJob();
+        a.setJobId(1L);
+        a.setJobGroup("DEFAULT");
+        SysJob b = new SysJob();
+        b.setJobId(2L);
+        b.setJobGroup("DEFAULT");
+        when(mapper.selectJobById(1L)).thenReturn(a);
+        when(mapper.selectJobById(2L)).thenReturn(b);
+        when(mapper.deleteJobById(1L)).thenReturn(1);
+        when(mapper.deleteJobById(2L)).thenReturn(1);
+
+        assertEquals(2, service.deleteJobByIds(new Long[] { 1L, 2L }));
+    }
+
+    @Test
     @DisplayName("deleteJobByIds：库中不存在的 ID 安全跳过，不 NPE、不整批失败")
     void deleteJobByIdsSkipsMissing() throws Exception {
         Scheduler scheduler = mock(Scheduler.class);
@@ -129,7 +150,9 @@ public class SysJobServiceImplTest {
         when(mapper.selectJobById(2L)).thenReturn(existing);
         when(mapper.deleteJobById(2L)).thenReturn(1);
 
-        service.deleteJobByIds(new Long[] { 1L, 2L });
+        int rows = service.deleteJobByIds(new Long[] { 1L, 2L });
+        // 陈旧 ID 被跳过、不计入影响行数
+        assertEquals(1, rows);
         verify(mapper, never()).deleteJobById(1L);
         verify(mapper).deleteJobById(2L);
         verify(scheduler).deleteJob(ScheduleUtils.getJobKey(2L, "DEFAULT"));

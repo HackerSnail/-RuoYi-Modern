@@ -130,11 +130,11 @@ public class SysJobServiceImpl implements ISysJobService {
      * 批量删除调度信息
      * 
      * @param jobIds 需要删除的任务ID
-     * @return 结果
+     * @return 实际删除的行数
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void deleteJobByIds(Long[] jobIds) throws SchedulerException {
+    public int deleteJobByIds(Long[] jobIds) throws SchedulerException {
         // 批量删除收口于 Service：空选与超上限均拒（抛 ServiceException 由全局异常处理转友好 error），
         // 防止逐个 select+delete+unschedule 放大调度器/数据库压力
         if (jobIds == null || jobIds.length == 0) {
@@ -143,13 +143,15 @@ public class SysJobServiceImpl implements ISysJobService {
         if (jobIds.length > MAX_DELETE_BATCH) {
             throw new ServiceException("单次最多删除 " + MAX_DELETE_BATCH + " 条任务，当前 " + jobIds.length + " 条");
         }
+        int rows = 0;
         for (Long jobId : jobIds) {
             SysJob job = jobMapper.selectJobById(jobId);
             // 库中不存在（传入陈旧 ID 或已被并发删除）则跳过，避免 deleteJob 解引用 null NPE 致整批事务回滚
             if (job != null) {
-                deleteJob(job);
+                rows += deleteJob(job);
             }
         }
+        return rows;
     }
 
     /**

@@ -136,8 +136,8 @@ public class SysJobController extends BaseController {
     @Log(title = "定时任务", businessType = BusinessType.DELETE)
     @DeleteMapping("/{jobIds}")
     public AjaxResult remove(@PathVariable Long[] jobIds) throws SchedulerException {
-        // 空选/限长校验已下沉 SysJobServiceImpl.deleteJobByIds 收口（覆盖所有调用方），Controller 不再重复
-        jobService.deleteJobByIds(jobIds);
-        return success();
+        // 空选/限长校验已下沉 SysJobServiceImpl.deleteJobByIds 收口（覆盖所有调用方），Controller 不再重复；
+        // 与日志侧 toAjax 口径对称，全为陈旧/已删 ID 而实际删 0 行时 toAjax(0) 如实报失败，不再无条件 success 误导
+        return toAjax(jobService.deleteJobByIds(jobIds));
     }
 }

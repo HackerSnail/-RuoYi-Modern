@@ -8,8 +8,9 @@ import com.ruoyi.quartz.domain.SysJob;
 /**
  * 定时任务调度信息 服务层
  * <p>
- * 写类方法（增删改、暂停/恢复/立即运行）遵循“先写 DB、成功后同步 Quartz 调度器”的双写契约，
- * 并置于事务中，以保证调度器与 sys_job 表状态一致。
+ * 写类方法（增删改、暂停/恢复）遵循“先更新 DB，成功后同步 Quartz 调度器”的双写契约，并置于
+ * {@code @Transactional} 中：DB 未写成功则 Scheduler 不动；Scheduler 同步失败则 DB 回滚，
+ * 最终与 sys_job 表保持一致。{@code run()} 为只读+触发（仅从库重载并触发已注册任务、不写 DB），不参与该双写契约。
  * 
  * @author ruoyi
  */
@@ -57,10 +58,11 @@ public interface ISysJobService {
     /**
      * 批量删除调度信息
      * 
-     * @param jobIds 需要删除的任务ID
-     * @return 结果
+     * @param jobIds 需要删除的任务ID（单次不超过 500 条）
+     * @return 实际删除的行数（库中不存在的 ID 被跳过、不计入）
+     * @throws com.ruoyi.common.exception.ServiceException 空选或单次超过 500 条上限
      */
-    public void deleteJobByIds(Long[] jobIds) throws SchedulerException;
+    public int deleteJobByIds(Long[] jobIds) throws SchedulerException;
 
     /**
      * 任务调度状态修改

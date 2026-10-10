@@ -68,6 +68,7 @@ public class SysJobControllerTest {
     @DisplayName("remove：委托 Service 批量删除并返回 success")
     void removeDelegatesToService() throws Exception {
         ISysJobService svc = mock(ISysJobService.class);
+        when(svc.deleteJobByIds(any())).thenReturn(2);
         SysJobController controller = new SysJobController(svc);
 
         AjaxResult r = controller.remove(new Long[] { 1L, 2L });

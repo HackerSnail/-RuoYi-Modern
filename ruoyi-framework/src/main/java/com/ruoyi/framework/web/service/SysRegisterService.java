@@ -48,13 +48,17 @@ public class SysRegisterService {
      */
     public String register(RegisterBody registerBody) {
         String msg = "", username = registerBody.getUsername(), password = registerBody.getPassword();
+        // 请求线程统一抓取 IP/UA，供验证码校验与注册结果审计多处复用；
+        // 作为实参 eager 求值后交给异步任务，异步线程只拿到已捕获的值，不会访问已销毁的 Request 上下文
+        final String ip = IpUtils.getIpAddr();
+        final String userAgent = ServletUtils.getRequest().getHeader("User-Agent");
         SysUser sysUser = new SysUser();
         sysUser.setUserName(username);
 
         // 验证码开关
         boolean captchaEnabled = configService.selectCaptchaEnabled();
         if (captchaEnabled) {
-            validateCaptcha(username, registerBody.getCode(), registerBody.getUuid());
+            validateCaptcha(username, registerBody.getCode(), registerBody.getUuid(), ip, userAgent);
         }
 
         if (StringUtils.isEmpty(username)) {
@@ -73,16 +77,23 @@ public class SysRegisterService {
             sysUser.setNickName(username);
             sysUser.setPwdUpdateDate(LocalDateTime.now());
             sysUser.setPassword(SecurityUtils.encryptPassword(password));
-            boolean regFlag = userService.registerUser(sysUser);
+            boolean regFlag = false;
+            try {
+                regFlag = userService.registerUser(sysUser);
+            } catch (RuntimeException e) {
+                // 唯一索引并发冲突等 DB 异常会抛出（而非返回 false）：记审计后原样抛出，
+                // 交由全局异常处理返回 500，避免注册滥用/竞态在审计链路留白
+                asyncManager.execute(AsyncFactory.recordLogininfor(username, Constants.REGISTER,
+                        "注册异常：" + e.getMessage(), ip, userAgent));
+                throw e;
+            }
             if (!regFlag) {
                 msg = "注册失败,请联系系统管理人员";
-            } else {
-                // 请求线程提前抓取 IP/UA 传入异步任务
-                asyncManager.execute(AsyncFactory.recordLogininfor(username, Constants.REGISTER,
-                        MessageUtils.message("user.register.success"), IpUtils.getIpAddr(),
-                        ServletUtils.getRequest().getHeader("User-Agent")));
             }
         }
+        // 统一记录注册结果审计：成功记成功文案，任一校验/入库失败记失败原因（与登录链路的 LOGIN_FAIL 审计对称）
+        asyncManager.execute(AsyncFactory.recordLogininfor(username, Constants.REGISTER,
+                StringUtils.isEmpty(msg) ? MessageUtils.message("user.register.success") : msg, ip, userAgent));
         return msg;
     }
 
@@ -92,16 +103,28 @@ public class SysRegisterService {
      * @param username 用户名
      * @param code 验证码
      * @param uuid 唯一标识
-     * @return 结果
+     * @param ip 请求 IP（供失败审计）
+     * @param userAgent 浏览器 UA（供失败审计）
      */
-    public void validateCaptcha(String username, String code, String uuid) {
-        String verifyKey = CacheConstants.CAPTCHA_CODE_KEY + StringUtils.nvl(uuid, "");
-        String captcha = redisCache.getCacheObject(verifyKey);
-        redisCache.deleteObject(verifyKey);
-        if (captcha == null) {
+    public void validateCaptcha(String username, String code, String uuid, String ip, String userAgent) {
+        // uuid 为空时 early-reject：空 key 永不命中，且会退化成所有请求共用 captcha_code: 的安全隐患
+        if (StringUtils.isEmpty(uuid)) {
+            asyncManager.execute(AsyncFactory.recordLogininfor(username, Constants.REGISTER,
+                    MessageUtils.message("user.jcaptcha.expire"), ip, userAgent));
             throw new CaptchaExpireException();
         }
+        String verifyKey = CacheConstants.CAPTCHA_CODE_KEY + uuid;
+        String captcha = redisCache.getCacheObject(verifyKey);
+        if (captcha == null) {
+            asyncManager.execute(AsyncFactory.recordLogininfor(username, Constants.REGISTER,
+                    MessageUtils.message("user.jcaptcha.expire"), ip, userAgent));
+            throw new CaptchaExpireException();
+        }
+        // 先确认存在再删除（省一次对不存在 key 的无效 RTT）；无论比对成败都消费验证码——保留错误答案也作废的反暴力语义
+        redisCache.deleteObject(verifyKey);
         if (!code.equalsIgnoreCase(captcha)) {
+            asyncManager.execute(AsyncFactory.recordLogininfor(username, Constants.REGISTER,
+                    MessageUtils.message("user.jcaptcha.error"), ip, userAgent));
             throw new CaptchaException();
         }
     }

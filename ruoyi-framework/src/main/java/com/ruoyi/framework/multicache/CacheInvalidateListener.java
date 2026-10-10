@@ -28,12 +28,14 @@ public class CacheInvalidateListener implements MessageListener {
 
     @Override
     public void onMessage(Message message, byte[] pattern) {
+        String key = null;
         try {
-            String key = new String(message.getBody(), StandardCharsets.UTF_8);
+            key = new String(message.getBody(), StandardCharsets.UTF_8);
             multiLevelCacheService.onInvalidateMessage(key);
         } catch (Exception e) {
-            // 不格式化 pattern/channel：订阅(ChannelTopic)场景 pattern 可能为 null，避免在 catch 内再次抛异常
-            log.error("处理缓存失效广播消息异常", e);
+            // key 提到 try 外：解码成功但处理失败时能打出是哪个 key；若解码本身失败则 key=null。
+            // 不在 catch 内再取 message.getBody()，避免二次异常；也不格式化 pattern/channel：订阅(ChannelTopic)场景 pattern 可能为 null。
+            log.error("处理缓存失效广播消息异常, key={}", key, e);
         }
     }
 }

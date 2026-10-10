@@ -189,9 +189,12 @@ public class GenTableServiceImpl implements IGenTableService {
                 if (row > 0) {
                     // 保存列信息
                     List<GenTableColumn> genTableColumns = genTableColumnMapper.selectDbTableColumnsByName(tableName);
-                    for (GenTableColumn column : genTableColumns) {
-                        GenUtils.initColumnField(column, table);
-                        genTableColumnMapper.insertGenTableColumn(column);
+                    if (StringUtils.isNotEmpty(genTableColumns)) {
+                        for (GenTableColumn column : genTableColumns) {
+                            GenUtils.initColumnField(column, table);
+                        }
+                        // 多列合并为一条多值 INSERT，避免逐列 N 次往返
+                        genTableColumnMapper.batchInsertGenTableColumn(genTableColumns);
                     }
                 }
             }
@@ -326,11 +329,12 @@ public class GenTableServiceImpl implements IGenTableService {
             }
         });
 
-        // 实表已不存在的旧列：从配置表中删除
-        List<GenTableColumn> delColumns = tableColumns.stream()
-                .filter(column -> !dbTableColumnNames.contains(column.getColumnName())).collect(Collectors.toList());
-        if (StringUtils.isNotEmpty(delColumns)) {
-            genTableColumnMapper.deleteGenTableColumns(delColumns);
+        // 实表已不存在的旧列：从配置表中删除（按主键 column_id 精删）
+        List<Long> delColumnIds = tableColumns.stream()
+                .filter(column -> !dbTableColumnNames.contains(column.getColumnName()))
+                .map(GenTableColumn::getColumnId).collect(Collectors.toList());
+        if (StringUtils.isNotEmpty(delColumnIds)) {
+            genTableColumnMapper.deleteGenTableColumns(delColumnIds);
         }
     }
 

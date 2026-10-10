@@ -119,6 +119,18 @@
         #{sort},</if>
 			<if test="createBy != null and createBy != ''">#{createBy},</if> sysdate() ) </insert>
 
+    <!-- 批量新增列配置：导入表时把多列合并为一条多值 INSERT，减少 N 次往返。列除主键外全部可空，
+         未设置字段以 NULL 入库（下游用 isNotEmpty 判定，NULL 与 '' 等价），故用固定列名而非动态跳过 -->
+    <insert id="batchInsertGenTableColumn" parameterType="java.util.List"> insert into gen_table_column
+        (table_id, column_name, column_comment, column_type, java_type, java_field, is_pk, is_increment,
+        is_required, is_insert, is_edit, is_list, is_query, query_type, html_type, dict_type, sort,
+        create_by, create_time) values <foreach collection="columns" item="item" separator=",">
+        (#{item.tableId}, #{item.columnName}, #{item.columnComment}, #{item.columnType}, #{item.javaType},
+        #{item.javaField}, #{item.isPk}, #{item.isIncrement}, #{item.isRequired}, #{item.isInsert},
+        #{item.isEdit}, #{item.isList}, #{item.isQuery}, #{item.queryType}, #{item.htmlType},
+        #{item.dictType}, #{item.sort}, #{item.createBy}, sysdate()) </foreach>
+    </insert>
+
     <!-- 修改列配置：动态 SET 仅更新非 null 字段（布尔类 is_* 判 null 而非空串以保留 '0'），update_time 强制刷新 -->
     <update id="updateGenTableColumn" parameterType="GenTableColumn"> update gen_table_column <set>
             <if test="columnComment != null">column_comment = #{columnComment},</if>
@@ -145,15 +157,23 @@
             <if test="updateBy != null">update_by
         = #{updateBy},</if> update_time = sysdate() </set> where column_id = #{columnId} </update>
 
-    <!-- 按生成表ID批量删除其列配置（删除/重新导入生成表时级联清理） -->
-    <delete id="deleteGenTableColumnByIds" parameterType="Long"> delete from gen_table_column where
-        table_id in <foreach collection="array" item="tableId" open="(" separator="," close=")">
-        #{tableId} </foreach>
+    <!-- 按生成表ID批量删除其列配置：加空数组守卫，ids 为空时条件退化为 1=0（避免 IN () 语法错、也不全表删） -->
+    <delete id="deleteGenTableColumnByIds"> delete from gen_table_column <where>
+            <if test="ids != null and ids.length > 0">table_id in <foreach collection="ids"
+                    item="tableId" open="(" separator="," close=")"> #{tableId} </foreach>
+            </if>
+            <if test="ids == null or ids.length == 0">1 = 0</if>
+        </where>
     </delete>
 
-    <!-- 按列对象列表批量删除指定列（foreach collection="list" 取实体 columnId） -->
-    <delete id="deleteGenTableColumns"> delete from gen_table_column where column_id in <foreach
-            collection="list" item="item" open="(" separator="," close=")"> #{item.columnId} </foreach>
+    <!-- 按列主键批量删除：收窄为 columnIds(List<Long>)；加空集合守卫，为空时条件退化为 1=0 -->
+    <delete id="deleteGenTableColumns"> delete from gen_table_column <where>
+            <if test="columnIds != null and columnIds.size() > 0">column_id in <foreach
+                    collection="columnIds" item="columnId" open="(" separator="," close=")">
+                #{columnId} </foreach>
+            </if>
+            <if test="columnIds == null or columnIds.size() == 0">1 = 0</if>
+        </where>
     </delete>
 
 </mapper>

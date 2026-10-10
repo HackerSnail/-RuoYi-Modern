@@ -31,6 +31,9 @@ public class ServerMonitorService {
     /** 最近一次采集完成的快照；初始为空壳，避免刷新完成前返回 null */
     private volatile Server latest = new Server();
 
+    /** 关闭等待秒数：给正在执行的 copyTo (~1s) 留充完成窗口，超出才强中断 */
+    private static final long SHUTDOWN_AWAIT_SECONDS = 10L;
+
     private ScheduledExecutorService scheduler;
 
     @PostConstruct
@@ -51,9 +54,11 @@ public class ServerMonitorService {
         try {
             Server snapshot = new Server();
             snapshot.copyTo();
+            snapshot.setTimestamp(System.currentTimeMillis());
             this.latest = snapshot;
-        } catch (Exception e) {
-            log.error("服务器监控信息后台采集失败，沿用上一次快照", e);
+        } catch (Throwable t) {
+            // 必须兜住 Throwable：scheduleAtFixedRate 若任务抛未捕获异常则后续调度永久取消、监控静默停摆
+            log.error("服务器监控信息后台采集失败，沿用上一次快照", t);
         }
     }
 
@@ -66,8 +71,18 @@ public class ServerMonitorService {
 
     @PreDestroy
     public void destroy() {
-        if (scheduler != null) {
+        if (scheduler == null) {
+            return;
+        }
+        // 三段式优雅关闭：不中断正在执行的 ~1s 采集，避免关机时产生误报 error log
+        scheduler.shutdown();
+        try {
+            if (!scheduler.awaitTermination(SHUTDOWN_AWAIT_SECONDS, TimeUnit.SECONDS)) {
+                scheduler.shutdownNow();
+            }
+        } catch (InterruptedException e) {
             scheduler.shutdownNow();
+            Thread.currentThread().interrupt();
         }
     }
 }

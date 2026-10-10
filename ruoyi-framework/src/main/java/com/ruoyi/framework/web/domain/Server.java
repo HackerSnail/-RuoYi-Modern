@@ -53,6 +53,9 @@ public class Server {
      */
     private List<SysFile> sysFiles = new LinkedList<>();
 
+    /** 快照采集时间戳（毫秒）；初始 0 表示尚未采集，读方可据此判断是否过期 */
+    private long timestamp;
+
     public Cpu getCpu() {
         return cpu;
     }
@@ -91,6 +94,14 @@ public class Server {
 
     public void setSysFiles(List<SysFile> sysFiles) {
         this.sysFiles = sysFiles;
+    }
+
+    public long getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
     }
 
     /**

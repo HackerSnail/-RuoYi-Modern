@@ -1,9 +1,6 @@
 package com.ruoyi.generator.domain;
 
 import java.util.List;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import org.apache.commons.lang3.ArrayUtils;
 import com.ruoyi.common.constant.GenConstants;
 import com.ruoyi.common.core.domain.BaseEntity;
@@ -21,11 +18,9 @@ public class GenTable extends BaseEntity {
     private Long tableId;
 
     /** 表名称 */
-    @NotBlank(message = "表名称不能为空")
     private String tableName;
 
     /** 表描述 */
-    @NotBlank(message = "表描述不能为空")
     private String tableComment;
 
     /** 关联父表的表名 */
@@ -35,42 +30,33 @@ public class GenTable extends BaseEntity {
     private String subTableFkName;
 
     /** 实体类名称(首字母大写) */
-    @NotBlank(message = "实体类名称不能为空")
     private String className;
 
     /** 使用的模板（crud单表操作 tree树表操作 sub主子表操作） */
-    @Pattern(regexp = "^(crud|tree|sub)$", message = "模板类别非法，应为 crud/tree/sub")
     private String tplCategory;
 
     /** 前端类型（element-ui模版 element-plus模版 element-plus-typescript模版） */
-    @Pattern(regexp = "^(element-ui|element-plus|element-plus-typescript)$", message = "前端类型非法，应为 element-ui/element-plus/element-plus-typescript")
     private String tplWebType;
 
     /** 生成包路径 */
-    @NotBlank(message = "生成包路径不能为空")
     private String packageName;
 
     /** 生成模块名 */
-    @NotBlank(message = "生成模块名不能为空")
     private String moduleName;
 
     /** 生成业务名 */
-    @NotBlank(message = "生成业务名不能为空")
     private String businessName;
 
     /** 生成功能名 */
-    @NotBlank(message = "生成功能名不能为空")
     private String functionName;
 
     /** 生成作者 */
-    @NotBlank(message = "作者不能为空")
     private String functionAuthor;
 
     /** 表单布局（单列 双列 三列） */
     private Integer formColNum;
 
     /** 生成代码方式（0zip压缩包 1自定义路径） */
-    @Pattern(regexp = "^(0|1)$", message = "生成方式非法，应为 0(zip压缩包)/1(自定义路径)")
     private String genType;
 
     /** 生成路径（不填默认项目路径） */
@@ -80,11 +66,9 @@ public class GenTable extends BaseEntity {
     private GenTableColumn pkColumn;
 
     /** 子表信息 */
-    @Valid
     private GenTable subTable;
 
     /** 表列信息 */
-    @Valid
     private List<GenTableColumn> columns;
 
     /** 其它生成选项 */

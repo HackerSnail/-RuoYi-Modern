@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.io.IOUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -34,6 +35,7 @@ import com.ruoyi.common.utils.sql.SqlUtil;
 import com.ruoyi.generator.config.GenConfig;
 import com.ruoyi.generator.domain.GenTable;
 import com.ruoyi.generator.domain.GenTableColumn;
+import com.ruoyi.generator.domain.dto.GenTableEditDTO;
 import com.ruoyi.generator.service.IGenTableColumnService;
 import com.ruoyi.generator.service.IGenTableService;
 
@@ -198,7 +200,10 @@ public class GenController extends BaseController {
     @PreAuthorize("@ss.hasPermi('tool:gen:edit')")
     @Log(title = "代码生成", businessType = BusinessType.UPDATE)
     @PutMapping
-    public AjaxResult editSave(@Validated @RequestBody GenTable genTable) {
+    public AjaxResult editSave(@Validated @RequestBody GenTableEditDTO genTableEditDTO) {
+        // 入参 DTO 完成校验后，复制回持久化实体交给 service（字段名与实体对齐，契约不变）
+        GenTable genTable = new GenTable();
+        BeanUtils.copyProperties(genTableEditDTO, genTable);
         genTableService.validateEdit(genTable);
         genTableService.updateGenTable(genTable);
         return success();

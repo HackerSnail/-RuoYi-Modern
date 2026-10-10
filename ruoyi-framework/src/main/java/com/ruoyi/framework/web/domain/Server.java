@@ -1,6 +1,5 @@
 package com.ruoyi.framework.web.domain;
 
-import java.net.UnknownHostException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
@@ -95,9 +94,10 @@ public class Server {
     }
 
     /**
-     * 采集入口：借助 oshi 读取当前服务器的硬件/系统信息，分别填充 CPU、内存、JVM、系统及磁盘列表
+     * 采集入口：借助 oshi 读取当前服务器的硬件/系统信息，分别填充 CPU、内存、JVM、系统及磁盘列表。
+     * 体内均为非受检调用（oshi/IpUtils 已内部兵底），不再声明 throws Exception。
      */
-    public void copyTo() throws Exception {
+    public void copyTo() {
         SystemInfo si = new SystemInfo();
         HardwareAbstractionLayer hal = si.getHardware();
 
@@ -159,9 +159,9 @@ public class Server {
     }
 
     /**
-     * 设置Java虚拟机
+     * 设置Java虚拟机（仅读 Runtime/System 属性，不抛受检异常）
      */
-    private void setJvmInfo() throws UnknownHostException {
+    private void setJvmInfo() {
         Properties props = System.getProperties();
         jvm.setTotal(Runtime.getRuntime().totalMemory());
         jvm.setMax(Runtime.getRuntime().maxMemory());
@@ -187,7 +187,9 @@ public class Server {
             sysFile.setTotal(convertFileSize(total));
             sysFile.setFree(convertFileSize(free));
             sysFile.setUsed(convertFileSize(used));
-            sysFile.setUsage(Arith.mul(Arith.div(used, total, 4), 100));
+            // 除零守卫：部分挂载点(空卷/读卡器/网络盘)报告的 total 为 0，Arith.div 遇除数为 0 会抛
+            // IllegalArgumentException 并中断整份采集；此时使用率无法计算，记为 0
+            sysFile.setUsage(total > 0 ? Arith.mul(Arith.div(used, total, 4), 100) : 0);
             sysFiles.add(sysFile);
         }
     }

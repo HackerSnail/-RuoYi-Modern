@@ -57,14 +57,20 @@ public class GenTableColumnServiceImpl implements IGenTableColumnService {
 	}
 
 	/**
-	 * 删除业务字段对象
+	 * 按生成表ID批量删除其列配置
 	 * 
-	 * @param ids 需要删除的数据ID，逗号分隔字符串
+	 * <p>
+	 * 入参是「生成表ID(table_id)」的逗号分隔串（非列主键 column_id）：底层 mapper 以
+	 * {@code where table_id in (...)} 删除这些表下的全部列，供删表时级联清理；空串/null 由 mapper
+	 * 的 1=0 守卫兜底为 0 行（不报错也不全表删）。
+	 * </p>
+	 * 
+	 * @param tableIds 需要清理列配置的生成表ID，逗号分隔字符串
 	 * @return 结果
 	 */
 	@Override
-	public int deleteGenTableColumnByIds(String ids) {
-		// 前端传逗号分隔字符串，转 Long[] 后交由 mapper 批量删除
-		return genTableColumnMapper.deleteGenTableColumnByIds(Convert.toLongArray(ids));
+	public int deleteGenTableColumnByIds(String tableIds) {
+		// 前端传逗号分隔的生成表ID串，转 Long[] 后交由 mapper 按 table_id 批量删除
+		return genTableColumnMapper.deleteGenTableColumnByIds(Convert.toLongArray(tableIds));
 	}
 }

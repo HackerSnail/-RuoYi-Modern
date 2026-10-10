@@ -2,6 +2,7 @@ package com.ruoyi.web.controller.demo;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -16,13 +17,15 @@ import com.ruoyi.framework.multicache.MultiLevelCacheService;
 
 /**
  * 缓存基建演示接口：把 #1 三防、#2 分布式锁、#4 二级缓存、限流之外的可观测部分
- * 通过简单 HTTP 端点暴露，便于冒烟验证与学习。标注 {@link Anonymous} 免鉴权，仅限演示环境。
+ * 通过简单 HTTP 端点暴露，便于冒烟验证与学习。标注 {@link Anonymous} 免鉴权。
+ * 整个演示由 {@code demo.cache.enabled=true} 显式开启（缺省不注册），以免匿名端点进入生产。
  *
  * @author ruoyi
  */
 @Anonymous
 @RestController
 @RequestMapping("/demo/cache")
+@ConditionalOnProperty(value = "demo.cache.enabled", havingValue = "true")
 public class CacheDemoController {
     /** 演示用布隆过滤器：预期 1 万元素、1% 误判率 */
     private static final long BLOOM_EXPECT = 10000L;
@@ -68,7 +71,7 @@ public class CacheDemoController {
         return AjaxResult.success(data);
     }
 
-    /** 分布式锁演示：同一 taskId 并发调用，仅一个成功，其余返回"获取资源锁失败" */
+    /** 分布式锁演示（阻塞式互斥）：同一 taskId 并发调用，先到者持锁执行、后到者在 waitTime(3秒)内排队串行成功后依次返回；等待超时才返回"获取资源锁失败" */
     @GetMapping("/lock")
     public AjaxResult lock(@RequestParam String taskId) {
         return AjaxResult.success(cacheDemoService.doWithLock(taskId));

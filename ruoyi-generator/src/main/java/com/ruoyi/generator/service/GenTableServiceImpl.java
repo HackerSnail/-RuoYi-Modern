@@ -50,9 +50,13 @@ public class GenTableServiceImpl implements IGenTableService {
 
     private final GenTableColumnMapper genTableColumnMapper;
 
-    public GenTableServiceImpl(GenTableMapper genTableMapper, GenTableColumnMapper genTableColumnMapper) {
+    private final GenUtils genUtils;
+
+    public GenTableServiceImpl(GenTableMapper genTableMapper, GenTableColumnMapper genTableColumnMapper,
+            GenUtils genUtils) {
         this.genTableMapper = genTableMapper;
         this.genTableColumnMapper = genTableColumnMapper;
+        this.genUtils = genUtils;
     }
 
     /**
@@ -169,7 +173,7 @@ public class GenTableServiceImpl implements IGenTableService {
             for (GenTable table : tableList) {
                 String tableName = table.getTableName();
                 table.setTplWebType(tplWebType);
-                GenUtils.initTable(table, operName);
+                genUtils.initTable(table, operName);
                 int row = genTableMapper.insertGenTable(table);
                 if (row > 0) {
                     // 保存列信息

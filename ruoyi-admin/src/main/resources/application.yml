@@ -125,6 +125,19 @@ pagehelper:
   supportMethodsArguments: true
   params: count=countSql
 
+# 代码生成配置（原 generator.yml 并入此处，由 GenConfig @ConfigurationProperties(prefix=gen) 绑定）
+gen:
+  # 作者
+  author: ruoyi
+  # 默认生成包路径 system 需改成自己的模块名称 如 system monitor tool
+  packageName: com.ruoyi.system
+  # 自动去除表前缀，默认是false
+  autoRemovePre: false
+  # 表前缀（生成类名不会包含表前缀，多个用逗号分隔）
+  tablePrefix: sys_
+  # 是否允许生成文件覆盖到本地（自定义路径），默认不允许
+  allowOverwrite: false
+
 # Springdoc配置
 springdoc:
   api-docs:

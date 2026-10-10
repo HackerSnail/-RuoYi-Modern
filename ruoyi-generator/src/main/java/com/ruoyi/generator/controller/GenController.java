@@ -48,9 +48,13 @@ public class GenController extends BaseController {
 
     private final IGenTableColumnService genTableColumnService;
 
-    public GenController(IGenTableService genTableService, IGenTableColumnService genTableColumnService) {
+    private final GenConfig genConfig;
+
+    public GenController(IGenTableService genTableService, IGenTableColumnService genTableColumnService,
+            GenConfig genConfig) {
         this.genTableService = genTableService;
         this.genTableColumnService = genTableColumnService;
+        this.genConfig = genConfig;
     }
 
     /**
@@ -206,7 +210,7 @@ public class GenController extends BaseController {
     @Log(title = "代码生成", businessType = BusinessType.GENCODE)
     @GetMapping("/genCode/{tableName}")
     public AjaxResult genCode(@PathVariable("tableName") String tableName) {
-        if (!GenConfig.isAllowOverwrite()) {
+        if (!genConfig.isAllowOverwrite()) {
             return AjaxResult.error("【系统预设】不允许生成文件覆盖到本地");
         }
         genTableService.generatorCode(tableName);

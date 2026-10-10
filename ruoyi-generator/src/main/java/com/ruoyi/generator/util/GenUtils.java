@@ -2,6 +2,7 @@ package com.ruoyi.generator.util;
 
 import java.util.Arrays;
 import org.apache.commons.lang3.RegExUtils;
+import org.springframework.stereotype.Component;
 import com.ruoyi.common.constant.GenConstants;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.generator.config.GenConfig;
@@ -9,24 +10,36 @@ import com.ruoyi.generator.domain.GenTable;
 import com.ruoyi.generator.domain.GenTableColumn;
 
 /**
- * 代码生成器 工具类
+ * 代码生成器 工具类。
+ *
+ * <p>
+ * 依赖 {@link GenConfig} 的 {@code initTable}/{@code convertClassName} 已改为实例方法，配置由 Spring
+ * 注入而非读全局静态；其余无状态算法辅助方法保持静态。消费方（{@code GenTableServiceImpl}）注入本 bean 后调用。
+ * </p>
  * 
  * @author ruoyi
  */
+@Component
 public class GenUtils {
+    private final GenConfig genConfig;
+
+    public GenUtils(GenConfig genConfig) {
+        this.genConfig = genConfig;
+    }
+
     /**
-     * 初始化表信息：根据表名与全局配置推导类名/包名/模块名/业务名/功能名等生成元数据
+     * 初始化表信息：根据表名与注入的配置推导类名/包名/模块名/业务名/功能名等生成元数据
      *
      * @param genTable 待初始化的生成表
      * @param operName 操作人员（写入 createBy）
      */
-    public static void initTable(GenTable genTable, String operName) {
+    public void initTable(GenTable genTable, String operName) {
         genTable.setClassName(convertClassName(genTable.getTableName()));
-        genTable.setPackageName(GenConfig.getPackageName());
-        genTable.setModuleName(getModuleName(GenConfig.getPackageName()));
+        genTable.setPackageName(genConfig.getPackageName());
+        genTable.setModuleName(getModuleName(genConfig.getPackageName()));
         genTable.setBusinessName(getBusinessName(genTable.getTableName()));
         genTable.setFunctionName(replaceText(genTable.getTableComment()));
-        genTable.setFunctionAuthor(GenConfig.getAuthor());
+        genTable.setFunctionAuthor(genConfig.getAuthor());
         genTable.setCreateBy(operName);
     }
 
@@ -160,9 +173,9 @@ public class GenUtils {
      * @param tableName 表名称
      * @return 类名
      */
-    public static String convertClassName(String tableName) {
-        boolean autoRemovePre = GenConfig.getAutoRemovePre();
-        String tablePrefix = GenConfig.getTablePrefix();
+    public String convertClassName(String tableName) {
+        boolean autoRemovePre = genConfig.isAutoRemovePre();
+        String tablePrefix = genConfig.getTablePrefix();
         if (autoRemovePre && StringUtils.isNotEmpty(tablePrefix)) {
             String[] searchList = StringUtils.split(tablePrefix, ",");
             tableName = replaceFirst(tableName, searchList);

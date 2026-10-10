@@ -43,10 +43,10 @@ public interface SysJobMapper {
     /**
      * 批量删除调度任务信息
      * 
-     * @param ids 需要删除的数据ID
+     * @param jobIds 需要删除的数据ID
      * @return 结果
      */
-    public int deleteJobByIds(Long[] ids);
+    public int deleteJobByIds(Long[] jobIds);
 
     /**
      * 修改调度任务信息

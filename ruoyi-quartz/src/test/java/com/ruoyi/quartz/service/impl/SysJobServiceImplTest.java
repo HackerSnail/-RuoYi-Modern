@@ -113,4 +113,25 @@ public class SysJobServiceImplTest {
         verify(mapper).deleteJobById(1L);
         verify(scheduler).deleteJob(ScheduleUtils.getJobKey(1L, "DEFAULT"));
     }
+
+    @Test
+    @DisplayName("deleteJobByIds：库中不存在的 ID 安全跳过，不 NPE、不整批失败")
+    void deleteJobByIdsSkipsMissing() throws Exception {
+        Scheduler scheduler = mock(Scheduler.class);
+        SysJobMapper mapper = mock(SysJobMapper.class);
+        SysJobServiceImpl service = new SysJobServiceImpl(scheduler, mapper);
+
+        SysJob existing = new SysJob();
+        existing.setJobId(2L);
+        existing.setJobGroup("DEFAULT");
+        // 1L 已不在库中（陈旧 ID / 并发删除），selectJobById 返 null
+        when(mapper.selectJobById(1L)).thenReturn(null);
+        when(mapper.selectJobById(2L)).thenReturn(existing);
+        when(mapper.deleteJobById(2L)).thenReturn(1);
+
+        service.deleteJobByIds(new Long[] { 1L, 2L });
+        verify(mapper, never()).deleteJobById(1L);
+        verify(mapper).deleteJobById(2L);
+        verify(scheduler).deleteJob(ScheduleUtils.getJobKey(2L, "DEFAULT"));
+    }
 }

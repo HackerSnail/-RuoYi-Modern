@@ -145,7 +145,10 @@ public class SysJobServiceImpl implements ISysJobService {
         }
         for (Long jobId : jobIds) {
             SysJob job = jobMapper.selectJobById(jobId);
-            deleteJob(job);
+            // 库中不存在（传入陈旧 ID 或已被并发删除）则跳过，避免 deleteJob 解引用 null NPE 致整批事务回滚
+            if (job != null) {
+                deleteJob(job);
+            }
         }
     }
 

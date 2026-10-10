@@ -28,6 +28,7 @@ import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.core.text.Convert;
 import com.ruoyi.common.enums.BusinessType;
+import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.sql.SqlUtil;
 import com.ruoyi.generator.config.GenConfig;
@@ -118,6 +119,9 @@ public class GenController extends BaseController {
     public AjaxResult importTableSave(@RequestParam("tables") String tables,
             @RequestParam("tplWebType") String tplWebType) {
         String[] tableNames = Convert.toStrArray(tables);
+        if (tableNames == null || tableNames.length == 0) {
+            return AjaxResult.error("请选择要导入的表");
+        }
         // 查询表信息
         List<GenTable> tableList = genTableService.selectDbTableListByNames(tableNames);
         genTableService.importGenTable(tableList, tplWebType, SecurityUtils.getUsername());
@@ -125,38 +129,67 @@ public class GenController extends BaseController {
     }
 
     /**
-     * 创建表结构（保存）：先过滤危险关键字，解析 CREATE 语句→建表→回读元数据→自动导入生成配置
+     * 创建表结构（保存）：过滤危险关键字→解析 CREATE 语句→防覆盖校验→执行建表→回读元数据→导入生成配置。
+     *
+     * <p>
+     * 建表（DDL 隐式提交）与导入生成配置（@Transactional）分两阶段处理：若建表已成功而导入失败，
+     * 返回信息会带上已建成的表名，便于运维定位"表已建、配置未入库"的不一致态并人工回滚。建表前逐一
+     * 校验目标库是否已存在同名实表，存在则拒绝，避免覆盖已有结构。
+     * </p>
      */
-    @PreAuthorize("@ss.hasRole('admin')")
+    @PreAuthorize("@ss.hasPermi('tool:gen:create')")
     @Log(title = "创建表", businessType = BusinessType.OTHER)
     @PostMapping("/createTable")
     public AjaxResult createTableSave(@RequestParam("sql") String sql, @RequestParam("tplWebType") String tplWebType) {
+        // 建表成功的名单提前声明，确保兜底 catch 也能带回"已建成"信息
+        List<String> createdTables = new ArrayList<>();
         try {
             // 安全前置：过滤 DROP/TRUNCATE 等危险关键字，防止拼接恶意语句
             SqlUtil.filterKeyword(sql);
-            // 用 Druid 按 MySQL 方言解析出语句列表
+            // 用 Druid 按 MySQL 方言解析出语句列表，仅收集 CREATE TABLE 语句
             List<SQLStatement> sqlStatements = SQLUtils.parseStatements(sql, DbType.mysql);
-            List<String> tableNames = new ArrayList<>();
+            List<MySqlCreateTableStatement> createStatements = new ArrayList<>();
             for (SQLStatement sqlStatement : sqlStatements) {
-                // 仅处理 CREATE TABLE 语句，其余忽略
                 if (sqlStatement instanceof MySqlCreateTableStatement createTableStatement) {
-                    if (genTableService.createTable(createTableStatement.toString())) {
-                        // 建表成功则记录表名（剔除反引号）用于后续自动导入
-                        String tableName = createTableStatement.getTableName().replaceAll("`", "");
-                        tableNames.add(tableName);
-                    }
+                    createStatements.add(createTableStatement);
                 }
             }
-            // 回读刚建好的表元数据，立即导入为生成配置（建表与导入一步完成）
-            List<GenTable> tableList = genTableService.selectDbTableListByNames(tableNames.toArray(new String[0]));
-            String operName = SecurityUtils.getUsername();
-            genTableService.importGenTable(tableList, tplWebType, operName);
-            return AjaxResult.success();
+            if (createStatements.isEmpty()) {
+                return AjaxResult.error("未解析到有效的 CREATE TABLE 语句");
+            }
+            // 防覆盖：建表前逐一校验目标库是否已存在同名实表，存在则拒绝
+            for (MySqlCreateTableStatement createTableStatement : createStatements) {
+                String tableName = createTableStatement.getTableName().replaceAll("`", "");
+                if (genTableService.checkTableExist(tableName)) {
+                    return AjaxResult.error("表 '" + tableName + "' 已存在，不允许覆盖创建");
+                }
+            }
+            // 阶段一：逐表执行 DDL 建表并记录成功名单（剔除反引号）
+            for (MySqlCreateTableStatement createTableStatement : createStatements) {
+                if (genTableService.createTable(createTableStatement.toString())) {
+                    createdTables.add(createTableStatement.getTableName().replaceAll("`", ""));
+                }
+            }
         } catch (Exception e) {
-            // 建表涉及 DDL 执行，任何异常统一兑底为友好提示，避免暴露 SQL 细节
+            // 解析/建表阶段异常统一兜底，避免暴露 SQL 细节；若已建部分表则一并带回便于回滚
             logger.error(e.getMessage(), e);
+            if (!createdTables.isEmpty()) {
+                return AjaxResult.error("创建表结构异常，已成功建表 " + createdTables + "，请人工核对");
+            }
             return AjaxResult.error("创建表结构异常");
         }
+        if (createdTables.isEmpty()) {
+            return AjaxResult.error("创建表结构失败，未成功建立任何表");
+        }
+        // 阶段二：回读元数据并导入生成配置，独立于 DDL 之外，失败时明确暴露"表已建、配置未入库"的不一致态
+        try {
+            List<GenTable> tableList = genTableService.selectDbTableListByNames(createdTables.toArray(new String[0]));
+            genTableService.importGenTable(tableList, tplWebType, SecurityUtils.getUsername());
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+            return AjaxResult.error("表已建成功 " + createdTables + "，但导入生成配置失败，请人工核对后重试");
+        }
+        return AjaxResult.success();
     }
 
     /**
@@ -200,7 +233,7 @@ public class GenController extends BaseController {
     @GetMapping("/download/{tableName}")
     public void download(HttpServletResponse response, @PathVariable("tableName") String tableName) throws IOException {
         byte[] data = genTableService.downloadCode(tableName);
-        genCode(response, data);
+        writeZipToResponse(response, data);
     }
 
     /**
@@ -236,8 +269,11 @@ public class GenController extends BaseController {
     @GetMapping("/batchGenCode")
     public void batchGenCode(HttpServletResponse response, String tables) throws IOException {
         String[] tableNames = Convert.toStrArray(tables);
+        if (tableNames == null || tableNames.length == 0) {
+            throw new ServiceException("请选择要生成的表");
+        }
         byte[] data = genTableService.downloadCode(tableNames);
-        genCode(response, data);
+        writeZipToResponse(response, data);
     }
 
     /**
@@ -247,7 +283,7 @@ public class GenController extends BaseController {
      * @param data     已打包的 zip 字节数组
      * @throws IOException 写响应流失败时抛出
      */
-    private void genCode(HttpServletResponse response, byte[] data) throws IOException {
+    private void writeZipToResponse(HttpServletResponse response, byte[] data) throws IOException {
         // 重置响应，清除可能的缓存/已提交头，保证下载头干净
         response.reset();
         // 允许跨域读取，并暴露 Content-Disposition 供前端取文件名

@@ -204,6 +204,11 @@
 	<!-- 执行建表 DDL（${sql} 拼接原生语句，仅用于“生成SQL-建表”预览后的真实执行） -->
 	<update id="createTable"> ${sql} </update>
 
+	<!-- 建表前防覆盖：从 information_schema.tables 统计当前库同名实表数（#{tableName} 参数化，无拼接注入） -->
+	<select id="checkTableExist" parameterType="String" resultType="int"> select count(1) from
+		information_schema.tables where table_schema = (select database()) and table_name =
+		#{tableName} </select>
+
 	<!-- 修改生成表配置：动态 SET 仅更新非空字段（tableName/subTable 等判 null 以允许置空），update_time 强制刷新 -->
 	<update id="updateGenTable" parameterType="GenTable"> update gen_table <set>
 			<if test="tableName != null">table_name = #{tableName},</if>

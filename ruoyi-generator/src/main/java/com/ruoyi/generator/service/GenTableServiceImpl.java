@@ -162,6 +162,17 @@ public class GenTableServiceImpl implements IGenTableService {
     }
 
     /**
+     * 校验当前库中是否已存在同名实表：经 information_schema.tables 计数，>0 即存在
+     *
+     * @param tableName 表名称
+     * @return 存在返回 true
+     */
+    @Override
+    public boolean checkTableExist(String tableName) {
+        return genTableMapper.checkTableExist(tableName) > 0;
+    }
+
+    /**
      * 导入表结构：逐表初始化元数据并写主表，主表写入成功后再从 information_schema 回读列并逐列初始化入库
      * 
      * @param tableList 导入表列表

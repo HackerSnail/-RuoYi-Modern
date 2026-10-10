@@ -74,6 +74,14 @@ public interface IGenTableService {
     public boolean createTable(String sql);
 
     /**
+     * 校验当前库中是否已存在同名实表（建表前防覆盖）
+     *
+     * @param tableName 表名称
+     * @return 存在返回 true
+     */
+    public boolean checkTableExist(String tableName);
+
+    /**
      * 导入表结构：从 information_schema 读取实表元数据并写入 gen_table/gen_table_column
      *
      * @param tableList  导入表列表

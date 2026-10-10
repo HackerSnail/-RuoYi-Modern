@@ -87,4 +87,12 @@ public interface GenTableMapper {
      * @return 结果
      */
     public int createTable(String sql);
+
+    /**
+     * 校验当前库中是否已存在同名实表（建表前防覆盖）
+     *
+     * @param tableName 表名称
+     * @return 匹配行数（>0 即存在）
+     */
+    public int checkTableExist(String tableName);
 }

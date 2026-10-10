@@ -121,4 +121,22 @@ public class SysPermissionServiceTest {
         assertFalse(perms.contains(Constants.ALL_PERMISSION));
         verify(menuService).selectMenuPermsByUserId(2L);
     }
+
+    @Test
+    @DisplayName("菜单权限：角色全部被过滤（停用+管理员角色）→ 回落到按用户查询")
+    void menuPermissionFallsBackWhenAllRolesFiltered() {
+        SysUser user = user(2L);
+        user.setRoles(Arrays.asList(
+                role(3L, "1"),  // 停用，被过滤
+                role(1L, UserConstants.ROLE_NORMAL) // 管理员角色(roleId=1)，被过滤
+        ));
+        when(menuService.selectMenuPermsByUserId(2L)).thenReturn(new HashSet<>(Arrays.asList("fallback:perm")));
+
+        Set<String> perms = permissionService.getMenuPermission(user);
+
+        assertTrue(perms.contains("fallback:perm"));
+        // 没有任何角色通过过滤，不应调用 selectMenuPermsByRoleId
+        verify(menuService, never()).selectMenuPermsByRoleId(anyLong());
+        verify(menuService).selectMenuPermsByUserId(2L);
+    }
 }

@@ -68,7 +68,11 @@ public class SysPermissionService {
                         perms.addAll(rolePerms);
                     }
                 }
-            } else {
+            }
+            // 兜底：角色列表为空或全部被过滤（停用/管理员角色）时，按用户ID直接查。
+            // 防御场景：TokenService 刷新权限时缓存的 user.roles 可能过期，
+            // 若旧角色全部停用则按角色聚合得到空集，须经此路径从 DB 取最新权限。
+            if (perms.isEmpty()) {
                 perms.addAll(menuService.selectMenuPermsByUserId(user.getUserId()));
             }
         }

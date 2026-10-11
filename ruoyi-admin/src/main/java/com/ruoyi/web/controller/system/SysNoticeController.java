@@ -124,6 +124,11 @@ public class SysNoticeController extends BaseController {
     @PostMapping("/markRead")
     @ResponseBody
     public AjaxResult markRead(Long noticeId) {
+        // noticeId 由前端可控传入：null/非正数在入口即拒（早于 getUserId 与落库），
+        // 避免走到 insert 命中 notice_id NOT NULL 抛 500；userId 一律取当前登录用户，不接受前端传入
+        if (noticeId == null || noticeId <= 0) {
+            return error("公告ID非法");
+        }
         Long userId = getUserId();
         noticeReadService.markRead(noticeId, userId);
         return success();
@@ -135,8 +140,18 @@ public class SysNoticeController extends BaseController {
     @PostMapping("/markReadAll")
     @ResponseBody
     public AjaxResult markReadAll(String ids) {
-        Long userId = getUserId();
         Long[] noticeIds = Convert.toLongArray(ids);
+        // 逗号分隔传参须逐项非空/正数校验：Convert.toLongArray 对非数字 token 返回 null，
+        // 直接入库会命中 notice_id NOT NULL 抛 500；空选无副作用，直接返回成功
+        if (noticeIds.length == 0) {
+            return success();
+        }
+        for (Long noticeId : noticeIds) {
+            if (noticeId == null || noticeId <= 0) {
+                return error("公告ID非法");
+            }
+        }
+        Long userId = getUserId();
         noticeReadService.markReadBatch(userId, noticeIds);
         return success();
     }

@@ -665,7 +665,8 @@ create table sys_notice_read (
   user_id          bigint(20)       not null                   comment '用户id',
   read_time        datetime         not null                   comment '阅读时间',
   primary key (read_id),
-  unique key uk_user_notice (user_id, notice_id)   comment '同一用户同一公告只记录一次'
+  unique key uk_user_notice (user_id, notice_id)   comment '同一用户同一公告只记录一次，兼作 insert ignore 幂等去重键',
+  key idx_notice_id (notice_id)                     comment '支撑"谁读了公告X"按 notice_id 过滤的已读/未读用户查询(唯一键最左列为 user_id，用不上前缀)'
 ) engine=innodb auto_increment=1 comment='公告已读记录表';
 
 

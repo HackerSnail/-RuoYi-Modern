@@ -22,6 +22,18 @@ public class AsyncFactory {
     private static final Logger sys_user_logger = LoggerFactory.getLogger("sys-user");
 
     /**
+     * sys_logininfor 各列宽度（对齐 DDL：user_name(50)/ipaddr(128)/login_location(255)/
+     * browser(50)/os(50)/msg(255)）。入库前据此 trim + 截断，防超长/脏输入撑爆审计表，
+     * 或在 MySQL 严格模式下因超列宽报错而丢失整条登录审计。status 由服务端归一化为 0/1，不经此处理。
+     */
+    private static final int MAX_USER_NAME_LEN = 50;
+    private static final int MAX_IPADDR_LEN = 128;
+    private static final int MAX_LOGIN_LOCATION_LEN = 255;
+    private static final int MAX_BROWSER_LEN = 50;
+    private static final int MAX_OS_LEN = 50;
+    private static final int MAX_MSG_LEN = 255;
+
+    /**
      * 记录登录信息
      * 
      * @param username  用户名
@@ -50,14 +62,14 @@ public class AsyncFactory {
                 String os = UserAgentUtils.getOperatingSystem(userAgent);
                 // 获取客户端浏览器
                 String browser = UserAgentUtils.getBrowser(userAgent);
-                // 封装对象
+                // 封装对象（各字符串字段入库前 trim + 按列宽截断做纵深防御；上方日志上下文仍用原值不截断）
                 SysLogininfor logininfor = new SysLogininfor();
-                logininfor.setUserName(username);
-                logininfor.setIpaddr(ip);
-                logininfor.setLoginLocation(address);
-                logininfor.setBrowser(browser);
-                logininfor.setOs(os);
-                logininfor.setMsg(message);
+                logininfor.setUserName(cap(username, MAX_USER_NAME_LEN));
+                logininfor.setIpaddr(cap(ip, MAX_IPADDR_LEN));
+                logininfor.setLoginLocation(cap(address, MAX_LOGIN_LOCATION_LEN));
+                logininfor.setBrowser(cap(browser, MAX_BROWSER_LEN));
+                logininfor.setOs(cap(os, MAX_OS_LEN));
+                logininfor.setMsg(cap(message, MAX_MSG_LEN));
                 // 日志状态
                 if (StringUtils.equalsAny(status, Constants.LOGIN_SUCCESS, Constants.LOGOUT, Constants.REGISTER)) {
                     logininfor.setStatus(Constants.SUCCESS);
@@ -85,5 +97,18 @@ public class AsyncFactory {
                 SpringUtils.getBean(ISysOperLogService.class).insertOperlog(operLog);
             }
         };
+    }
+
+    /**
+     * 纵深防御：入库前对字符串字段去首尾空白并按目标列宽截断。
+     * null 原样返回（对应列可空、有 default ''）；超长仅截断显示长度，不改变语义字段。
+     * 包级可见以便对本纯函数做无 Spring 单测。
+     */
+    static String cap(String value, int maxLen) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.length() <= maxLen ? trimmed : trimmed.substring(0, maxLen);
     }
 }

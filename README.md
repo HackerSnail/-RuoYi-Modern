@@ -41,7 +41,7 @@
 - **不可变与并发**：关键 DTO 改不可变并补值语义 `equals/hashCode`；`AsyncManager` 改 Spring Bean、优雅关停合并进 `@PreDestroy`；分页 `ThreadLocal` 泄漏兜底清理。
 - **健壮收口**：唯一性 / 存在性回查 / 批量原子性下沉 Service；`GlobalExceptionHandler` 精确分档，业务异常不再伪装成系统故障。
 
-# 版本分支
+## 版本分支
 
 RuoYi-Vue 后端项目提供 Spring Boot 2.x / 3.x / 4.x 多版本分支的并行维护
 

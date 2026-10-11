@@ -115,6 +115,21 @@ func DeleteLoginUser(ctx context.Context, uuid string) {
 	_, _ = g.Redis().Del(ctx, consts.RedisLoginToken+uuid)
 }
 
+// DelLoginUserByUuid 为会话失效逻辑提供与 Java delLoginUser(token) 等价的删除入口（按 uuid 删除）。
+func DelLoginUserByUuid(ctx context.Context, uuid string) {
+	DeleteLoginUser(ctx, uuid)
+}
+
+// RefreshSession 软刷新在线会话：重算登录/过期时间并回写 Redis（会话保持、不下线），
+// 对应 TokenService.refreshToken(loginUser)。供角色权限变更后刷新持有者权限集复用。
+func RefreshSession(ctx context.Context, lu *model.LoginUser) {
+	if lu == nil || lu.Token == "" {
+		return
+	}
+	_, _, expireMin := tokenConfig(ctx)
+	refreshToken(ctx, lu, expireMin)
+}
+
 // stripBearer 去掉 "Bearer " 前缀，取实际令牌串。
 func stripBearer(authorization string) string {
 	if strings.HasPrefix(authorization, consts.TokenPrefix) {

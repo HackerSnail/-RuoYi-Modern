@@ -48,16 +48,32 @@ type SysDept struct {
 	Children   []*SysDept   `json:"children"`
 }
 
-// SysRole 角色：getInfo.roles 取 role_key 集合；DataScope 需要 roleId/dataScope/status。
+// SysRole 角色：既用于 /system/role 全量出参（对齐 SysRole + BaseEntity 的 Jackson 输出），
+// 也用于 getInfo.roles / DataScope。出参字段名严格复刻 Jackson camelCase getter。
+//   - menuCheckStrictly/deptCheckStrictly/flag 为原始 boolean，Jackson 始终输出；
+//   - admin 派生自 isAdmin()（roleId==1），非 DB 列，scan 时回填；
+//   - createBy/updateBy/updateTime 不在 selectRoleVo 选择列内（DB 不取），保持零值（前端不读，P1a 先例）；
+//   - menuIds/deptIds 为入参（角色保存时提交的菜单/部门勾选），不出自查询。
 type SysRole struct {
-	RoleId     int64  `json:"roleId"     orm:"role_id"`
-	RoleName   string `json:"roleName"   orm:"role_name"`
-	RoleKey    string `json:"roleKey"    orm:"role_key"`
-	RoleSort   int    `json:"roleSort"   orm:"role_sort"`
-	DataScope  string `json:"dataScope"  orm:"data_scope"`
-	Status     string `json:"status"`
-	DelFlag    string `json:"delFlag"    orm:"del_flag"`
-	// Permissions 为该角色被分配的权限串集合（DataScope 的 permission 匹配用），不参与前端出参。
+	RoleId            int64       `json:"roleId"            orm:"role_id"`
+	RoleName          string      `json:"roleName"          orm:"role_name"`
+	RoleKey           string      `json:"roleKey"           orm:"role_key"`
+	RoleSort          int         `json:"roleSort"          orm:"role_sort"`
+	DataScope         string      `json:"dataScope"         orm:"data_scope"`
+	MenuCheckStrictly bool        `json:"menuCheckStrictly" orm:"menu_check_strictly"`
+	DeptCheckStrictly bool        `json:"deptCheckStrictly" orm:"dept_check_strictly"`
+	Status            string      `json:"status"`
+	DelFlag           string      `json:"delFlag"    orm:"del_flag"`
+	Flag              bool        `json:"flag"`
+	Admin             bool        `json:"admin"`
+	CreateBy          string      `json:"createBy"   orm:"create_by"`
+	CreateTime        *gtime.Time `json:"createTime" orm:"create_time"`
+	UpdateBy          string      `json:"updateBy"   orm:"update_by"`
+	UpdateTime        *gtime.Time `json:"updateTime" orm:"update_time"`
+	Remark            string      `json:"remark"`
+	MenuIds           []int64     `json:"menuIds"`
+	DeptIds           []int64     `json:"deptIds"`
+	// Permissions 为该角色被分配的权限串集合载体（不参与前端出参，DataScope 另有 scopeRole 计算）。
 	Permissions []string `json:"-"`
 }
 

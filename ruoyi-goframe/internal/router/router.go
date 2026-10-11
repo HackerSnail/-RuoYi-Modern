@@ -48,5 +48,21 @@ func Register(s *ghttp.Server) {
 		g.PUT("/system/dept", middleware.Permi("system:dept:edit", controller.DeptEdit))
 		g.GET("/system/dept/{deptId}", middleware.Permi("system:dept:query", controller.DeptGetInfo))
 		g.DELETE("/system/dept/{deptId}", middleware.Permi("system:dept:remove", controller.DeptRemove))
+		// 角色 /system/role（CRUD + optionselect + deptTree；authUser 系列随后注册）
+		g.GET("/system/role/list", middleware.Permi("system:role:list", controller.RoleList))
+		g.GET("/system/role/optionselect", middleware.Permi("system:role:query", controller.RoleOptionSelect))
+		g.GET("/system/role/deptTree/{roleId}", middleware.Permi("system:role:query", controller.RoleDeptTree))
+		g.POST("/system/role", middleware.Permi("system:role:add", controller.RoleAdd))
+		g.PUT("/system/role/dataScope", middleware.Permi("system:role:edit", controller.RoleDataScope))
+		g.PUT("/system/role/changeStatus", middleware.Permi("system:role:edit", controller.RoleChangeStatus))
+		g.PUT("/system/role", middleware.Permi("system:role:edit", controller.RoleEdit))
+		g.GET("/system/role/{roleId}", middleware.Permi("system:role:query", controller.RoleGetInfo))
+		g.DELETE("/system/role/{roleIds}", middleware.Permi("system:role:remove", controller.RoleRemove))
+		// 角色授权用户 /system/role/authUser
+		g.GET("/system/role/authUser/allocatedList", middleware.Permi("system:role:list", controller.AllocatedList))
+		g.GET("/system/role/authUser/unallocatedList", middleware.Permi("system:role:list", controller.UnallocatedList))
+		g.PUT("/system/role/authUser/cancel", middleware.Permi("system:role:edit", controller.CancelAuthUser))
+		g.PUT("/system/role/authUser/cancelAll", middleware.Permi("system:role:edit", controller.CancelAuthUserAll))
+		g.PUT("/system/role/authUser/selectAll", middleware.Permi("system:role:edit", controller.SelectAuthUserAll))
 	})
 }

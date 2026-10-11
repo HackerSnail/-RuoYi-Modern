@@ -249,6 +249,29 @@ func DeleteDeptById(ctx context.Context, lu *model.LoginUser, deptId int64) (int
 	return 1, ""
 }
 
+// SelectDeptListByRoleId 对应 SysDeptMapper.selectDeptListByRoleId：取该角色已关联部门 ID；
+// deptCheckStrictly=true 时排除"作为其他已选部门父级"的部门（父子联动语义）。
+func SelectDeptListByRoleId(ctx context.Context, roleId int64, deptCheckStrictly bool) []int64 {
+	sql := "select d.dept_id from sys_dept d left join sys_role_dept rd on d.dept_id = rd.dept_id where rd.role_id = ?"
+	if deptCheckStrictly {
+		sql += " and d.dept_id not in (select d.parent_id from sys_dept d inner join sys_role_dept rd on d.dept_id = rd.dept_id and rd.role_id = ?)"
+	}
+	sql += " order by d.parent_id, d.order_num"
+	args := []interface{}{roleId}
+	if deptCheckStrictly {
+		args = append(args, roleId)
+	}
+	recs, err := g.DB().GetAll(ctx, sql, args...)
+	if err != nil {
+		return []int64{}
+	}
+	out := make([]int64, 0, len(recs))
+	for _, rec := range recs {
+		out = append(out, gconv.Int64(rec.Map()["dept_id"]))
+	}
+	return out
+}
+
 // BuildDeptTreeSelect 对应 buildDeptTreeSelect：先 buildDeptTree 再转 TreeSelect（disabled=status停用）。
 func BuildDeptTreeSelect(list []*model.SysDept) []*model.TreeSelect {
 	trees := BuildDeptTree(list)

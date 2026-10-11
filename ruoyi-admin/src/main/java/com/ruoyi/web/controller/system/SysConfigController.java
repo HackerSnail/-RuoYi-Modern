@@ -13,10 +13,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.common.annotation.Log;
+import com.ruoyi.common.constant.UserConstants;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.enums.BusinessType;
+import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.system.domain.SysConfig;
 import com.ruoyi.system.service.ISysConfigService;
@@ -103,6 +105,12 @@ public class SysConfigController extends BaseController {
     public AjaxResult edit(@Validated @RequestBody SysConfig config) {
         if (!configService.checkConfigKeyUnique(config)) {
             return error("修改参数'" + config.getConfigName() + "'失败，参数键名已存在");
+        }
+        // 内置参数(configType=Y)禁止普通管理员修改：以库中原始 configType 判定（请求体的 configType 可被篡改），
+        // 防普通管理员篡改系统默认行为；超管（user_id=1）仍可控修改。
+        SysConfig original = configService.selectConfigById(config.getConfigId());
+        if (original != null && UserConstants.YES.equals(original.getConfigType()) && !SecurityUtils.isAdmin()) {
+            return error("修改参数'" + config.getConfigName() + "'失败，内置参数仅超级管理员可修改");
         }
         config.setUpdateBy(getUsername());
         return toAjax(configService.updateConfig(config));

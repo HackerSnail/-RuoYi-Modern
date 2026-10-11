@@ -1,6 +1,7 @@
 package com.ruoyi.system.domain;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
@@ -74,6 +75,7 @@ public class SysConfig extends BaseEntity {
         this.configValue = configValue;
     }
 
+    @Pattern(regexp = "[YN]", message = "系统内置参数只能是Y或N")
     public String getConfigType() {
         return configType;
     }

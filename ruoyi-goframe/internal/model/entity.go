@@ -20,10 +20,37 @@ type SysUser struct {
 	LoginIp     string       `json:"loginIp"     orm:"login_ip"`
 	LoginDate   *gtime.Time  `json:"loginDate"   orm:"login_date"`
 	CreateTime  *gtime.Time  `json:"createTime"  orm:"create_time"`
+	CreateBy    string       `json:"createBy"    orm:"create_by"`
+	UpdateTime  *gtime.Time  `json:"updateTime"  orm:"update_time"`
+	UpdateBy    string       `json:"updateBy"    orm:"update_by"`
+	Remark      string       `json:"remark"`
 	PwdUpdateDate *gtime.Time `json:"pwdUpdateDate" orm:"pwd_update_date"`
 	Dept        *SysDept     `json:"dept"`
-	// Password 不参与 JSON：登录校验用，不回传
+	Roles       []*SysRole   `json:"roles"`
+	RoleIds     []int64      `json:"roleIds"`
+	PostIds     []int64      `json:"postIds"`
+	RoleId      int64        `json:"roleId"`
+	// Admin 派生自 isAdmin()（userId==1），非 DB 列，scan 时回填。
+	Admin bool `json:"admin"`
+	// Password 不参与 JSON：入参由控制器经 r.Get("password") 单独读取；出参恒不外泄。
 	Password string `json:"-"`
+}
+
+// SysPost 岗位：对齐 com.ruoyi.system.domain.SysPost + BaseEntity 的 Jackson 输出。
+//   - flag 为原始 boolean（默认 false），Jackson 始终输出；
+//   - selectPostVo 不取 update_by/update_time，出参保持零值（同 Java resultMap 对这些列不映射）。
+type SysPost struct {
+	PostId     int64       `json:"postId"     orm:"post_id"`
+	PostCode   string      `json:"postCode"   orm:"post_code"`
+	PostName   string      `json:"postName"   orm:"post_name"`
+	PostSort   int         `json:"postSort"   orm:"post_sort"`
+	Status     string      `json:"status"`
+	Flag       bool        `json:"flag"`
+	CreateBy   string      `json:"createBy"   orm:"create_by"`
+	CreateTime *gtime.Time `json:"createTime" orm:"create_time"`
+	UpdateBy   string      `json:"updateBy"   orm:"update_by"`
+	UpdateTime *gtime.Time `json:"updateTime" orm:"update_time"`
+	Remark     string      `json:"remark"`
 }
 
 // SysDept 部门：既用于 getInfo 里 user.dept 子对象，也用于 /system/dept 全量出参。

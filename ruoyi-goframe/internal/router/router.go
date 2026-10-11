@@ -64,5 +64,17 @@ func Register(s *ghttp.Server) {
 		g.PUT("/system/role/authUser/cancel", middleware.Permi("system:role:edit", controller.CancelAuthUser))
 		g.PUT("/system/role/authUser/cancelAll", middleware.Permi("system:role:edit", controller.CancelAuthUserAll))
 		g.PUT("/system/role/authUser/selectAll", middleware.Permi("system:role:edit", controller.SelectAuthUserAll))
+		// 用户 /system/user（静态路径先于 {userId} 动态路径注册，利用 GF 字面量优先于通配的匹配）
+		g.GET("/system/user/list", middleware.Permi("system:user:list", controller.UserList))
+		g.GET("/system/user/deptTree", middleware.Permi("system:user:list", controller.UserDeptTree))
+		g.GET("/system/user/authRole/{userId}", middleware.Permi("system:user:query", controller.UserAuthRole))
+		g.GET("/system/user/", middleware.Permi("system:user:query", controller.UserGetInfo))
+		g.POST("/system/user", middleware.Permi("system:user:add", controller.UserAdd))
+		g.PUT("/system/user/resetPwd", middleware.Permi("system:user:resetPwd", controller.UserResetPwd))
+		g.PUT("/system/user/changeStatus", middleware.Permi("system:user:edit", controller.UserChangeStatus))
+		g.PUT("/system/user/authRole", middleware.Permi("system:user:edit", controller.UserInsertAuthRole))
+		g.PUT("/system/user", middleware.Permi("system:user:edit", controller.UserEdit))
+		g.GET("/system/user/{userId}", middleware.Permi("system:user:query", controller.UserGetInfo))
+		g.DELETE("/system/user/{userIds}", middleware.Permi("system:user:remove", controller.UserRemove))
 	})
 }

@@ -115,9 +115,37 @@ func SelectRoleById(ctx context.Context, roleId int64) *model.SysRole {
 }
 
 // SelectRoleAll 对应 selectRoleAll：经 AOP 代理调 selectRoleList(new SysRole()) → 带 DataScope、无过滤、未删除。
-func SelectRoleAll(ctx context.Context, lu *model.LoginUser) []model.SysRole {
-	scope := BuildDataScope(ctx, lu, "system:role:query", "d", "dept_id", "", "")
+// permission 为当前 HTTP 端点的 @PreAuthorize 串（对齐 PermissionContextHolder：@DataScope 注解未声明 permission 时回退到上下文权限）。
+func SelectRoleAll(ctx context.Context, lu *model.LoginUser, permission string) []model.SysRole {
+	scope := BuildDataScope(ctx, lu, permission, "d", "dept_id", "", "")
 	return SelectRoleList(ctx, RoleListFilter{}, scope)
+}
+
+// selectRolePermissionByUserId 对应 SysRoleMapper.selectRolePermissionByUserId：
+// selectRoleVo WHERE r.del_flag='0' and ur.user_id = ?（用户持有的有效角色）。
+func selectRolePermissionByUserId(ctx context.Context, userId int64) []model.SysRole {
+	recs, err := g.DB().GetAll(ctx, selectRoleVo+" WHERE r.del_flag = '0' and ur.user_id = ?", userId)
+	if err != nil {
+		return nil
+	}
+	return scanRoles(recs)
+}
+
+// SelectRolesByUserId 对应 selectRolesByUserId：取当前用户数据范围内全部角色（selectRoleAll），
+// 命中目标用户持有的角色置 flag=true（供前端"已拥有角色"回显）。
+func SelectRolesByUserId(ctx context.Context, lu *model.LoginUser, permission string, userId int64) []model.SysRole {
+	userRoles := selectRolePermissionByUserId(ctx, userId)
+	roles := SelectRoleAll(ctx, lu, permission)
+	held := make(map[int64]bool, len(userRoles))
+	for _, ur := range userRoles {
+		held[ur.RoleId] = true
+	}
+	for i := range roles {
+		if held[roles[i].RoleId] {
+			roles[i].Flag = true
+		}
+	}
+	return roles
 }
 
 // checkRoleUniqueBy 复用 checkRoleNameUnique/checkRoleKeyUnique 的 limit 1 短路查询。

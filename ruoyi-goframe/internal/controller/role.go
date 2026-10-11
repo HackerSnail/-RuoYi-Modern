@@ -198,7 +198,7 @@ func RoleRemove(r *ghttp.Request) {
 // RoleOptionSelect GET /system/role/optionselect（system:role:query）→ data:[SysRole...]（含 DataScope，未删除全量）。
 func RoleOptionSelect(r *ghttp.Request) {
 	lu := middleware.CurrentLoginUser(r)
-	list := service.SelectRoleAll(r.Context(), lu)
+	list := service.SelectRoleAll(r.Context(), lu, rolePermiQuery)
 	api.Send(r, api.OkData(list))
 }
 

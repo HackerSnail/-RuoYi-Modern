@@ -47,4 +47,13 @@ public class JobInvokeUtilTest {
         assertTrue(JobInvokeUtil.isValidClassName("com.ruoyi.quartz.task.Foo"));
         assertFalse(JobInvokeUtil.isValidClassName("ryTask"));
     }
+
+    @Test
+    @DisplayName("边界：伪同级包 com.ruoyi.quartz.taskevil 在执行点被拒（与 whiteList 同用 isInTaskPackage）")
+    void rejectsSiblingPackageBoundaryFqn() {
+        SysJob job = new SysJob();
+        job.setInvokeTarget("com.ruoyi.quartz.taskevil.Foo.bar()");
+        // beanName=com.ruoyi.quartz.taskevil.Foo 不以 "com.ruoyi.quartz.task." 开头 → guard 拒，先于 Class.forName
+        assertThrows(IllegalArgumentException.class, () -> JobInvokeUtil.invokeMethod(job));
+    }
 }

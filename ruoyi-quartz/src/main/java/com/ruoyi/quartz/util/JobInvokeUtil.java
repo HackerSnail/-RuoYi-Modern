@@ -4,7 +4,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.LinkedList;
 import java.util.List;
-import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.spring.SpringUtils;
 import com.ruoyi.quartz.domain.SysJob;
@@ -36,9 +35,10 @@ public class JobInvokeUtil {
             Object bean = SpringUtils.getBean(beanName);
             invokeMethod(bean, methodName, methodParams);
         } else {
-            // 形式二：全类名反射实例化。执行点纵深防御—beanName 必须命中 JOB_WHITELIST_STR 前缀，
-            // 否则拒绝；且校验须在 Class.forName 之前，避免实例化任意类。仅允许 public 无参构造。
-            if (!StringUtils.startsWithAny(beanName, Constants.JOB_WHITELIST_STR)) {
+            // 形式二：全类名反射实例化。执行点纵深防御—beanName 必须落在白名单包内（边界感知，
+            // 与 ScheduleUtils.whiteList 共用 isInTaskPackage 唯一判据），否则拒绝；且校验须在
+            // Class.forName 之前，避免实例化任意类。仅允许 public 无参构造。
+            if (!ScheduleUtils.isInTaskPackage(beanName)) {
                 throw new IllegalArgumentException("不允许通过全类名调用，目标不在白名单包内：" + beanName);
             }
             Object bean = Class.forName(beanName).getConstructor().newInstance();

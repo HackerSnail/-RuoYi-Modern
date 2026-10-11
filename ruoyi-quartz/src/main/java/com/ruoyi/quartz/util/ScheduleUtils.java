@@ -10,6 +10,7 @@ import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.TriggerBuilder;
 import org.quartz.TriggerKey;
+import org.springframework.aop.support.AopUtils;
 import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.constant.ScheduleConstants;
 import com.ruoyi.common.exception.ServiceException;
@@ -33,8 +34,7 @@ public class ScheduleUtils {
      * @return 具体执行任务类（根据 concurrent 标志选择允许/禁止并发执行的 Job 实现）
      */
     private static Class<? extends Job> getQuartzJobClass(SysJob sysJob) {
-        // concurrent 为允许时用普通 Job；否则用 @DisallowConcurrentExecution 标注的子类，串行执行同一
-        // JobDetail
+        // concurrent 为允许时用普通 Job；否则用带 @DisallowConcurrentExecution 的子类，同一 JobDetail 不会并发执行
         boolean isConcurrent = ScheduleConstants.CONCURRENT_ALLOW.equals(sysJob.getConcurrent());
         return isConcurrent ? QuartzJobExecution.class : QuartzDisallowConcurrentExecution.class;
     }
@@ -124,14 +124,37 @@ public class ScheduleUtils {
         String packageName = StringUtils.substringBefore(invokeTarget, "(");
         int count = StringUtils.countMatches(packageName, ".");
         if (count > 1) {
-            // 全类名写法：直接校验 invokeTarget 本身是否以白名单包前缀开头
-            return StringUtils.startsWithAny(invokeTarget, Constants.JOB_WHITELIST_STR);
+            // 全类名写法：校验 invokeTarget 是否落在白名单包内（边界感知，拒绝伪同级包）
+            return isInTaskPackage(invokeTarget);
         }
-        // bean 名写法：先取出容器中的 bean，再根据其实际所在包名做白名单/黑名单双重校验
+        // bean 名写法：取真实目标类（穿透 CGLIB/JDK 代理）所在包，再做白名单 + 黑名单双重校验；
+        // 用 AopUtils.getTargetClass 而非 getClass()，避免代理类包名误判（含 JDK 动态代理的误拒）
         Object obj = SpringUtils.getBean(StringUtils.split(invokeTarget, ".")[0]);
-        String beanPackageName = obj.getClass().getPackage().getName();
-        return StringUtils.startsWithAny(beanPackageName, Constants.JOB_WHITELIST_STR)
+        String beanPackageName = AopUtils.getTargetClass(obj).getPackage().getName();
+        return isInTaskPackage(beanPackageName)
                 && !StringUtils.startsWithAny(beanPackageName, Constants.JOB_ERROR_STR);
+    }
+
+    /**
+     * 判断给定名称是否落在任务白名单包内（含其子包）。
+     * <p>
+     * 边界感知：要求等于白名单包名或以“包名 + '.'”开头，从而拒绝 {@code com.ruoyi.quartz.taskevil} 这类
+     * 伪同级包绕过；供 {@link #whiteList(String)} 与 {@code JobInvokeUtil} 执行点 guard 共用，
+     * 作为 RCE 白名单的唯一判据。
+     *
+     * @param name 全类名或包名
+     * @return 是否命中白名单包（含子包）
+     */
+    public static boolean isInTaskPackage(String name) {
+        if (StringUtils.isEmpty(name)) {
+            return false;
+        }
+        for (String pkg : Constants.JOB_WHITELIST_STR) {
+            if (name.equals(pkg) || name.startsWith(pkg + ".")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -143,6 +166,12 @@ public class ScheduleUtils {
      * 拒绝 rmi/ldap(s)/http(s) 远程加载 → 拒绝违规特征字符串 → 必须命中白名单包。
      * 由 {@code SysJobServiceImpl.insertJob/updateJob} 调用，覆盖所有写库收口（含非 HTTP 入口），
      * 不再依赖 Controller 层的按 HTTP 动词重复校验。
+     * </p>
+     *
+     * <p>
+     * 定位说明：rmi/ldap/http 与 JOB_ERROR_STR 属“字符串特征黑名单”，只能拦已知形态，不是安全边界；
+     * 真正的收口是 {@link #whiteList(String)} 白名单（边界感知包前缀）。黑名单为多一层尽力拦截，
+     * 命中即拒，漏网仍由白名单兜住。
      * </p>
      *
      * @param job 待入库/更新的调度任务

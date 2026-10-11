@@ -1,6 +1,7 @@
 package com.ruoyi.quartz.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -86,5 +87,23 @@ public class ScheduleUtilsTest {
     @DisplayName("下沉校验：白名单全类名通过（走 count>1 前缀分支，不依赖 Spring 容器）")
     void whitelistPasses() {
         ScheduleUtils.validateJob(job("0 0 0 * * ?", "com.ruoyi.quartz.task.OperLogCleanTask.clean('90')"));
+    }
+
+    @Test
+    @DisplayName("白名单边界：伪同级包 com.ruoyi.quartz.taskevil 被拒（要求 . 边界）")
+    void siblingPackageBoundaryEnforced() {
+        assertThrows(ServiceException.class,
+                () -> ScheduleUtils.validateJob(job("0 0 0 * * ?", "com.ruoyi.quartz.taskevil.Foo.bar()")));
+    }
+
+    @Test
+    @DisplayName("isInTaskPackage 边界：包/子包/类命中，伪同级包与空串拒绝")
+    void isInTaskPackageBoundary() {
+        assertTrue(ScheduleUtils.isInTaskPackage("com.ruoyi.quartz.task"));
+        assertTrue(ScheduleUtils.isInTaskPackage("com.ruoyi.quartz.task.Foo"));
+        assertTrue(ScheduleUtils.isInTaskPackage("com.ruoyi.quartz.task.sub.Bar"));
+        assertFalse(ScheduleUtils.isInTaskPackage("com.ruoyi.quartz.taskevil.Foo"));
+        assertFalse(ScheduleUtils.isInTaskPackage("java.lang.Runtime"));
+        assertFalse(ScheduleUtils.isInTaskPackage(""));
     }
 }

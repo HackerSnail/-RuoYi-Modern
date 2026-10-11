@@ -1,7 +1,9 @@
 package com.ruoyi.system.domain;
 
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
@@ -49,7 +51,8 @@ public class SysPost extends BaseEntity {
     }
 
     @NotBlank(message = "岗位编码不能为空")
-    @Size(min = 0, max = 64, message = "岗位编码长度不能超过64个字符")
+    @Size(max = 64, message = "岗位编码长度不能超过64个字符")
+    @Pattern(regexp = "^[A-Za-z0-9_-]+$", message = "岗位编码只能包含字母、数字、下划线和短横线")
     public String getPostCode() {
         return postCode;
     }
@@ -59,7 +62,7 @@ public class SysPost extends BaseEntity {
     }
 
     @NotBlank(message = "岗位名称不能为空")
-    @Size(min = 0, max = 50, message = "岗位名称长度不能超过50个字符")
+    @Size(max = 50, message = "岗位名称长度不能超过50个字符")
     public String getPostName() {
         return postName;
     }
@@ -69,6 +72,7 @@ public class SysPost extends BaseEntity {
     }
 
     @NotNull(message = "显示顺序不能为空")
+    @Min(value = 0, message = "显示顺序不能小于0")
     public Integer getPostSort() {
         return postSort;
     }
@@ -77,6 +81,7 @@ public class SysPost extends BaseEntity {
         this.postSort = postSort;
     }
 
+    @Pattern(regexp = "^[01]$", message = "岗位状态只能为0或1")
     public String getStatus() {
         return status;
     }

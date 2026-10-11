@@ -43,8 +43,16 @@
 		#{infoId} </foreach>
 	</delete>
 
-	<!-- 清空前统计行数：truncate 不返回影响行数，先 count 才能把“清了多少条”记进操作日志备查 -->
-	<select id="countLogininfor" resultType="java.lang.Integer"> select count(*) from sys_logininfor </select>
+	<!-- 清空前行数估算：truncate 是 DDL 不返回影响行数、且与 count 非原子，故取 information_schema 统计值并明确标注为“约” -->
+	<select id="estimateLogininforRows" resultType="java.lang.Integer">
+		select table_rows from information_schema.tables
+		where table_schema = database() and table_name = 'sys_logininfor'
+	</select>
+
+	<!-- 按天归档：删除早于保留天数的登录日志，由 Quartz 定期任务调用 -->
+	<delete id="deleteLogininforBefore">
+		delete from sys_logininfor where login_time &lt; date_sub(sysdate(), interval #{retentionDays} day)
+	</delete>
 
 	<!-- 清空所有登录日志（truncate，重置自增ID，系统监控页“清空”按钮用） -->
 	<update id="cleanLogininfor"> truncate table sys_logininfor </update>

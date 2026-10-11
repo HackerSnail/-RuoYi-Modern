@@ -1,6 +1,7 @@
 package com.ruoyi.system.mapper;
 
 import java.util.List;
+import org.apache.ibatis.annotations.Param;
 import com.ruoyi.system.domain.SysLogininfor;
 
 /**
@@ -33,11 +34,19 @@ public interface SysLogininforMapper {
     public int deleteLogininforByIds(Long[] infoIds);
 
     /**
-     * 统计登录日志总行数（清空前调用，用于审计）
+     * 估算登录日志当前行数（来自 information_schema.TABLES 的统计值，非精确计数，供清空前审计参考）
      * 
-     * @return 当前行数
+     * @return 约行数；无统计时可能为 null
      */
-    public int countLogininfor();
+    public Integer estimateLogininforRows();
+
+    /**
+     * 删除早于保留天数的登录日志（按天归档，login_time 早于 sysdate()-days）
+     * 
+     * @param retentionDays 保留天数
+     * @return 删除行数
+     */
+    public int deleteLogininforBefore(@Param("retentionDays") int retentionDays);
 
     /**
      * 清空系统登录日志

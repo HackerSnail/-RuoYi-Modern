@@ -35,7 +35,15 @@ public interface ISysLogininforService {
     /**
      * 清空系统登录日志
      * 
-     * @return 清空前的日志行数，供操作日志/审计记录使用
+     * @return 清空前的约行数（估算值，供操作日志/审计参考）
      */
     public int cleanLogininfor();
+
+    /**
+     * 归档清理：删除早于保留天数的登录日志
+     * 
+     * @param retentionDays 保留天数，必须大于 0
+     * @return 删除行数
+     */
+    public int cleanLogininforBefore(int retentionDays);
 }

@@ -88,10 +88,10 @@ public class SysLogininforController extends BaseController {
         if (!CLEAN_CONFIRM_TOKEN.equals(confirm)) {
             return AjaxResult.error("清空登录日志需要二次确认，已拒绝执行");
         }
-        int rows = logininforService.cleanLogininfor();
-        // 同操作日志：条数随 msg 进入 @Log 记录的 jsonResult，便于审计
-        logger.warn("【高危】用户[{}]清空了全部登录日志，共 {} 条", getUsername(), rows);
-        return success("已清空 " + rows + " 条登录日志");
+        int approxRows = logininforService.cleanLogininfor();
+        // 条数取自 information_schema 统计值，为清空前近似快照，随 msg 进入 @Log 的 jsonResult；审计重在“谁/何时”，数字标“约”
+        logger.warn("【高危】用户[{}]清空了全部登录日志，约 {} 条（估算）", getUsername(), approxRows);
+        return success("已清空登录日志，约 " + approxRows + " 条（估算值）");
     }
 
     /**

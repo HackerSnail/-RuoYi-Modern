@@ -62,6 +62,16 @@ func Err(msg string) M { return M{"code": consts.CodeError, "msg": msg} }
 // ErrCode 自定义码 + msg。
 func ErrCode(code int, msg string) M { return M{"code": code, "msg": msg} }
 
+// ErrData 业务失败 + data（对应 AjaxResult.error(msg,data)：@Validated 字段校验失败回 {code:500,msg,data:[{field,message}]}）。
+// data 为 nil 时不放该键（对齐 StringUtils.isNotNull 判定）。
+func ErrData(msg string, data interface{}) M {
+	m := M{"code": consts.CodeError, "msg": msg}
+	if data != nil {
+		m["data"] = data
+	}
+	return m
+}
+
 // Send 按 body.code 计算真实 HTTP 状态并写出 JSON。
 func Send(r *ghttp.Request, body M) {
 	code, _ := body["code"].(int)

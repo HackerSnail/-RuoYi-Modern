@@ -26,38 +26,75 @@ type SysUser struct {
 	Password string `json:"-"`
 }
 
-// SysDept 用户所属部门（getInfo 里 user.dept 子对象）。
+// SysDept 部门：既用于 getInfo 里 user.dept 子对象，也用于 /system/dept 全量出参。
+// 字段对齐 com.ruoyi.common.core.domain.entity.SysDept + BaseEntity（Jackson 默认输出全部字段，含 null）。
 type SysDept struct {
-	DeptId   int64  `json:"deptId"   orm:"dept_id"`
-	DeptName string `json:"deptName" orm:"dept_name"`
+	DeptId     int64        `json:"deptId"     orm:"dept_id"`
+	ParentId   int64        `json:"parentId"   orm:"parent_id"`
+	Ancestors  string       `json:"ancestors"`
+	DeptName   string       `json:"deptName"   orm:"dept_name"`
+	OrderNum   int          `json:"orderNum"   orm:"order_num"`
+	Leader     string       `json:"leader"`
+	Phone      string       `json:"phone"`
+	Email      string       `json:"email"`
+	Status     string       `json:"status"`
+	DelFlag    string       `json:"delFlag"    orm:"del_flag"`
+	ParentName string       `json:"parentName" orm:"parent_name"`
+	CreateBy   string       `json:"createBy"   orm:"create_by"`
+	CreateTime *gtime.Time  `json:"createTime" orm:"create_time"`
+	UpdateBy   string       `json:"updateBy"   orm:"update_by"`
+	UpdateTime *gtime.Time  `json:"updateTime" orm:"update_time"`
+	Remark     string       `json:"remark"`
+	Children   []*SysDept   `json:"children"`
 }
 
-// SysRole 角色精简（getInfo.roles 取 role_key 集合；此处备用）。
+// SysRole 角色：getInfo.roles 取 role_key 集合；DataScope 需要 roleId/dataScope/status。
 type SysRole struct {
-	RoleId   int64  `json:"roleId"   orm:"role_id"`
-	RoleName string `json:"roleName" orm:"role_name"`
-	RoleKey  string `json:"roleKey"  orm:"role_key"`
-	Status   string `json:"status"`
+	RoleId     int64  `json:"roleId"     orm:"role_id"`
+	RoleName   string `json:"roleName"   orm:"role_name"`
+	RoleKey    string `json:"roleKey"    orm:"role_key"`
+	RoleSort   int    `json:"roleSort"   orm:"role_sort"`
+	DataScope  string `json:"dataScope"  orm:"data_scope"`
+	Status     string `json:"status"`
+	DelFlag    string `json:"delFlag"    orm:"del_flag"`
+	// Permissions 为该角色被分配的权限串集合（DataScope 的 permission 匹配用），不参与前端出参。
+	Permissions []string `json:"-"`
 }
 
-// SysMenu 对应 sys_menu，字段与列名一一对应。children 供树构建填充，不参与路由出参序列化。
+// SysMenu 对应 sys_menu + BaseEntity，字段/列名一一对应。children 供树构建填充，
+// 且必须像 Java 那样始终序列化（列表/详情回 []，非省略）。
 type SysMenu struct {
-	MenuId    int64      `json:"menuId"    orm:"menu_id"`
-	MenuName  string     `json:"menuName"  orm:"menu_name"`
-	ParentId  int64      `json:"parentId"  orm:"parent_id"`
-	OrderNum  int        `json:"orderNum"  orm:"order_num"`
-	Path      string     `json:"path"`
-	Component string     `json:"component"`
-	Query     string     `json:"query"`
-	RouteName string     `json:"routeName" orm:"route_name"`
-	IsFrame   string     `json:"isFrame"   orm:"is_frame"`
-	IsCache   string     `json:"isCache"   orm:"is_cache"`
-	MenuType  string     `json:"menuType"  orm:"menu_type"`
-	Visible   string     `json:"visible"`
-	Status    string     `json:"status"`
-	Perms     string     `json:"perms"`
-	Icon      string     `json:"icon"`
-	Children  []*SysMenu `json:"-"`
+	MenuId     int64      `json:"menuId"     orm:"menu_id"`
+	MenuName   string     `json:"menuName"   orm:"menu_name"`
+	ParentName string     `json:"parentName" orm:"parent_name"`
+	ParentId   int64      `json:"parentId"   orm:"parent_id"`
+	OrderNum   int        `json:"orderNum"   orm:"order_num"`
+	Path       string     `json:"path"`
+	Component  string     `json:"component"`
+	Query      string     `json:"query"`
+	RouteName  string     `json:"routeName"  orm:"route_name"`
+	IsFrame    string     `json:"isFrame"    orm:"is_frame"`
+	IsCache    string     `json:"isCache"    orm:"is_cache"`
+	MenuType   string     `json:"menuType"   orm:"menu_type"`
+	Visible    string     `json:"visible"`
+	Status     string     `json:"status"`
+	Perms      string     `json:"perms"`
+	Icon       string     `json:"icon"`
+	CreateBy   string     `json:"createBy"   orm:"create_by"`
+	CreateTime *gtime.Time `json:"createTime" orm:"create_time"`
+	UpdateBy   string     `json:"updateBy"   orm:"update_by"`
+	UpdateTime *gtime.Time `json:"updateTime" orm:"update_time"`
+	Remark     string     `json:"remark"`
+	Children   []*SysMenu `json:"children"`
+}
+
+// TreeSelect 对应 com.ruoyi.common.core.domain.TreeSelect：下拉树节点 {id,label,disabled,children?}。
+// disabled 为原始 boolean，Jackson 始终输出；children @JsonInclude(NON_EMPTY) → 空则省略。
+type TreeSelect struct {
+	Id       int64        `json:"id"`
+	Label    string       `json:"label"`
+	Disabled bool         `json:"disabled"`
+	Children []*TreeSelect `json:"children,omitempty"`
 }
 
 // LoginBody 对应 com.ruoyi.common.core.domain.model.LoginBody：/login 请求体。

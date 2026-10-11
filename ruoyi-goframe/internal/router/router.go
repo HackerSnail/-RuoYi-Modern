@@ -26,4 +26,27 @@ func Register(s *ghttp.Server) {
 		group.GET("/getInfo", controller.GetInfo)
 		group.GET("/getRouters", controller.GetRouters)
 	})
+
+	// P1a 菜单/部门。用根分组 + 完整路径注册（避免子分组内 g.POST("") 空 pattern 无法映射到裸路径 /system/menu）。
+	// 各端点对齐 @PreAuthorize；treeselect 仅需登录态无 permi。GF 路由只接受单个 handler，权限用 Permi 与控制器组合。
+	s.Group("/", func(g *ghttp.RouterGroup) {
+		g.Middleware(middleware.Auth)
+		// 菜单 /system/menu
+		g.GET("/system/menu/list", middleware.Permi("system:menu:list", controller.MenuList))
+		g.GET("/system/menu/treeselect", controller.MenuTreeselect)
+		g.GET("/system/menu/roleMenuTreeselect/{roleId}", middleware.Permi("system:role:query", controller.RoleMenuTreeselect))
+		g.POST("/system/menu", middleware.Permi("system:menu:add", controller.MenuAdd))
+		g.PUT("/system/menu/updateSort", middleware.Permi("system:menu:edit", controller.MenuUpdateSort))
+		g.PUT("/system/menu", middleware.Permi("system:menu:edit", controller.MenuEdit))
+		g.GET("/system/menu/{menuId}", middleware.Permi("system:menu:query", controller.MenuGetInfo))
+		g.DELETE("/system/menu/{menuId}", middleware.Permi("system:menu:remove", controller.MenuRemove))
+		// 部门 /system/dept
+		g.GET("/system/dept/list", middleware.Permi("system:dept:list", controller.DeptList))
+		g.GET("/system/dept/list/exclude/{deptId}", middleware.Permi("system:dept:list", controller.DeptExclude))
+		g.POST("/system/dept", middleware.Permi("system:dept:add", controller.DeptAdd))
+		g.PUT("/system/dept/updateSort", middleware.Permi("system:dept:edit", controller.DeptUpdateSort))
+		g.PUT("/system/dept", middleware.Permi("system:dept:edit", controller.DeptEdit))
+		g.GET("/system/dept/{deptId}", middleware.Permi("system:dept:query", controller.DeptGetInfo))
+		g.DELETE("/system/dept/{deptId}", middleware.Permi("system:dept:remove", controller.DeptRemove))
+	})
 }

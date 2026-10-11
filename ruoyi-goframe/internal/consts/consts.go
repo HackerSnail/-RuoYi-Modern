@@ -43,8 +43,8 @@ const (
 	Normal       = "0"
 	Exception    = "1"
 	Yes          = "Y"
-	YesFrame     = "0" // 是否外链：是
-	NoFrame      = "1" // 是否外链：否
+	YesFrame     = "0" // 是否外链：是（UserConstants.YES_FRAME）
+	NoFrame      = "1" // 是否外链：否（UserConstants.NO_FRAME）
 	MenuShow     = "0"
 	MenuHide     = "1"
 	MenuCacheNo  = "1" // is_cache=1 不缓存
@@ -55,6 +55,37 @@ const (
 	ParentView   = "ParentView"
 	InnerLink    = "InnerLink"
 	MenuRootID   = int64(0)
+
+	// 部门/角色状态（对应 UserConstants.DEPT_*/ROLE_*）。
+	DeptNormal  = "0"
+	DeptDisable = "1"
+	RoleNormal  = "0"
+	RoleDisable = "1"
+
+	// 顶级节点祖级列表值（UserConstants.ROOT_ANCESTORS）。
+	RootAncestors = "0"
+)
+
+// 内链替换用到的协议/域名前缀（对应 Constants.HTTP/HTTPS/WWW）。
+const (
+	HttpPrefix  = "http://"
+	HttpsPrefix = "https://"
+	WwwPrefix   = "www."
+)
+
+// 数据范围（对应 Constants.Dept.DATA_SCOPE_*）：1全部 2自定义 3本部门 4本部门及以下 5仅本人。
+const (
+	DataScopeAll          = "1"
+	DataScopeCustom       = "2"
+	DataScopeDept         = "3"
+	DataScopeDeptAndChild = "4"
+	DataScopeSelf         = "5"
+)
+
+// 唯一性校验返回（对应 UserConstants.UNIQUE/NOT_UNIQUE，Java 为 boolean）。
+const (
+	Unique    = true
+	NotUnique = false
 )
 
 // 会话 uuid 长度：与 Java IdUtils.fastUUID 一致用标准 UUID（36 位带 -）。

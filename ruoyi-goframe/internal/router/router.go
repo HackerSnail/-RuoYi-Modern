@@ -83,5 +83,13 @@ func Register(s *ghttp.Server) {
 		g.PUT("/system/post", middleware.Permi("system:post:edit", controller.PostEdit))
 		g.GET("/system/post/{postId}", middleware.Permi("system:post:query", controller.PostGetInfo))
 		g.DELETE("/system/post/{postIds}", middleware.Permi("system:post:remove", controller.PostRemove))
+		// 参数 /system/config（configKey 公开只读无 permi；refreshCache 静态先于 {configIds} 动态）
+		g.GET("/system/config/list", middleware.Permi("system:config:list", controller.ConfigList))
+		g.GET("/system/config/configKey/{configKey}", controller.ConfigGetKey)
+		g.POST("/system/config", middleware.Permi("system:config:add", controller.ConfigAdd))
+		g.PUT("/system/config", middleware.Permi("system:config:edit", controller.ConfigEdit))
+		g.DELETE("/system/config/refreshCache", middleware.Permi("system:config:refresh", controller.ConfigRefreshCache))
+		g.GET("/system/config/{configId}", middleware.Permi("system:config:query", controller.ConfigGetInfo))
+		g.DELETE("/system/config/{configIds}", middleware.Permi("system:config:remove", controller.ConfigRemove))
 	})
 }

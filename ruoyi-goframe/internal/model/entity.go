@@ -53,6 +53,21 @@ type SysPost struct {
 	Remark     string      `json:"remark"`
 }
 
+// SysConfig 参数配置：对齐 com.ruoyi.system.domain.SysConfig + BaseEntity 的 Jackson 输出。
+// selectConfigVo 取全部列（含 update_by/update_time/remark），出参完整映射。
+type SysConfig struct {
+	ConfigId    int64       `json:"configId"    orm:"config_id"`
+	ConfigName  string      `json:"configName"  orm:"config_name"`
+	ConfigKey   string      `json:"configKey"   orm:"config_key"`
+	ConfigValue string      `json:"configValue" orm:"config_value"`
+	ConfigType  string      `json:"configType"  orm:"config_type"`
+	CreateBy    string      `json:"createBy"    orm:"create_by"`
+	CreateTime  *gtime.Time `json:"createTime"  orm:"create_time"`
+	UpdateBy    string      `json:"updateBy"    orm:"update_by"`
+	UpdateTime  *gtime.Time `json:"updateTime"  orm:"update_time"`
+	Remark      string      `json:"remark"`
+}
+
 // SysDept 部门：既用于 getInfo 里 user.dept 子对象，也用于 /system/dept 全量出参。
 // 字段对齐 com.ruoyi.common.core.domain.entity.SysDept + BaseEntity（Jackson 默认输出全部字段，含 null）。
 type SysDept struct {

@@ -1,0 +1,224 @@
+// Package service —— 登录链路与用户信息，对齐 SysLoginService.login / UserDetailsServiceImpl /
+// SysPermissionService / SysLoginController.getInfo 的真实语义。
+//
+// 关键契约（照 Java 逐条复刻，不得语义错位）：
+//   - 校验顺序：验证码 → 前置(空/长度) → 认证(用户存在/状态/密码/重试锁定)。
+//   - 本 fork 的认证阶段(用户名不存在/已删除/已停用/密码错/锁定)经 Spring 包装后统一对外为
+//     "用户不存在/密码错误"（SysLoginService 对 AuthenticationException 一律抛 UserPasswordNotMatch）；
+//     而"验证码错误/已失效""* 必须填写"在认证阶段之前抛出，保留各自文案。
+//   - 失败计数 pwd_err_cnt:{username}，达 maxRetryCount 锁定 lockTime 分钟；成功清零。BCrypt 比对。
+package service
+
+import (
+	"context"
+
+	"github.com/gogf/gf/v2/frame/g"
+	"github.com/gogf/gf/v2/util/gconv"
+	"golang.org/x/crypto/bcrypt"
+
+	"ruoyi-goframe/internal/consts"
+	"ruoyi-goframe/internal/model"
+)
+
+const msgBadCred = "用户不存在/密码错误"
+
+// Login 执行登录。成功返回 (jwt令牌, 会话对象, "")；失败返回 ("", nil, 对外文案)。
+func Login(ctx context.Context, lb model.LoginBody, ip, userAgent string) (string, *model.LoginUser, string) {
+	// 1. 验证码
+	if m := validateCaptcha(ctx, lb.Code, lb.UUID); m != "" {
+		return "", nil, m
+	}
+	// 2. 前置校验（空 → not.null；长度越界 → 认证文案，同 Java 顺序）
+	if lb.Username == "" || lb.Password == "" {
+		return "", nil, "* 必须填写"
+	}
+	if len(lb.Password) < 5 || len(lb.Password) > 20 {
+		return "", nil, msgBadCred
+	}
+	if len(lb.Username) < 2 || len(lb.Username) > 20 {
+		return "", nil, msgBadCred
+	}
+	// 3. 认证：加载用户 + 状态 + BCrypt（失败统一 msgBadCred）
+	user := selectUserByUserName(ctx, lb.Username)
+	if user == nil || !checkUserAllowed(ctx, lb.Username, user) || !verifyPassword(ctx, lb.Username, lb.Password, user) {
+		return "", nil, msgBadCred
+	}
+	clearPwdErrCount(ctx, lb.Username)
+
+	// 4. 装配会话（角色/权限）
+	roles := getRolePermission(ctx, user)
+	perms := getMenuPermission(ctx, user)
+	lu := &model.LoginUser{
+		UserId:      user.UserId,
+		Username:    user.UserName,
+		Ipaddr:      ip,
+		Browser:     userAgent,
+		Roles:       roles,
+		Permissions: perms,
+		User:        user,
+	}
+	token, err := CreateToken(ctx, lu)
+	if err != nil {
+		return "", nil, msgBadCred
+	}
+	recordLoginInfo(ctx, user.UserId, ip)
+	return token, lu, ""
+}
+
+// selectUserByUserName 按用户名取未删除用户（含密文，供 BCrypt）。对应 del_flag='0' 过滤。
+func selectUserByUserName(ctx context.Context, username string) *model.SysUser {
+	rec, err := g.DB().Model("sys_user").Ctx(ctx).
+		Where("user_name = ?", username).Where("del_flag = ?", "0").One()
+	if err != nil || rec == nil || rec.IsEmpty() {
+		return nil
+	}
+	var u model.SysUser
+	if err := gconv.Struct(rec.Map(), &u); err != nil {
+		return nil
+	}
+	u.Password = gconv.String(rec.Map()["password"]) // 密文单独取（Password json:"-"，不外泄）
+	return &u
+}
+
+// checkUserAllowed 停用(status!=0)拒绝。已删除已被查询过滤。失败对外仍为 msgBadCred（调用处统一）。
+func checkUserAllowed(ctx context.Context, username string, u *model.SysUser) bool {
+	return u.Status == consts.Normal
+}
+
+// verifyPassword 含重试锁定 + BCrypt 比对；失败递增计数。
+func verifyPassword(ctx context.Context, username, rawPw string, u *model.SysUser) bool {
+	key := consts.RedisPwdErrCnt + username
+	maxRetry := g.Cfg().MustGet(ctx, "user.password.maxRetryCount", 5).Int()
+	lockMin := g.Cfg().MustGet(ctx, "user.password.lockTime", 10).Int()
+
+	cnt := 0
+	if v, err := g.Redis().Get(ctx, key); err == nil && v != nil && !v.IsNil() {
+		cnt = v.Int()
+	}
+	if cnt >= maxRetry {
+		return false
+	}
+	if bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(rawPw)) != nil {
+		_, _ = g.Redis().Do(ctx, "SETEX", key, lockMin*60, cnt+1)
+		return false
+	}
+	return true
+}
+
+func clearPwdErrCount(ctx context.Context, username string) {
+	_, _ = g.Redis().Del(ctx, consts.RedisPwdErrCnt+username)
+}
+
+// recordLoginInfo 更新最后登录 IP 与时间（对齐 SysLoginService.recordLoginInfo）。
+func recordLoginInfo(ctx context.Context, userId int64, ip string) {
+	_, _ = g.DB().Exec(ctx, "UPDATE sys_user SET login_ip = ?, login_date = NOW() WHERE user_id = ?", ip, userId)
+}
+
+// ---- 角色/权限（对齐 SysPermissionService）----
+
+// isAdmin 超级管理员：userId==1（对齐 SecurityUtils.isAdmin / SysUser.isAdmin）。
+func IsAdmin(userId int64) bool { return userId == 1 }
+
+func getRolePermission(ctx context.Context, u *model.SysUser) []string {
+	if IsAdmin(u.UserId) {
+		return []string{consts.SuperAdmin}
+	}
+	return queryColumnList(ctx,
+		"select distinct r.role_key from sys_user_role ur, sys_role r "+
+			"where ur.role_id = r.role_id and r.status = '0' and r.del_flag = '0' and ur.user_id = ?", u.UserId)
+}
+
+func getMenuPermission(ctx context.Context, u *model.SysUser) []string {
+	if IsAdmin(u.UserId) {
+		return []string{consts.AllPermission}
+	}
+	perms := queryColumnList(ctx,
+		"select distinct m.perms from sys_menu m, sys_role_menu rm, sys_user_role ur "+
+			"where m.menu_id = rm.menu_id and rm.role_id = ur.role_id and m.status = '0' and ur.user_id = ?", u.UserId)
+	// 逗号分隔的 perms 串需拆分（同 Java selectMenuPermsByUserId 后 split(",")）
+	return splitPerms(perms)
+}
+
+func queryColumnList(ctx context.Context, sql string, arg interface{}) []string {
+	rs, err := g.DB().GetAll(ctx, sql, arg)
+	if err != nil || rs == nil {
+		return nil
+	}
+	var out []string
+	for _, rec := range rs {
+		for _, v := range rec {
+			s := v.String()
+			if s != "" {
+				out = append(out, s)
+			}
+			break
+		}
+	}
+	return out
+}
+
+func splitPerms(in []string) []string {
+	var out []string
+	seen := map[string]bool{}
+	for _, item := range in {
+		for _, p := range splitByComma(item) {
+			if p != "" && !seen[p] {
+				seen[p] = true
+				out = append(out, p)
+			}
+		}
+	}
+	return out
+}
+
+func splitByComma(s string) []string {
+	var out []string
+	cur := []rune{}
+	for _, c := range s {
+		if c == ',' {
+			out = append(out, string(cur))
+			cur = cur[:0]
+		} else {
+			cur = append(cur, c)
+		}
+	}
+	out = append(out, string(cur))
+	return out
+}
+
+// BuildUserInfoPayload 组装 /getInfo 的顶层键（user/roles/permissions/... 均在 body 顶层，非 data 下）。
+// 对应 SysLoginController.getInfo：回传 user、roles、permissions、pwdChrtype 与密码状态三字段。
+func BuildUserInfoPayload(ctx context.Context, lu *model.LoginUser) g.Map {
+	user := lu.User
+	if user != nil && user.DeptId > 0 {
+		user.Dept = loadDept(ctx, user.DeptId)
+	}
+	roles := getRolePermission(ctx, user)
+	perms := getMenuPermission(ctx, user)
+	return g.Map{
+		"user":                  user,
+		"roles":                 roles,
+		"permissions":           perms,
+		"pwdChrtype":            defaultStr(selectConfigByKey(ctx, "sys.account.chrtype"), "0"),
+		"isDefaultModifyPwd":    false,
+		"isPasswordExpired":     false,
+		"forceChangePassword":   false,
+	}
+}
+
+func loadDept(ctx context.Context, deptId int64) *model.SysDept {
+	rec, err := g.DB().Model("sys_dept").Ctx(ctx).Where("dept_id = ?", deptId).One()
+	if err != nil || rec == nil || rec.IsEmpty() {
+		return nil
+	}
+	var d model.SysDept
+	_ = gconv.Struct(rec.Map(), &d)
+	return &d
+}
+
+func defaultStr(s, def string) string {
+	if s == "" {
+		return def
+	}
+	return s
+}

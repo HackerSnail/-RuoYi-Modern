@@ -1,0 +1,20 @@
+# Go 构建产物
+/ruoyi-goframe
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go 工作区
+go.work
+go.work.sum
+
+# 依赖缓存目录（如有 vendor 需要提交则删除下一行）
+vendor/
+
+# 本地覆盖配置（含真实密钥/口令），不入库
+config.local.yaml
+config.local.yml

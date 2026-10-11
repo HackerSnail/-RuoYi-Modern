@@ -1,0 +1,57 @@
+# GoFrame 内置配置（g.Cfg）。与 Java 后端同库同契约：同一 MySQL schema(ry-vue) + 同一 Redis。
+# 运行时端口对齐 Java 的 8080、context-path=/，前端 RuoYi-Vue3 的 /dev-api 代理无需改动。
+
+server:
+  address: ":8080"
+  # 与 Java server.tomcat.uri-encoding=UTF-8 等价的读取上限
+  readTimeout: "60s"
+  writeTimeout: "60s"
+  # 关闭 gf 默认响应处理中间件，改由业务侧显式按 {code,msg,data} + 真实 HTTP 状态码收口
+  dumpRouterMap: false
+  routeOverWrite: true
+
+# 日志（对应 Java logging.level：业务 debug、框架 warn）
+logger:
+  level: "all"
+  stdout: true
+
+# 数据库：复用 application-druid.yml 主库连接串（192.168.25.50:3306/ry-vue, root/root, GMT+8）
+database:
+  logger:
+    level: "all"
+    stdout: true
+  default:
+    # 生产用环境变量 MYSQL_LINK 覆盖；loc 固定 Asia/Shanghai 以匹配 jackson time-zone=GMT+8
+    link: "mysql:root:root@tcp(192.168.25.50:3306)/ry-vue?loc=Asia%2FShanghai&parseTime=true&charset=utf8mb4"
+    debug: true
+    maxIdle: 10
+    maxOpen: 50
+    maxLifetime: "30m"
+
+# Redis：复用 application.yml spring.data.redis（192.168.25.50:6379, db0, 无密码）
+redis:
+  default:
+    address: "192.168.25.50:6379"
+    db: 0
+    password: ""
+
+# 令牌配置：与 Java token.* 完全一致（header=Authorization，HS512，expireTime=30 分钟）
+token:
+  header: "Authorization"
+  secret: "k9Zx2Qf7Lm4Tn8Rs1Vw6Yb3Jd5Hc0Pe2Ag7Kf4Lz9Xq1Wm3Nr6Ts8Vb0Yd2Hc5Jk7Pl9Rz"
+  expireTime: 30
+
+# 项目相关：对齐 ruoyi.* 常用项
+ruoyi:
+  name: "RuoYi"
+  version: "3.9.2"
+  profile: "D:/ruoyi/uploadPath"
+  addressEnabled: false
+  captchaType: "math"
+  httpStatusAdvice: true
+
+# 用户密码策略：对齐 user.password.*
+user:
+  password:
+    maxRetryCount: 5
+    lockTime: 10

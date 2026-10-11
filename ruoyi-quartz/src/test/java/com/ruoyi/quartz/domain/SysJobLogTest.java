@@ -23,7 +23,7 @@ public class SysJobLogTest {
     void toStringKeysAndInvokeTarget() {
         SysJobLog log = new SysJobLog();
         log.setJobName("demoJob");
-        log.setInvokeTarget("ryTask.ryParams('ry')");
+        log.setInvokeTarget("operLogCleanTask.clean('90')");
         log.setEndTime(LocalDateTime.now());
 
         String s = log.toString();

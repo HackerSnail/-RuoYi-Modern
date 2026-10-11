@@ -49,7 +49,7 @@ public class SysJobServiceImplTest {
         SysJob db = new SysJob();
         db.setJobId(1L);
         db.setJobGroup("DEFAULT");
-        db.setInvokeTarget("com.ruoyi.quartz.task.RyTask.ryParams('ry')");
+        db.setInvokeTarget("com.ruoyi.quartz.task.OperLogCleanTask.clean('90')");
         when(mapper.selectJobById(1L)).thenReturn(db);
 
         JobKey key = ScheduleUtils.getJobKey(1L, "DEFAULT");
@@ -67,7 +67,7 @@ public class SysJobServiceImplTest {
         ArgumentCaptor<JobDataMap> captor = ArgumentCaptor.forClass(JobDataMap.class);
         verify(scheduler).triggerJob(eq(key), captor.capture());
         SysJob used = (SysJob) captor.getValue().get(ScheduleConstants.TASK_PROPERTIES);
-        assertEquals("com.ruoyi.quartz.task.RyTask.ryParams('ry')", used.getInvokeTarget());
+        assertEquals("com.ruoyi.quartz.task.OperLogCleanTask.clean('90')", used.getInvokeTarget());
     }
 
     @Test

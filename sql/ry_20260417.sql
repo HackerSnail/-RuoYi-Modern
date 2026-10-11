@@ -604,9 +604,8 @@ create table sys_job (
   primary key (job_id, job_name, job_group)
 ) engine=innodb auto_increment=100 comment = '定时任务调度表';
 
-insert into sys_job values(1, '系统默认（无参）', 'DEFAULT', 'ryTask.ryNoParams',        '0/10 * * * * ?', '3', '1', '1', 'admin', sysdate(), '', null, '');
-insert into sys_job values(2, '系统默认（有参）', 'DEFAULT', 'ryTask.ryParams(\'ry\')',  '0/15 * * * * ?', '3', '1', '1', 'admin', sysdate(), '', null, '');
-insert into sys_job values(3, '系统默认（多参）', 'DEFAULT', 'ryTask.ryMultipleParams(\'ry\', true, 2000L, 316.50D, 100)',  '0/20 * * * * ?', '3', '1', '1', 'admin', sysdate(), '', null, '');
+-- 演示用定时任务（原 ryTask 无参/有参/多参三条种子）已随 com.ruoyi.quartz.task.RyTask 一并移除：
+-- ryTask 为固定白名单 demo bean、仅 System.out 打印，非生产任务；如无需演示入口则不再预置。
 -- 操作日志定期清理：每天凌晨3点，保留90天。status='1' 表示默认暂停，确认策略后在“定时任务”页面启用
 insert into sys_job values(4, '操作日志定期清理', 'SYSTEM', 'operLogCleanTask.clean(\'90\')', '0 0 3 * * ?', '3', '1', '1', 'admin', sysdate(), '', null, '删除90天前的sys_oper_log，分批5000条删除');
 

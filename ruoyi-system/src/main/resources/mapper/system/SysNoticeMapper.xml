@@ -74,11 +74,7 @@
                 test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if> update_time
         = sysdate() </set> where notice_id = #{noticeId} </update>
 
-    <!-- 按ID删除单条公告 -->
-    <delete id="deleteNoticeById" parameterType="Long"> delete from sys_notice where notice_id =
-        #{noticeId} </delete>
-
-    <!-- 批量删除公告（公告管理页勾选多行删除） -->
+    <!-- 批量删除公告（公告管理页勾选多行删除；单条删除已收口到批量入口，级联清理已读记录同事务在 Service 完成） -->
     <delete id="deleteNoticeByIds" parameterType="Long"> delete from sys_notice where notice_id in <foreach
             item="noticeId" collection="array" open="(" separator="," close=")"> #{noticeId} </foreach>
     </delete>

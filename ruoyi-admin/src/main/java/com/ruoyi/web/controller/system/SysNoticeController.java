@@ -190,8 +190,7 @@ public class SysNoticeController extends BaseController {
     @Log(title = "通知公告", businessType = BusinessType.DELETE)
     @DeleteMapping("/{noticeIds}")
     public AjaxResult remove(@PathVariable Long[] noticeIds) {
-        // 先清掉关联的已读记录，再删公告本体，避免遗留孤儿已读数据
-        noticeReadService.deleteByNoticeIds(noticeIds);
+        // 级联清理已读记录已收口到 Service.deleteNoticeByIds（与删本体同一事务），此处只负责调用
         return toAjax(noticeService.deleteNoticeByIds(noticeIds));
     }
 }

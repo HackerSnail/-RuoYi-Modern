@@ -6,7 +6,11 @@ package com.ruoyi.system.domain;
  * @author ruoyi
  */
 public class SysUserOnline {
-    /** 会话编号 */
+    /**
+     * 会话标识：脱敏后的展示 id（服务端由会话 uuid 单向派生），仅用于回传定位强退目标。
+     * <p>
+     * 它不是登录凭证：既还原不出会话键，也伪造不出通过验签的 JWT，且会话重建后即失效。
+     */
     private String tokenId;
 
     /** 部门名称 */

@@ -1,14 +1,22 @@
 package com.ruoyi.framework.web.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import javax.crypto.SecretKey;
 
@@ -17,8 +25,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.ruoyi.common.constant.CacheConstants;
 import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.core.redis.RedisCache;
+import com.ruoyi.common.exception.ServiceException;
 
 import io.jsonwebtoken.Claims;
 
@@ -38,9 +48,12 @@ public class TokenServiceTest {
 
     private TokenService tokenService;
 
+    private RedisCache redisCache;
+
     @BeforeEach
     void setUp() {
-        tokenService = new TokenService(mock(RedisCache.class), VALID_SECRET);
+        redisCache = mock(RedisCache.class);
+        tokenService = new TokenService(redisCache, VALID_SECRET);
         ReflectionTestUtils.setField(tokenService, "header", "Authorization");
         ReflectionTestUtils.setField(tokenService, "expireTime", 30);
     }
@@ -108,5 +121,80 @@ public class TokenServiceTest {
     @DisplayName("密钥过短：构造期即 fail-fast（HS512 强度约束）")
     void shortSecretFailsFastAtConstruction() {
         assertThrows(Exception.class, () -> new TokenService(mock(RedisCache.class), "too-short"));
+    }
+
+    @Test
+    @DisplayName("会话标识：同一 uuid 稳定、恰 32 位小写 hex、不暴露 uuid 片段")
+    void sessionHandleIsDeterministicAndOpaque() {
+        String uuid = "2f1c8a9e-7b3d-4e5f-9a0b-1c2d3e4f5a6b";
+
+        String handle = tokenService.toSessionHandle(uuid);
+
+        assertNotNull(handle);
+        assertTrue(handle.matches("[0-9a-f]{32}"), "handle 应为 32 位小写 hex（不含 uuid 的任何分隔符/原串）");
+        assertEquals(handle, tokenService.toSessionHandle(uuid), "同一会话反复展示应得到同一标识");
+        assertFalse(handle.equals(uuid), "handle 不得等于会话 uuid");
+        // 不同会话不得共用一个标识
+        assertNotEquals(handle, tokenService.toSessionHandle("2f1c8a9e-7b3d-4e5f-9a0b-1c2d3e4f5a6c"));
+    }
+
+    @Test
+    @DisplayName("会话标识由密钥派生：换密钥后同一 uuid 得到不同标识（非普通摘要）")
+    void sessionHandleIsKeyedNotPlainDigest() {
+        String uuid = "2f1c8a9e-7b3d-4e5f-9a0b-1c2d3e4f5a6b";
+        String otherSecret = "Zt5Yq8Wd1Ns4Rk7Vb0Tp3Hj6Lc9Fg2Km8Xe5Za1Qw7Er4Ty0Ui3Os6Pd9Sa2Fg5Hc8Jk1Rz";
+
+        String handle = tokenService.toSessionHandle(uuid);
+        String handleOtherKey = new TokenService(mock(RedisCache.class), otherSecret).toSessionHandle(uuid);
+
+        assertNotEquals(handle, handleOtherKey, "handle 必须以服务端密钥为参，不能是可离线算出的普通摘要");
+    }
+
+    @Test
+    @DisplayName("会话标识：残缺会话（uuid 为空）返回 null，不抛不占位")
+    void sessionHandleToleratesEmptyUuid() {
+        assertNull(tokenService.toSessionHandle(null));
+        assertNull(tokenService.toSessionHandle(""));
+    }
+
+    @Test
+    @DisplayName("按标识强退：命中只删对应会话键")
+    void delLoginUserByHandleDeletesOnlyMatchedKey() {
+        String uuidA = "aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb";
+        String uuidB = "cccccccc-4444-5555-6666-dddddddddddd";
+        when(redisCache.keys(CacheConstants.LOGIN_TOKEN_KEY + "*"))
+                .thenReturn(Set.of(CacheConstants.LOGIN_TOKEN_KEY + uuidA, CacheConstants.LOGIN_TOKEN_KEY + uuidB));
+        String handleB = tokenService.toSessionHandle(uuidB);
+
+        assertEquals(1, tokenService.delLoginUserByHandle(handleB));
+
+        verify(redisCache).deleteObject(CacheConstants.LOGIN_TOKEN_KEY + uuidB);
+        verify(redisCache, never()).deleteObject(CacheConstants.LOGIN_TOKEN_KEY + uuidA);
+    }
+
+    @Test
+    @DisplayName("按标识强退：未命中/无会话时返回 0 且不删任何键")
+    void delLoginUserByHandleMissesNothing() {
+        when(redisCache.keys(CacheConstants.LOGIN_TOKEN_KEY + "*")).thenReturn(
+                Set.of(CacheConstants.LOGIN_TOKEN_KEY + "aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb"));
+
+        // 截断旧 hex 得到的合法格式但非本会话的标识（过不了正则、只能靠比对失败）
+        assertEquals(0, tokenService.delLoginUserByHandle("00000000000000000000000000000000"));
+        verify(redisCache, never()).deleteObject(anyString());
+
+        when(redisCache.keys(CacheConstants.LOGIN_TOKEN_KEY + "*")).thenReturn(Set.of());
+        assertEquals(0, tokenService.delLoginUserByHandle("11111111111111111111111111111111"));
+    }
+
+    @Test
+    @DisplayName("按标识强退：畸形入参先拒，不进入全量扫描")
+    void delLoginUserByHandleRejectsMalformedInput() {
+        assertThrows(ServiceException.class, () -> tokenService.delLoginUserByHandle(null));
+        assertThrows(ServiceException.class, () -> tokenService.delLoginUserByHandle(""));
+        // 旧版前端可能回放真实会话 uuid：长度/字符集不符 32 位 hex，同样被拒而非越权删除
+        assertThrows(ServiceException.class,
+                () -> tokenService.delLoginUserByHandle("2f1c8a9e-7b3d-4e5f-9a0b-1c2d3e4f5a6b"));
+        assertThrows(ServiceException.class, () -> tokenService.delLoginUserByHandle("not-a-handle-at-all"));
+        verify(redisCache, never()).keys(anyString());
     }
 }

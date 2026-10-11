@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,9 +16,11 @@ import com.ruoyi.common.constant.CacheConstants;
 import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.core.domain.model.LoginUser;
 import com.ruoyi.common.core.redis.RedisCache;
+import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.http.UserAgentUtils;
 import com.ruoyi.common.utils.ip.AddressUtils;
+import com.ruoyi.common.utils.sign.SignUtils;
 import com.ruoyi.common.utils.uuid.IdUtils;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -49,15 +52,28 @@ public class TokenService {
 
     private static final Long MILLIS_MINUTE_TWENTY = 20 * 60 * 1000L;
 
+    /** 会话标识的域分离后缀：与 JWT 签名密钥同源不同用，避免同一密钥跨算法复用 */
+    private static final String SESSION_HANDLE_DOMAIN = "|online-session-handle";
+
+    /** 下发给前端的会话标识长度（HMAC-SHA256 的 64 位 hex 取前 32 位 = 128bit） */
+    private static final int SESSION_HANDLE_LENGTH = 32;
+
+    /** 合法会话标识形态：恰好 32 位小写 hex。先按格式拒绝，避免任意串进入全量扫描 */
+    private static final Pattern SESSION_HANDLE_PATTERN = Pattern.compile("[0-9a-f]{" + SESSION_HANDLE_LENGTH + "}");
+
     private final RedisCache redisCache;
 
     // HMAC 签名密钥：构造期一次性生成、final 不可变；密钥不合规在启动即 fail-fast
     private final SecretKey secretKey;
 
+    // 会话标识派生密钥：由 token.secret 经 SHA-256 域分离派生，构造期一次性生成、final 不可变
+    private final String sessionHandleKey;
+
     public TokenService(RedisCache redisCache, @Value("${token.secret}") String secret) {
         this.redisCache = redisCache;
         // HS512 要求密钥不少于 64 字节，过短将在此抛 WeakKeyException 阻断启动
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        this.sessionHandleKey = SignUtils.sha256(secret + SESSION_HANDLE_DOMAIN);
     }
 
     /**
@@ -105,6 +121,63 @@ public class TokenService {
             String userKey = getTokenKey(token);
             redisCache.deleteObject(userKey);
         }
+    }
+
+    /**
+     * 把会话 uuid 换算成可下发的展示用会话标识（handle）。
+     * <p>
+     * handle = 截断的 HMAC-SHA256(sessionHandleKey, uuid)：<b>单向不可逆</b>、不含 uuid 任何片段，且因密钥只有服务端
+     * 持有，攻击者即便从在线列表拿到它，既还原不出会话键、也伪造不出通过验签的 JWT（真正的凭证是 JWT）。
+     * 会话重建（重新登录）后 uuid 变、handle 跟着变，因此它不能跨会话复用。
+     *
+     * @param uuid 会话 uuid（Redis 键后缀，即 {@code LoginUser.getToken()}）
+     * @return 脱敏会话标识；uuid 为空（残缺会话）时返回 null，前端该行自然拿不到强退入口
+     */
+    public String toSessionHandle(String uuid) {
+        if (StringUtils.isEmpty(uuid)) {
+            return null;
+        }
+        return SignUtils.hmacSha256(uuid, sessionHandleKey).substring(0, SESSION_HANDLE_LENGTH);
+    }
+
+    /**
+     * 按脱敏会话标识强制下线的逆用路径：扫描在线会话键，对每个 uuid 重算 handle 比对，命中即删。
+     * <p>
+     * 不做反向映射存储：映射表需在 createToken/refreshToken/delLoginUser 三处同步写删，TTL 漂移就留孤儿键。
+     * 代价是强退从 O(1) 变 O(N) 扫描（与按用户/按角色批量下线同量级），靠“格式先拒 + 命中即停”收敛。
+     * 比较用的是我们自己由 uuid 派生的值，入参无法控制被比较的一侧，故不构成可利用的比较侧信道。
+     *
+     * @param handle 前端回传的脱敏会话标识
+     * @return 被清除的会话数（0 表示会话已过期/已重登，handle 失配）
+     */
+    public int delLoginUserByHandle(String handle) {
+        if (handle == null || !SESSION_HANDLE_PATTERN.matcher(handle).matches()) {
+            throw new ServiceException("会话标识不合法");
+        }
+        Collection<String> keys = redisCache.keys(CacheConstants.LOGIN_TOKEN_KEY + "*");
+        if (keys == null || keys.isEmpty()) {
+            return 0;
+        }
+        int prefixLen = CacheConstants.LOGIN_TOKEN_KEY.length();
+        for (String key : keys) {
+            if (key == null || key.length() <= prefixLen) {
+                continue;
+            }
+            if (handle.equals(toSessionHandle(key.substring(prefixLen)))) {
+                redisCache.deleteObject(key);
+                return 1;
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * 取回当前全部在线会话对象（已剔除过期/不存在的 null）。
+     * <p>
+     * 对外暴露给在线用户监控页复用，避免 SCAN+MGET 样板在 controller 与 service 两侧各写一次。
+     */
+    public List<LoginUser> listOnlineLoginUsers() {
+        return collectOnlineLoginUsers();
     }
 
     /**

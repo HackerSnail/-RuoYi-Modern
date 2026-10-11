@@ -4,6 +4,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.LinkedList;
 import java.util.List;
+import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.spring.SpringUtils;
 import com.ruoyi.quartz.domain.SysJob;
@@ -17,6 +18,10 @@ public class JobInvokeUtil {
     /**
      * 解析 invokeTarget 并反射执行目标方法。
      * invokeTarget 支持两种写法：beanName.method(参数) 或 全类名.method(参数)。
+     * <p>
+     * 安全约束：bean 名写法只从 Spring 容器取 bean；全类名写法在执行点再做一次白名单前缀校验
+     * （与写库期 ScheduleUtils.validateJob→whiteList 同源，构成纵深防御），不合即拒，避免调度表被
+     * 直接篡改或未来新调用方绕过 save 校验时反射实例化任意类构成 RCE。
      *
      * @param sysJob 系统任务
      */
@@ -31,8 +36,12 @@ public class JobInvokeUtil {
             Object bean = SpringUtils.getBean(beanName);
             invokeMethod(bean, methodName, methodParams);
         } else {
-            // 形式二：全类名反射实例化，要求目标类具备 public 无参构造，不会走 Spring 代理/AOP
-            Object bean = Class.forName(beanName).getDeclaredConstructor().newInstance();
+            // 形式二：全类名反射实例化。执行点纵深防御—beanName 必须命中 JOB_WHITELIST_STR 前缀，
+            // 否则拒绝；且校验须在 Class.forName 之前，避免实例化任意类。仅允许 public 无参构造。
+            if (!StringUtils.startsWithAny(beanName, Constants.JOB_WHITELIST_STR)) {
+                throw new IllegalArgumentException("不允许通过全类名调用，目标不在白名单包内：" + beanName);
+            }
+            Object bean = Class.forName(beanName).getConstructor().newInstance();
             invokeMethod(bean, methodName, methodParams);
         }
     }
@@ -59,7 +68,7 @@ public class JobInvokeUtil {
     }
 
     /**
-     * 校验是否为为class包名
+     * 校验给定名称是否为全类名（而非 Spring bean 名）
      * 
      * @param invokeTarget 名称
      * @return true是 false否（包含两个以上“.”则视为全类名而非 bean 名）
@@ -103,31 +112,35 @@ public class JobInvokeUtil {
         }
         // 按逗号分割参数，但正向前瞻排除引号内部的逗号（避免把 'a,b' 误拆为两个参数）
         String[] methodParams = methodStr.split(",(?=([^\"']*[\"'][^\"']*[\"'])*[^\"']*$)");
-        List<Object[]> classs = new LinkedList<>();
+        List<Object[]> params = new LinkedList<>();
         for (int i = 0; i < methodParams.length; i++) {
             String str = StringUtils.trimToEmpty(methodParams[i]);
             // String字符串类型，以'或"开头（去掉首尾引号后作为字面量值）
             if (StringUtils.startsWithAny(str, "'", "\"")) {
-                classs.add(new Object[] { StringUtils.substring(str, 1, str.length() - 1), String.class });
+                params.add(new Object[] { StringUtils.substring(str, 1, str.length() - 1), String.class });
             }
             // boolean布尔类型，等于true或者false
             else if ("true".equalsIgnoreCase(str) || "false".equalsIgnoreCase(str)) {
-                classs.add(new Object[] { Boolean.valueOf(str), Boolean.class });
+                params.add(new Object[] { Boolean.valueOf(str), Boolean.class });
             }
             // long长整形，以L结尾（去掉尾部 L 后按 Long 解析，以匹配目标方法的 long 形参）
             else if (StringUtils.endsWith(str, "L")) {
-                classs.add(new Object[] { Long.valueOf(StringUtils.substring(str, 0, str.length() - 1)), Long.class });
+                params.add(new Object[] { Long.valueOf(StringUtils.substring(str, 0, str.length() - 1)), Long.class });
             }
             // double浮点类型，以D结尾
             else if (StringUtils.endsWith(str, "D")) {
-                classs.add(new Object[] { Double.valueOf(StringUtils.substring(str, 0, str.length() - 1)), Double.class });
+                params.add(new Object[] { Double.valueOf(StringUtils.substring(str, 0, str.length() - 1)), Double.class });
             }
             // 其他类型归类为整形
             else {
-                classs.add(new Object[] { Integer.valueOf(str), Integer.class });
+                try {
+                    params.add(new Object[] { Integer.valueOf(str), Integer.class });
+                } catch (NumberFormatException e) {
+                    throw new IllegalArgumentException("无法将参数解析为整型：" + str, e);
+                }
             }
         }
-        return classs;
+        return params;
     }
 
     /**
@@ -137,13 +150,13 @@ public class JobInvokeUtil {
      * @return 参数类型列表
      */
     public static Class<?>[] getMethodParamsType(List<Object[]> methodParams) {
-        Class<?>[] classs = new Class<?>[methodParams.size()];
+        Class<?>[] types = new Class<?>[methodParams.size()];
         int index = 0;
         for (Object[] os : methodParams) {
-            classs[index] = (Class<?>) os[1];
+            types[index] = (Class<?>) os[1];
             index++;
         }
-        return classs;
+        return types;
     }
 
     /**
@@ -153,12 +166,12 @@ public class JobInvokeUtil {
      * @return 参数值列表
      */
     public static Object[] getMethodParamsValue(List<Object[]> methodParams) {
-        Object[] classs = new Object[methodParams.size()];
+        Object[] args = new Object[methodParams.size()];
         int index = 0;
         for (Object[] os : methodParams) {
-            classs[index] = (Object) os[0];
+            args[index] = (Object) os[0];
             index++;
         }
-        return classs;
+        return args;
     }
 }

@@ -369,7 +369,7 @@ public class RedisCache {
     }
 
     /**
-     * 批量获取缓存对象（MGET 分批）
+     * 批量获取缓存对象（MGET 分批，按目标类型还原）
      * <p>
      * 替代"先 SCAN 出 N 个 key、再逐个 GET"的 N+1 往返：在线用户几千时，一次列表查询
      * 就是几千次 RTT，接口慢且连接池吃紧。MGET 一次取 {@value #MGET_BATCH_SIZE} 个，
@@ -377,11 +377,21 @@ public class RedisCache {
      * <p>
      * 返回顺序与入参的迭代顺序一致；MGET 对已过期或不存在的键返回 null，这里直接剔除，
      * 调用方拿到的都是有效值。
+     * <p>
+     * <b>为什么强制传目标类型</b>：序列化层已不再写入 {@code @type}（为消除 fastjson autoType
+     * 反序列化攻击面），value 序列化器只能还原成 {@code JSONObject} 等通用结构。若沿用早期那种靠泛型
+     * {@code (T) value} 无类型强转的写法，编译期给不出任何提示，直到消费者把元素当 POJO 用时才在
+     * 运行期抛 ClassCastException（在线用户列表就因此整表 500）。类型绑定统一经
+     * {@link RedisJson#convert(Object, Class)} 完成，与 {@code getCacheObject(key, Class)} 同一口径。
      *
-     * @param keys 缓存键集合
+     * @param keys  缓存键集合
+     * @param clazz 目标类型，不可为 null
      * @return 对应的缓存值（已去除 null），顺序与入参一致
      */
-    public <T> List<T> multiGetObject(final Collection<String> keys) {
+    public <T> List<T> multiGetObject(final Collection<String> keys, final Class<T> clazz) {
+        if (clazz == null) {
+            throw new IllegalArgumentException("clazz must not be null");
+        }
         List<T> values = new ArrayList<>();
         if (keys == null || keys.isEmpty()) {
             return values;
@@ -390,23 +400,28 @@ public class RedisCache {
         for (String key : keys) {
             batch.add(key);
             if (batch.size() >= MGET_BATCH_SIZE) {
-                collectNonNull(values, redisTemplate.opsForValue().multiGet(batch));
+                collectTypedNonNull(values, redisTemplate.opsForValue().multiGet(batch), clazz);
                 batch.clear();
             }
         }
         if (!batch.isEmpty()) {
-            collectNonNull(values, redisTemplate.opsForValue().multiGet(batch));
+            collectTypedNonNull(values, redisTemplate.opsForValue().multiGet(batch), clazz);
         }
         return values;
     }
 
-    private static <T> void collectNonNull(List<T> values, List<Object> batchValues) {
+    /**
+     * 把一批通用结构按目标类型还原后收集，同时剔除不存在/已过期的 null。
+     * 转换失败（缓存里的 JSON 与目标类结构不匹配）属于数据异常，由 fastjson 抛出，不在此吞掉。
+     */
+    private static <T> void collectTypedNonNull(List<T> values, List<Object> batchValues, Class<T> clazz) {
         if (batchValues == null) {
             return;
         }
         for (Object value : batchValues) {
-            if (value != null) {
-                values.add((T) value);
+            T converted = RedisJson.convert(value, clazz);
+            if (converted != null) {
+                values.add(converted);
             }
         }
     }

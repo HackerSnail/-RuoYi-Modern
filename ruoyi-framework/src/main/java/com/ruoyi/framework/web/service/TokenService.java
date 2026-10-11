@@ -351,8 +351,10 @@ public class TokenService {
     }
 
     /**
-     * 取回全部在线会话：SCAN login_tokens:* 后一次分批 MGET（multiGetObject 已剔除过期/不存在的 null）。
-     * 供“按用户/按角色/全量”的权限失效逻辑复用，避免各处重复 SCAN+MGET 样板。
+     * 取回全部在线会话：SCAN login_tokens:* 后一次分批 MGET（multiGetObject 已按 LoginUser 还原类型、
+     * 剔除过期/不存在的 null）。缓存里存的是无 {@code @type} 的通用 JSON，因此目标类型必须显式给出，
+     * 否则拿到的将是 JSONObject，一遇 POJO 用法就在运行期抛 ClassCastException。
+     * 供“按用户/按角色/全量”的权限失效逻辑与在线用户监控复用，避免各处重复 SCAN+MGET 样板。
      */
     private List<LoginUser> collectOnlineLoginUsers() {
         String pattern = CacheConstants.LOGIN_TOKEN_KEY + "*";
@@ -360,7 +362,7 @@ public class TokenService {
         if (keys == null || keys.isEmpty()) {
             return Collections.emptyList();
         }
-        return redisCache.multiGetObject(keys);
+        return redisCache.multiGetObject(keys, LoginUser.class);
     }
 
     /**

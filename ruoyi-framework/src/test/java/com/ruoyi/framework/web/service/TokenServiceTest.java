@@ -8,13 +8,16 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -27,6 +30,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import com.ruoyi.common.constant.CacheConstants;
 import com.ruoyi.common.constant.Constants;
+import com.ruoyi.common.core.domain.model.LoginUser;
 import com.ruoyi.common.core.redis.RedisCache;
 import com.ruoyi.common.exception.ServiceException;
 
@@ -196,5 +200,22 @@ public class TokenServiceTest {
                 () -> tokenService.delLoginUserByHandle("2f1c8a9e-7b3d-4e5f-9a0b-1c2d3e4f5a6b"));
         assertThrows(ServiceException.class, () -> tokenService.delLoginUserByHandle("not-a-handle-at-all"));
         verify(redisCache, never()).keys(anyString());
+    }
+
+    @Test
+    @DisplayName("在线会话批量读回必须显式指定 LoginUser 类型")
+    void listOnlineLoginUsersReadsBackWithTargetType() {
+        // 序列化层不写 @type：若退回无类型 multiGetObject，拿回的是 JSONObject，
+        // 到 Controller 的 for (LoginUser ...) 才运行期抛 ClassCastException（在线用户列表因此整表 500）
+        LoginUser session = new LoginUser();
+        when(redisCache.keys(CacheConstants.LOGIN_TOKEN_KEY + "*"))
+                .thenReturn(Set.of(CacheConstants.LOGIN_TOKEN_KEY + "uuid-1"));
+        when(redisCache.multiGetObject(anyCollection(), eq(LoginUser.class))).thenReturn(List.of(session));
+
+        List<LoginUser> users = tokenService.listOnlineLoginUsers();
+
+        assertEquals(1, users.size());
+        assertSame(session, users.get(0));
+        verify(redisCache).multiGetObject(anyCollection(), eq(LoginUser.class));
     }
 }

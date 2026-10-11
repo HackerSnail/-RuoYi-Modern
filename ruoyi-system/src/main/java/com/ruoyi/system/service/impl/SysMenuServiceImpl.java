@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +40,13 @@ public class SysMenuServiceImpl implements ISysMenuService {
     public static final String PREMISSION_STRING = "perms[\"{0}\"]";
 
     public static final Long MENU_ROOT_ID = 0L;
+
+    /**
+     * 组件路径安全字符集：仅允许字母/数字/下划线/中划线/斜杠（如 system/user/index），
+     * 用于防范把 component 写成绝对路径/含 .. 穿越指向非预期视图模块（前端按 component 动态 import）。
+     * Layout/ParentView/InnerLink 等保留标识不走此校验。
+     */
+    private static final Pattern SAFE_COMPONENT_PATTERN = Pattern.compile("[A-Za-z0-9_\\-/]+");
 
     private final SysMenuMapper menuMapper;
 
@@ -144,6 +152,10 @@ public class SysMenuServiceImpl implements ISysMenuService {
     @Override
     public List<Long> selectMenuListByRoleId(Long roleId) {
         SysRole role = roleMapper.selectRoleById(roleId);
+        // selectRoleById 不过滤 del_flag，不存在/已删的 roleId 会返 null，直接解引用即 NPE→500
+        if (StringUtils.isNull(role)) {
+            throw new ServiceException("角色不存在或已删除");
+        }
         return menuMapper.selectMenuListByRoleId(roleId, role.isMenuCheckStrictly());
     }
 
@@ -184,7 +196,7 @@ public class SysMenuServiceImpl implements ISysMenuService {
                 children.setQuery(menu.getQuery());
                 childrenList.add(children);
                 router.setChildren(childrenList);
-            } else if (menu.getParentId().intValue() == MENU_ROOT_ID && isInnerLink(menu)) {
+            } else if (parentIdOrRoot(menu) == MENU_ROOT_ID && isInnerLink(menu)) {
                 // 根级内链菜单：用 InnerLink 组件包裹外部 http 地址，路径中的协议/域名特殊字符先替换为合法路由段
                 router.setMeta(new MetaVo(menu.getMenuName(), menu.getIcon()));
                 router.setPath("/");
@@ -281,6 +293,7 @@ public class SysMenuServiceImpl implements ISysMenuService {
      */
     @Override
     public int insertMenu(SysMenu menu) {
+        validateMenuForWrite(menu, false);
         return menuMapper.insertMenu(menu);
     }
 
@@ -292,7 +305,88 @@ public class SysMenuServiceImpl implements ISysMenuService {
      */
     @Override
     public int updateMenu(SysMenu menu) {
+        validateMenuForWrite(menu, true);
         return menuMapper.updateMenu(menu);
+    }
+
+    /**
+     * 菜单写入口收口校验（菜单独有的提权地基：唯一性、perms 通配、上级存在性/类型自洽/环、component/path 加固）。
+     * <p>
+     * Controller 已在入口做唯一性/外链 path/自父校验并回友好 error；此处为纵深（防绕过直调/竞态），
+     * 并补齐菜单特有的提权后门拦截与数据完整性护栏。抛出的 ServiceException 由全局异常处理回 HTTP400+文案（已脱敏）。
+     */
+    private void validateMenuForWrite(SysMenu menu, boolean isUpdate) {
+        normalizeParentId(menu);
+        if (!checkMenuNameUnique(menu)) {
+            throw new ServiceException("操作失败，菜单名称'" + menu.getMenuName() + "'在同级下已存在");
+        }
+        if (!checkRouteConfigUnique(menu)) {
+            throw new ServiceException("操作失败，路由名称或地址'" + menu.getPath() + "'已存在");
+        }
+        // 提权后门拦截：菜单是 perms 生产源，拒绝写入含通配符的权限串（*:*:* = 超级权限）
+        if (StringUtils.isNotEmpty(menu.getPerms()) && menu.getPerms().contains("*")) {
+            throw new ServiceException("权限标识不能包含通配符 *，请填写完整权限串");
+        }
+        validateParent(menu, isUpdate);
+        validateComponentAndPath(menu);
+    }
+
+    /** parentId 为 null 时按根(0)归一，消除入库前对请求 DTO 的 parentId.longValue()/拆箱 NPE。 */
+    private void normalizeParentId(SysMenu menu) {
+        if (menu.getParentId() == null) {
+            menu.setParentId(MENU_ROOT_ID);
+        }
+    }
+
+    /**
+     * 上级菜单合法性：按钮不得为顶级；更新时禁自父与“父指向自身后代”（环）；非根父须存在。
+     */
+    private void validateParent(SysMenu menu, boolean isUpdate) {
+        Long parentId = menu.getParentId();
+        if (UserConstants.TYPE_BUTTON.equals(menu.getMenuType()) && MENU_ROOT_ID.equals(parentId)) {
+            throw new ServiceException("按钮不能设为顶级菜单");
+        }
+        if (isUpdate && menu.getMenuId() != null && menu.getMenuId().equals(parentId)) {
+            throw new ServiceException("上级菜单不能是自己");
+        }
+        if (!MENU_ROOT_ID.equals(parentId)) {
+            if (StringUtils.isNull(menuMapper.selectMenuById(parentId))) {
+                throw new ServiceException("上级菜单不存在");
+            }
+            // 环检测（仅更新）：沿新父节点向上回溯，若遇到自身即“父指向自身后代”，会使子树从根不可达、静默成孤儿
+            if (isUpdate && menu.getMenuId() != null) {
+                Set<Long> visited = new HashSet<>();
+                Long p = parentId;
+                while (p != null && !MENU_ROOT_ID.equals(p) && visited.add(p)) {
+                    if (p.equals(menu.getMenuId())) {
+                        throw new ServiceException("上级菜单不能是自己的下级菜单");
+                    }
+                    SysMenu pm = menuMapper.selectMenuById(p);
+                    p = pm == null ? null : pm.getParentId();
+                }
+            }
+        }
+    }
+
+    /** component 限定安全字符集且不得为绝对路径/含 ..；path 非外链时拒绝穿越/脚本危险字符。 */
+    private void validateComponentAndPath(SysMenu menu) {
+        String component = menu.getComponent();
+        if (StringUtils.isNotEmpty(component)
+                && !UserConstants.LAYOUT.equals(component)
+                && !UserConstants.PARENT_VIEW.equals(component)
+                && !UserConstants.INNER_LINK.equals(component)) {
+            if (component.contains("..") || component.contains("\\") || component.startsWith("/")
+                    || !SAFE_COMPONENT_PATTERN.matcher(component).matches()) {
+                throw new ServiceException("组件路径不合法：仅允许字母/数字/下划线/中划线/斜杠，且不得为绝对路径或含 '..'");
+            }
+        }
+        String path = menu.getPath();
+        if (StringUtils.isNotEmpty(path) && !StringUtils.ishttp(path)) {
+            if (path.contains("..") || path.contains("\\") || path.contains("<") || path.contains(">")
+                    || path.contains("`")) {
+                throw new ServiceException("路由地址包含非法字符");
+            }
+        }
     }
 
     /**
@@ -339,6 +433,7 @@ public class SysMenuServiceImpl implements ISysMenuService {
      */
     @Override
     public boolean checkMenuNameUnique(SysMenu menu) {
+        normalizeParentId(menu);
         Long menuId = StringUtils.isNull(menu.getMenuId()) ? -1L : menu.getMenuId();
         SysMenu info = menuMapper.checkMenuNameUnique(menu.getMenuName(), menu.getParentId());
         if (StringUtils.isNotNull(info) && info.getMenuId().longValue() != menuId.longValue()) {
@@ -355,6 +450,7 @@ public class SysMenuServiceImpl implements ISysMenuService {
      */
     @Override
     public boolean checkRouteConfigUnique(SysMenu menu) {
+        normalizeParentId(menu);
         Long menuId = StringUtils.isNull(menu.getMenuId()) ? -1L : menu.getMenuId();
         Long parentId = menu.getParentId();
         String path = menu.getPath();
@@ -415,11 +511,11 @@ public class SysMenuServiceImpl implements ISysMenuService {
     public String getRouterPath(SysMenu menu) {
         String routerPath = menu.getPath();
         // 内链打开外网方式
-        if (menu.getParentId().intValue() != MENU_ROOT_ID && isInnerLink(menu)) {
+        if (parentIdOrRoot(menu) != MENU_ROOT_ID && isInnerLink(menu)) {
             routerPath = innerLinkReplaceEach(routerPath);
         }
         // 非外链并且是一级目录（类型为目录）
-        if (MENU_ROOT_ID == menu.getParentId().intValue() && UserConstants.TYPE_DIR.equals(menu.getMenuType())
+        if (MENU_ROOT_ID == parentIdOrRoot(menu) && UserConstants.TYPE_DIR.equals(menu.getMenuType())
                 && UserConstants.NO_FRAME.equals(menu.getIsFrame())) {
             routerPath = "/" + menu.getPath();
         }
@@ -440,7 +536,7 @@ public class SysMenuServiceImpl implements ISysMenuService {
         String component = UserConstants.LAYOUT;
         if (StringUtils.isNotEmpty(menu.getComponent()) && !isMenuFrame(menu)) {
             component = menu.getComponent();
-        } else if (StringUtils.isEmpty(menu.getComponent()) && menu.getParentId().intValue() != MENU_ROOT_ID
+        } else if (StringUtils.isEmpty(menu.getComponent()) && parentIdOrRoot(menu) != MENU_ROOT_ID
                 && isInnerLink(menu)) {
             component = UserConstants.INNER_LINK;
         } else if (StringUtils.isEmpty(menu.getComponent()) && isParentView(menu)) {
@@ -456,8 +552,8 @@ public class SysMenuServiceImpl implements ISysMenuService {
      * @return 结果
      */
     public boolean isMenuFrame(SysMenu menu) {
-        return menu.getParentId().intValue() == MENU_ROOT_ID && UserConstants.TYPE_MENU.equals(menu.getMenuType())
-                && menu.getIsFrame().equals(UserConstants.NO_FRAME);
+        return parentIdOrRoot(menu) == MENU_ROOT_ID && UserConstants.TYPE_MENU.equals(menu.getMenuType())
+                && UserConstants.NO_FRAME.equals(menu.getIsFrame());
     }
 
     /**
@@ -467,7 +563,7 @@ public class SysMenuServiceImpl implements ISysMenuService {
      * @return 结果
      */
     public boolean isParentView(SysMenu menu) {
-        return menu.getParentId().intValue() != MENU_ROOT_ID && UserConstants.TYPE_DIR.equals(menu.getMenuType());
+        return parentIdOrRoot(menu) != MENU_ROOT_ID && UserConstants.TYPE_DIR.equals(menu.getMenuType());
     }
 
     /**
@@ -477,7 +573,7 @@ public class SysMenuServiceImpl implements ISysMenuService {
      * @return 结果
      */
     public boolean isInnerLink(SysMenu menu) {
-        return menu.getIsFrame().equals(UserConstants.NO_FRAME) && StringUtils.ishttp(menu.getPath());
+        return UserConstants.NO_FRAME.equals(menu.getIsFrame()) && StringUtils.ishttp(menu.getPath());
     }
 
     /**
@@ -491,7 +587,7 @@ public class SysMenuServiceImpl implements ISysMenuService {
         List<SysMenu> returnList = new ArrayList<>();
         for (SysMenu t : list) {
             // 一、根据传入的某个父节点ID,遍历该父节点的所有子节点
-            if (t.getParentId() == parentId) {
+            if (t.getParentId() != null && t.getParentId() == parentId) {
                 recursionFn(list, t);
                 returnList.add(t);
             }
@@ -522,7 +618,7 @@ public class SysMenuServiceImpl implements ISysMenuService {
     private List<SysMenu> getChildList(List<SysMenu> list, SysMenu t) {
         List<SysMenu> tlist = new ArrayList<>();
         for (SysMenu n : list) {
-            if (n.getParentId().longValue() == t.getMenuId().longValue()) {
+            if (n.getParentId() != null && n.getParentId().longValue() == t.getMenuId().longValue()) {
                 tlist.add(n);
             }
         }
@@ -544,5 +640,13 @@ public class SysMenuServiceImpl implements ISysMenuService {
     public String innerLinkReplaceEach(String path) {
         return StringUtils.replaceEach(path, new String[] { Constants.HTTP, Constants.HTTPS, Constants.WWW, ".", ":" },
                 new String[] { "", "", "", "/", "/" });
+    }
+
+    /**
+     * 防御性读侧处理：parentId 为 null 时视为根(0)，避免脏数据使 buildMenus 渲染时拆箱 NPE。
+     * （sys_menu.parent_id 有 default 0、正常入库不为 null，此处仅再护一层。）
+     */
+    private static long parentIdOrRoot(SysMenu menu) {
+        return menu.getParentId() == null ? MENU_ROOT_ID : menu.getParentId();
     }
 }

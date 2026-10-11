@@ -30,9 +30,9 @@ public class SysOperlogController extends BaseController {
     /**
      * 清空操作日志的二次确认口令：前端弹窗要求用户确认后随请求回传，后端强校验后才执行。
      * <p>
-     * 清空与批量删除共用 monitor:operlog:remove 权限（若依默认设计），但风险不对等：
-     * 批量删除只影响勾选的若干条，清空是全表删除且不可恢复。只靠前端弹窗拦不住
-     * 脚本误调、请求重试、抓包重放，所以服务端必须再校验一次。
+     * 风险不对等：批量删除只影响勾选的若干条，清空是全表删除且不可恢复。故清空已从
+     * remove 拆出为独立权限 monitor:operlog:clean（需单独授权），只靠前端弹窗拦不住
+     * 脚本误调、请求重试、抓包重放，所以服务端必须再校验一次二次确认口令。
      */
     private static final String CLEAN_CONFIRM_TOKEN = "CLEAN_ALL_OPERLOG";
 
@@ -81,7 +81,7 @@ public class SysOperlogController extends BaseController {
      * @param confirm 前端二次确认口令，必须等于 {@value #CLEAN_CONFIRM_TOKEN}，否则直接拒绝
      */
     @Log(title = "操作日志", businessType = BusinessType.CLEAN)
-    @PreAuthorize("@ss.hasPermi('monitor:operlog:remove')")
+    @PreAuthorize("@ss.hasPermi('monitor:operlog:clean')")
     @DeleteMapping("/clean")
     public AjaxResult clean(@RequestParam(name = "confirm", required = false, defaultValue = "") String confirm) {
         if (!CLEAN_CONFIRM_TOKEN.equals(confirm)) {

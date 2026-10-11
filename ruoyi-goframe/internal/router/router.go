@@ -110,6 +110,13 @@ func Register(s *ghttp.Server) {
 		g.GET("/system/notice/list", middleware.Permi("system:notice:list", controller.NoticeList))
 		g.POST("/system/notice", middleware.Permi("system:notice:add", controller.NoticeAdd))
 		g.PUT("/system/notice", middleware.Permi("system:notice:edit", controller.NoticeEdit))
+		// C2 已读追踪：listTop/markRead/markReadAll 仅需登录（无 permi）；repush 走 edit；read/unreadUsers 走 list。静态段先于 {noticeId} 动态。
+		g.GET("/system/notice/listTop", controller.NoticeListTop)
+		g.POST("/system/notice/markRead", controller.NoticeMarkRead)
+		g.POST("/system/notice/markReadAll", controller.NoticeMarkReadAll)
+		g.GET("/system/notice/readUsers/list", middleware.Permi("system:notice:list", controller.NoticeReadUsersList))
+		g.GET("/system/notice/unreadUsers/list", middleware.Permi("system:notice:list", controller.NoticeUnreadUsersList))
+		g.PUT("/system/notice/repush/{noticeId}", middleware.Permi("system:notice:edit", controller.NoticeRepush))
 		g.GET("/system/notice/{noticeId}", controller.NoticeGetInfo)
 		g.DELETE("/system/notice/{noticeIds}", middleware.Permi("system:notice:remove", controller.NoticeRemove))
 	})

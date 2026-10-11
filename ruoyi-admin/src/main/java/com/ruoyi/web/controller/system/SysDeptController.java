@@ -69,7 +69,7 @@ public class SysDeptController extends BaseController {
     @PreAuthorize("@ss.hasPermi('system:dept:query')")
     @GetMapping(value = "/{deptId}")
     public AjaxResult getInfo(@PathVariable Long deptId) {
-        deptService.checkDeptDataScope(deptId);
+        // 数据权限校验收口到 selectDeptById（Service 内 checkDeptDataScope），此处不再重复调用
         return success(deptService.selectDeptById(deptId));
     }
 
@@ -95,17 +95,15 @@ public class SysDeptController extends BaseController {
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody SysDept dept) {
         Long deptId = dept.getDeptId();
-        deptService.checkDeptDataScope(deptId);
         if (!deptService.checkDeptNameUnique(dept)) {
             return error("修改部门'" + dept.getDeptName() + "'失败，部门名称已存在");
-        } else if (dept.getParentId().equals(deptId)) {
-            return error("修改部门'" + dept.getDeptName() + "'失败，上级部门不能是自己");
         } else if (StringUtils.equals(UserConstants.DEPT_DISABLE, dept.getStatus())
                 && deptService.selectNormalChildrenDeptById(deptId) > 0) {
             // 停用父部门前先拦截：若还有未停用的子部门，不允许直接停用父级
             return error("该部门包含未停用的子部门！");
         }
         dept.setUpdateBy(getUsername());
+        // 自身与新父的数据权限、以及环检测（上级不能是自己/自己的子孙）已收口到 updateDept，此处不再重复
         return toAjax(deptService.updateDept(dept));
     }
 

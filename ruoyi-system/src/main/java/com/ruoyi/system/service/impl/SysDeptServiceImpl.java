@@ -103,6 +103,10 @@ public class SysDeptServiceImpl implements ISysDeptService {
     @Override
     public List<Long> selectDeptListByRoleId(Long roleId) {
         SysRole role = roleMapper.selectRoleById(roleId);
+        // 回查为空（roleId 不存在/已被删除）直接抛业务异常，避免 role.isDeptCheckStrictly() NPE 500
+        if (StringUtils.isNull(role)) {
+            throw new ServiceException("角色不存在或已被删除");
+        }
         return deptMapper.selectDeptListByRoleId(roleId, role.isDeptCheckStrictly());
     }
 
@@ -114,6 +118,8 @@ public class SysDeptServiceImpl implements ISysDeptService {
      */
     @Override
     public SysDept selectDeptById(Long deptId) {
+        // 数据权限收口到 Service：不依赖调用方“记得先调 checkDeptDataScope”（Controller 已调则冗余不致命）
+        checkDeptDataScope(deptId);
         return deptMapper.selectDeptById(deptId);
     }
 
@@ -193,7 +199,13 @@ public class SysDeptServiceImpl implements ISysDeptService {
      */
     @Override
     public int insertDept(SysDept dept) {
+        // 数据范围收口：新部门只能挂在操作者有权管理的父节点下（防往无权/越权父节点挂子）
+        checkDeptDataScope(dept.getParentId());
         SysDept info = deptMapper.selectDeptById(dept.getParentId());
+        // 父节点不存在（非法 parentId/被并发删除）直接拒绝：避免 info.getStatus() NPE 500 与借道探测父节点
+        if (StringUtils.isNull(info)) {
+            throw new ServiceException("上级部门不存在或已被删除");
+        }
         // 如果父节点不为正常状态,则不允许新增子节点
         if (!UserConstants.DEPT_NORMAL.equals(info.getStatus())) {
             throw new ServiceException("部门停用，不允许新增");
@@ -212,30 +224,31 @@ public class SysDeptServiceImpl implements ISysDeptService {
     public int updateDept(SysDept dept) {
         SysDept newParentDept = deptMapper.selectDeptById(dept.getParentId());
         SysDept oldDept = deptMapper.selectDeptById(dept.getDeptId());
-        if (StringUtils.isNotNull(newParentDept) && StringUtils.isNotNull(oldDept)) {
-            String newAncestors = newParentDept.getAncestors() + "," + newParentDept.getDeptId();
-            String oldAncestors = oldDept.getAncestors();
-            dept.setAncestors(newAncestors);
-            updateDeptChildren(dept.getDeptId(), newAncestors, oldAncestors);
+        // 部门自身不存在（非法 deptId/被并发删除）直接拒绝
+        if (StringUtils.isNull(oldDept)) {
+            throw new ServiceException("部门不存在或已被删除");
         }
-        int result = deptMapper.updateDept(dept);
-        if (UserConstants.DEPT_NORMAL.equals(dept.getStatus()) && StringUtils.isNotEmpty(dept.getAncestors())
-                && !StringUtils.equals(UserConstants.ROOT_ANCESTORS, dept.getAncestors())) {
-            // 如果该部门是启用状态，则启用该部门的所有上级部门
-            updateParentDeptStatusNormal(dept);
+        // 新父节点必须存在：否则拒绝，绝不“parentId 已改而 ancestors 停旧链”静默写脏数据
+        if (StringUtils.isNull(newParentDept)) {
+            throw new ServiceException("上级部门不存在或已被删除");
         }
-        return result;
-    }
-
-    /**
-     * 修改该部门的父级部门状态
-     * 
-     * @param dept 当前部门
-     */
-    private void updateParentDeptStatusNormal(SysDept dept) {
-        String ancestors = dept.getAncestors();
-        Long[] deptIds = Convert.toLongArray(ancestors);
-        deptMapper.updateDeptStatusNormal(deptIds);
+        // 环检测：新父不能是自己，也不能是自己的子孙（否则祖级链成环、后代 ancestors 被改坏）
+        if (dept.getDeptId().equals(dept.getParentId())) {
+            throw new ServiceException("上级部门不能是自己");
+        }
+        if (StringUtils.contains("," + newParentDept.getAncestors() + ",", "," + dept.getDeptId() + ",")) {
+            throw new ServiceException("上级部门不能是自己的下级部门");
+        }
+        // 数据范围收口：目标部门与新父节点都必须在操作者数据范围内（防把所辖部门迁移到无权节点=范围逃逸）
+        checkDeptDataScope(dept.getDeptId());
+        checkDeptDataScope(dept.getParentId());
+        String newAncestors = newParentDept.getAncestors() + "," + newParentDept.getDeptId();
+        String oldAncestors = oldDept.getAncestors();
+        dept.setAncestors(newAncestors);
+        updateDeptChildren(dept.getDeptId(), newAncestors, oldAncestors);
+        // 取舍（#4 收敛）：原“下级改正常即无条件反写整条祖级链为启用”会让被刻意停用的上级被连带复活（越权副作用），
+        // 已移除：部门启用/停用由各自编辑显式管理，不再借一次子部门保存静默启用无权/被停用的上级。
+        return deptMapper.updateDept(dept);
     }
 
     /**
@@ -248,8 +261,12 @@ public class SysDeptServiceImpl implements ISysDeptService {
     public void updateDeptChildren(Long deptId, String newAncestors, String oldAncestors) {
         List<SysDept> children = deptMapper.selectChildrenDeptById(deptId);
         for (SysDept child : children) {
-            // 后代部门的 ancestors 前缀整体从旧路径换为新路径（仅替换首个匹配），保证祖级链与新父节点一致
-            child.setAncestors(child.getAncestors().replaceFirst(oldAncestors, newAncestors));
+            // 前缀整体替换（非正则）：后代 ancestors 必以 oldAncestors 开头，剪掉该前缀拼上 newAncestors 即可，
+            // 避免把 oldAncestors 当正则传入 replaceFirst 未来祖级链格式变化时踩元字符误解析
+            String anc = child.getAncestors();
+            if (StringUtils.isNotEmpty(anc) && StringUtils.isNotEmpty(oldAncestors) && anc.startsWith(oldAncestors)) {
+                child.setAncestors(newAncestors + anc.substring(oldAncestors.length()));
+            }
         }
         if (children.size() > 0) {
             deptMapper.updateDeptChildren(children);
@@ -270,6 +287,18 @@ public class SysDeptServiceImpl implements ISysDeptService {
     @Override
     @Transactional
     public void updateDeptSort(String[] deptIds, String[] orderNums) {
+        // 先校验两数组长度一致（前端传参不齐会按下标错位配对），拒绝时给明确文案而非越界堆栈
+        if (deptIds == null || orderNums == null || deptIds.length != orderNums.length) {
+            throw new ServiceException("保存排序失败，部门与排序号数量不一致");
+        }
+        // 越权防护：逐个校验目标部门在操作者数据范围内（置于 try 外，避免权限异常被下方 catch 兵成通用“保存排序异常”）
+        for (String deptId : deptIds) {
+            Long id = Convert.toLong(deptId);
+            if (id == null) {
+                throw new ServiceException("保存排序失败，部门 ID 非法");
+            }
+            checkDeptDataScope(id);
+        }
         try {
             List<SysDept> deptList = new ArrayList<>();
             for (int i = 0; i < deptIds.length; i++) {
@@ -294,6 +323,15 @@ public class SysDeptServiceImpl implements ISysDeptService {
      */
     @Override
     public int deleteDeptById(Long deptId) {
+        // 数据权限收口：只能删自己有权管理的部门（Controller 已拦则冗余不致命）
+        checkDeptDataScope(deptId);
+        // 删除前护栏收口：存在未删除子部门 或 部门下仍有在职用户则拒绝（防孤儿数据，不依赖调用方记得拦）
+        if (hasChildByDeptId(deptId)) {
+            throw new ServiceException("存在下级部门，不允许删除");
+        }
+        if (checkDeptExistUser(deptId)) {
+            throw new ServiceException("部门存在用户，不允许删除");
+        }
         return deptMapper.deleteDeptById(deptId);
     }
 

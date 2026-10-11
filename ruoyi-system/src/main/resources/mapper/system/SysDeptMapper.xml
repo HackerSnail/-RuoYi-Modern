@@ -143,12 +143,6 @@
 			separator="," open="(" close=")"> #{item.deptId} </foreach>
 	</update>
 
-	<!-- 批量将部门状态设为正常(0)：用于上级部门恢复时联动下级 -->
-	<update id="updateDeptStatusNormal" parameterType="Long"> update sys_dept set status = '0' where
-		dept_id in <foreach collection="array" item="deptId" open="(" separator="," close=")">
-		#{deptId} </foreach>
-	</update>
-
 	<!-- 单条排序更新（保留用于单个部门拖动场景；批量场景用 updateDeptSortBatch） -->
 	<update id="updateDeptSort" parameterType="SysDept"> update sys_dept set order_num = #{orderNum}
 		where dept_id = #{deptId} </update>

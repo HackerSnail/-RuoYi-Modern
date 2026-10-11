@@ -259,6 +259,8 @@ public class SysRoleController extends BaseController {
     @PreAuthorize("@ss.hasPermi('system:role:query')")
     @GetMapping(value = "/deptTree/{roleId}")
     public AjaxResult deptTree(@PathVariable("roleId") Long roleId) {
+        // 角色数据权限：非超管只能查自己数据范围内的角色，防枚举 roleId 探测任意角色绑定了哪些部门（权限拓扑泄露）
+        roleService.checkRoleDataScope(roleId);
         AjaxResult ajax = AjaxResult.success();
         // checkedKeys 为该角色已关联的部门 ID，前端据高回显部门树的勾选状态
         ajax.put("checkedKeys", deptService.selectDeptListByRoleId(roleId));

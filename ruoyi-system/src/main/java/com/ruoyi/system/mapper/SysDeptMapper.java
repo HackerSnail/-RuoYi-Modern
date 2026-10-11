@@ -110,13 +110,6 @@ public interface SysDeptMapper {
     public int updateDept(SysDept dept);
 
     /**
-     * 修改所在部门正常状态
-     * 
-     * @param deptIds 部门ID组
-     */
-    public void updateDeptStatusNormal(Long[] deptIds);
-
-    /**
      * 修改子元素关系
      * 
      * @param depts 子元素

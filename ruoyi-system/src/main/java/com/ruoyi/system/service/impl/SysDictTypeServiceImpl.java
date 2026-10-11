@@ -1,5 +1,6 @@
 package com.ruoyi.system.service.impl;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -8,9 +9,12 @@ import java.util.stream.Collectors;
 import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import com.ruoyi.common.constant.UserConstants;
 import com.ruoyi.common.core.domain.entity.SysDictData;
 import com.ruoyi.common.core.domain.entity.SysDictType;
+import com.ruoyi.common.core.redis.RedisCache;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.DictUtils;
 import com.ruoyi.common.utils.StringUtils;
@@ -25,21 +29,44 @@ import com.ruoyi.system.service.ISysDictTypeService;
  */
 @Service
 public class SysDictTypeServiceImpl implements ISysDictTypeService {
+    /**
+     * 多实例共享同一 Redis 启动灌缓存的集群锁 key：SET NX PX，仅抢到锁的节点执行全量加载，其余跳过。
+     */
+    private static final String STARTUP_LOCK_KEY = "ruoyi:dict:startup:loading";
+
+    /** 启动集群锁的 TTL：即便持锁节点崩溃未释放，到期自动放开供后续节点重试 */
+    private static final Duration STARTUP_LOCK_TTL = Duration.ofSeconds(30);
+
     private final SysDictTypeMapper dictTypeMapper;
 
     private final SysDictDataMapper dictDataMapper;
 
-    public SysDictTypeServiceImpl(SysDictTypeMapper dictTypeMapper, SysDictDataMapper dictDataMapper) {
+    private final RedisCache redisCache;
+
+    public SysDictTypeServiceImpl(SysDictTypeMapper dictTypeMapper, SysDictDataMapper dictDataMapper,
+            RedisCache redisCache) {
         this.dictTypeMapper = dictTypeMapper;
         this.dictDataMapper = dictDataMapper;
+        this.redisCache = redisCache;
     }
 
     /**
-     * 项目启动时，初始化字典到缓存
+     * 项目启动时，初始化字典到缓存。
+     * <p>
+     * 多 Pod 同时 @PostConstruct 会并发全量 setDictCache；因缓存是集群共享的一份，这里用 SET NX 锁让
+     * 集群内仅一个节点执行全量灌入，其余跳过（未命中由读侧 cache-aside 回源自愈），消除并发覆盖。
+     * 显式的 resetDictCache/clearDictCache 走未加锁的 {@link #loadingDictCache()}，以保证管理员主动重置必然生效。
      */
     @PostConstruct
     public void init() {
-        loadingDictCache();
+        Boolean acquired = redisCache.redisTemplate.opsForValue().setIfAbsent(STARTUP_LOCK_KEY, "loading", STARTUP_LOCK_TTL);
+        if (Boolean.TRUE.equals(acquired)) {
+            try {
+                loadingDictCache();
+            } finally {
+                redisCache.deleteObject(STARTUP_LOCK_KEY);
+            }
+        }
     }
 
     /**
@@ -134,9 +161,9 @@ public class SysDictTypeServiceImpl implements ISysDictTypeService {
             }
         }
         dictTypeMapper.deleteDictTypeByIds(dictIds);
-        for (SysDictType dictType : dictTypes) {
-            DictUtils.removeDictCache(dictType.getDictType());
-        }
+        List<String> removedTypes = dictTypes.stream().map(SysDictType::getDictType).collect(Collectors.toList());
+        // 缓存清理移到事务提交后：若提交前就删缓存、而事务随后回滚，读侧会回源 DB（数据仍在）又把旧值灌回缓存
+        runAfterCommit(() -> removedTypes.forEach(DictUtils::removeDictCache));
     }
 
     /**
@@ -179,6 +206,10 @@ public class SysDictTypeServiceImpl implements ISysDictTypeService {
      */
     @Override
     public int insertDictType(SysDictType dict) {
+        // 唯一性 Service 层收口（纵深）：Controller 已前置 checkDictTypeUnique，此处防其它调用方/TOCTOU 绕过
+        if (!checkDictTypeUnique(dict)) {
+            throw new ServiceException("新增字典'" + dict.getDictName() + "'失败，字典类型已存在：" + dict.getDictType());
+        }
         int row = dictTypeMapper.insertDictType(dict);
         if (row > 0) {
             // 新类型尚无字典数据，先写入空缓存占位，避免每次查询都回源未命中的 DB
@@ -196,15 +227,42 @@ public class SysDictTypeServiceImpl implements ISysDictTypeService {
     @Override
     @Transactional
     public int updateDictType(SysDictType dict) {
+        // 改名目标唯一性 Service 层收口（纵深）：防止 A→B 的级联把两个字典的数据搅在一起
+        if (!checkDictTypeUnique(dict)) {
+            throw new ServiceException("修改字典'" + dict.getDictName() + "'失败，字典类型已存在：" + dict.getDictType());
+        }
         SysDictType oldDict = dictTypeMapper.selectDictTypeById(dict.getDictId());
+        if (StringUtils.isNull(oldDict)) {
+            throw new ServiceException("字典类型不存在或已被删除，dictId=" + dict.getDictId());
+        }
         // 类型标识可能被改名，需级联更新已归属字典数据的 dictType，再按新类型刷新缓存
         dictDataMapper.updateDictDataType(oldDict.getDictType(), dict.getDictType());
         int row = dictTypeMapper.updateDictType(dict);
         if (row > 0) {
-            List<SysDictData> dictDatas = dictDataMapper.selectDictDataByType(dict.getDictType());
-            DictUtils.setDictCache(dict.getDictType(), dictDatas);
+            String newType = dict.getDictType();
+            // 缓存在事务提交后再刷新：避免提交失败回滚却留下按新名写入的脏缓存
+            runAfterCommit(() -> {
+                List<SysDictData> dictDatas = dictDataMapper.selectDictDataByType(newType);
+                DictUtils.setDictCache(newType, dictDatas);
+            });
         }
         return row;
+    }
+
+    /**
+     * 事务提交成功后执行 action；无活动事务时立即执行（兜底，避免非事务调用路径下缓存永不刷新）。
+     */
+    private void runAfterCommit(Runnable action) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    action.run();
+                }
+            });
+        } else {
+            action.run();
+        }
     }
 
     /**

@@ -1,8 +1,9 @@
 package com.ruoyi.system.service.impl;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -11,95 +12,181 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
-
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
-
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import com.ruoyi.common.core.domain.entity.SysDictData;
 import com.ruoyi.common.core.domain.entity.SysDictType;
+import com.ruoyi.common.core.redis.RedisCache;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.DictUtils;
 import com.ruoyi.system.mapper.SysDictDataMapper;
 import com.ruoyi.system.mapper.SysDictTypeMapper;
 
 /**
- * SysDictTypeServiceImpl.deleteDictTypeByIds 批量删除契约测试。
- *
- * <p>
- * 本次将“逐行 select+count+delete”（3N 次数据库往返）改为：一次批量查类型、一次批量查已分配类型、
- * 一次批量删除，并加事务。语义改进点：只要所选类型中有任一已分配，则整体不删并抛错（原子），
- * 而不再出现“删到一半才报错”的部分删除。测试用 mock mapper 锁定该契约；{@code DictUtils} 走 Redis
- * 的静态缓存清理用 {@code mockStatic} 隔离。
- * </p>
+ * SysDictTypeServiceImpl 单元测试：覆盖改名/新增唯一性 Service 收口、updateDictType 回查判空防 NPE、
+ * 以及缓存刷新/清理的 afterCommit 时序（含无活动事务时的内联兜底）。
+ * 纯 Mockito；DictUtils 静态以 mockStatic 拦截；事务时序以 mockStatic(TransactionSynchronizationManager) 驱动。
+ * init() 的 SET NX 启动锁经 @SpringBootTest 真实启动覆盖（final redisTemplate 字段不便在此 mock）。
  */
-public class SysDictTypeServiceImplTest {
-    private SysDictTypeServiceImpl dictTypeService;
+class SysDictTypeServiceImplTest {
 
     private SysDictTypeMapper dictTypeMapper;
-
     private SysDictDataMapper dictDataMapper;
+    private SysDictTypeServiceImpl service;
+    private MockedStatic<DictUtils> dictUtils;
 
     @BeforeEach
     void setUp() {
         dictTypeMapper = mock(SysDictTypeMapper.class);
         dictDataMapper = mock(SysDictDataMapper.class);
-        dictTypeService = new SysDictTypeServiceImpl(dictTypeMapper, dictDataMapper);
+        service = new SysDictTypeServiceImpl(dictTypeMapper, dictDataMapper, mock(RedisCache.class));
+        dictUtils = mockStatic(DictUtils.class);
     }
 
-    private static SysDictType type(Long id, String dictType, String dictName) {
+    @AfterEach
+    void tearDown() {
+        dictUtils.close();
+    }
+
+    private static SysDictType type(Long id, String name, String dictType) {
         SysDictType t = new SysDictType();
         t.setDictId(id);
+        t.setDictName(name);
         t.setDictType(dictType);
-        t.setDictName(dictName);
         return t;
     }
 
+    // ---------- updateDictType ----------
+
     @Test
-    @DisplayName("删除：全部未分配时单次批量删除并按类型清理缓存")
-    void deleteAllUnassignedIssuesSingleBatchDelete() {
-        Long[] ids = new Long[] { 1L, 2L };
-        when(dictTypeMapper.selectDictTypeByIds(ids))
-                .thenReturn(new ArrayList<>(Arrays.asList(type(1L, "sys_a", "类型A"), type(2L, "sys_b", "类型B"))));
+    void updateRejectsDuplicateRenameBeforeTouchingDb() {
+        // 目标名 sys_new 被另一个 dictId(9) 占用 → 非唯一 → 立即拒，且不回查/不级联
+        when(dictTypeMapper.checkDictTypeUnique("sys_new")).thenReturn(type(9L, "x", "sys_new"));
+        ServiceException ex = assertThrows(ServiceException.class,
+                () -> service.updateDictType(type(5L, "改名", "sys_new")));
+        assertTrue(ex.getMessage().contains("字典类型已存在"));
+        verify(dictTypeMapper, never()).selectDictTypeById(any());
+        verify(dictDataMapper, never()).updateDictDataType(anyString(), anyString());
+    }
+
+    @Test
+    void updateThrowsWhenOldDictMissing() {
+        when(dictTypeMapper.checkDictTypeUnique("sys_new")).thenReturn(null);
+        when(dictTypeMapper.selectDictTypeById(5L)).thenReturn(null);
+        ServiceException ex = assertThrows(ServiceException.class,
+                () -> service.updateDictType(type(5L, "改名", "sys_new")));
+        assertTrue(ex.getMessage().contains("不存在或已被删除"));
+        verify(dictDataMapper, never()).updateDictDataType(anyString(), anyString());
+        verify(dictTypeMapper, never()).updateDictType(any());
+    }
+
+    @Test
+    void updateRefreshesCacheInlineWhenNoActiveTx() {
+        // 纯单测无 Spring 事务 → isSynchronizationActive()==false → runAfterCommit 走内联兜底
+        when(dictTypeMapper.checkDictTypeUnique("sys_new")).thenReturn(null);
+        when(dictTypeMapper.selectDictTypeById(5L)).thenReturn(type(5L, "旧", "sys_old"));
+        when(dictTypeMapper.updateDictType(any())).thenReturn(1);
+        List<SysDictData> full = Collections.singletonList(new SysDictData());
+        when(dictDataMapper.selectDictDataByType("sys_new")).thenReturn(full);
+
+        service.updateDictType(type(5L, "改名", "sys_new"));
+
+        // 级联用旧类型名作源
+        verify(dictDataMapper, times(1)).updateDictDataType("sys_old", "sys_new");
+        dictUtils.verify(() -> DictUtils.setDictCache("sys_new", full), times(1));
+    }
+
+    @Test
+    void updateDefersCacheUntilCommitWhenTxActive() {
+        when(dictTypeMapper.checkDictTypeUnique("sys_new")).thenReturn(null);
+        when(dictTypeMapper.selectDictTypeById(5L)).thenReturn(type(5L, "旧", "sys_old"));
+        when(dictTypeMapper.updateDictType(any())).thenReturn(1);
+        List<SysDictData> full = Collections.singletonList(new SysDictData());
+        when(dictDataMapper.selectDictDataByType("sys_new")).thenReturn(full);
+
+        try (MockedStatic<TransactionSynchronizationManager> tx = mockStatic(TransactionSynchronizationManager.class)) {
+            tx.when(TransactionSynchronizationManager::isSynchronizationActive).thenReturn(true);
+
+            service.updateDictType(type(5L, "改名", "sys_new"));
+
+            // 提交前不应写缓存
+            dictUtils.verify(() -> DictUtils.setDictCache(anyString(), any()), never());
+            ArgumentCaptor<TransactionSynchronization> cap = ArgumentCaptor.forClass(TransactionSynchronization.class);
+            tx.verify(() -> TransactionSynchronizationManager.registerSynchronization(cap.capture()));
+            // 手动触发提交回调 → 此时才刷新
+            cap.getValue().afterCommit();
+            dictUtils.verify(() -> DictUtils.setDictCache("sys_new", full), times(1));
+        }
+    }
+
+    // ---------- insertDictType ----------
+
+    @Test
+    void insertRejectsDuplicateType() {
+        when(dictTypeMapper.checkDictTypeUnique("sys_new")).thenReturn(type(9L, "x", "sys_new"));
+        ServiceException ex = assertThrows(ServiceException.class,
+                () -> service.insertDictType(type(null, "新增", "sys_new")));
+        assertTrue(ex.getMessage().contains("字典类型已存在"));
+        verify(dictTypeMapper, never()).insertDictType(any());
+    }
+
+    @Test
+    void insertWritesNullPlaceholderWhenUnique() {
+        when(dictTypeMapper.checkDictTypeUnique("sys_new")).thenReturn(null);
+        when(dictTypeMapper.insertDictType(any())).thenReturn(1);
+
+        service.insertDictType(type(null, "新增", "sys_new"));
+
+        dictUtils.verify(() -> DictUtils.setDictCache("sys_new", null), times(1));
+    }
+
+    // ---------- deleteDictTypeByIds ----------
+
+    @Test
+    void deleteRejectsAssignedTypeAndSkipsDelete() {
+        Long[] ids = new Long[] { 1L };
+        when(dictTypeMapper.selectDictTypeByIds(ids)).thenReturn(Collections.singletonList(type(1L, "性别", "sys_x")));
+        when(dictDataMapper.selectAssignedDictTypes(any())).thenReturn(Collections.singletonList("sys_x"));
+        ServiceException ex = assertThrows(ServiceException.class, () -> service.deleteDictTypeByIds(ids));
+        assertTrue(ex.getMessage().contains("已分配"));
+        verify(dictTypeMapper, never()).deleteDictTypeByIds(any());
+    }
+
+    @Test
+    void deleteRemovesCacheInlineWhenNoActiveTx() {
+        Long[] ids = new Long[] { 1L };
+        when(dictTypeMapper.selectDictTypeByIds(ids)).thenReturn(Collections.singletonList(type(1L, "性别", "sys_x")));
         when(dictDataMapper.selectAssignedDictTypes(any())).thenReturn(new ArrayList<>());
 
-        try (MockedStatic<DictUtils> dictUtils = mockStatic(DictUtils.class)) {
-            dictTypeService.deleteDictTypeByIds(ids);
+        service.deleteDictTypeByIds(ids);
 
-            verify(dictTypeMapper, times(1)).deleteDictTypeByIds(ids);
-            verify(dictTypeMapper, never()).deleteDictTypeById(any());
-            dictUtils.verify(() -> DictUtils.removeDictCache("sys_a"));
-            dictUtils.verify(() -> DictUtils.removeDictCache("sys_b"));
-        }
+        verify(dictTypeMapper, times(1)).deleteDictTypeByIds(ids);
+        dictUtils.verify(() -> DictUtils.removeDictCache("sys_x"), times(1));
     }
 
     @Test
-    @DisplayName("删除：有任一已分配则整体不删并抛 ServiceException（原子语义）")
-    void deleteRejectsWhenAnyAssignedAndDeletesNothing() {
-        Long[] ids = new Long[] { 1L, 2L };
-        when(dictTypeMapper.selectDictTypeByIds(ids))
-                .thenReturn(new ArrayList<>(Arrays.asList(type(1L, "sys_a", "类型A"), type(2L, "sys_b", "类型B"))));
-        List<String> assigned = new ArrayList<>(Arrays.asList("sys_b"));
-        when(dictDataMapper.selectAssignedDictTypes(any())).thenReturn(assigned);
+    void deleteDefersCacheRemovalUntilCommitWhenTxActive() {
+        Long[] ids = new Long[] { 1L };
+        when(dictTypeMapper.selectDictTypeByIds(ids)).thenReturn(Collections.singletonList(type(1L, "性别", "sys_x")));
+        when(dictDataMapper.selectAssignedDictTypes(any())).thenReturn(new ArrayList<>());
 
-        try (MockedStatic<DictUtils> dictUtils = mockStatic(DictUtils.class)) {
-            ServiceException ex = assertThrows(ServiceException.class,
-                    () -> dictTypeService.deleteDictTypeByIds(ids));
-            assertEquals("类型B已分配,不能删除", ex.getMessage());
+        try (MockedStatic<TransactionSynchronizationManager> tx = mockStatic(TransactionSynchronizationManager.class)) {
+            tx.when(TransactionSynchronizationManager::isSynchronizationActive).thenReturn(true);
 
-            verify(dictTypeMapper, never()).deleteDictTypeByIds(any());
-            verify(dictTypeMapper, never()).deleteDictTypeById(any());
+            service.deleteDictTypeByIds(ids);
+
+            dictUtils.verify(() -> DictUtils.removeDictCache(anyString()), never());
+            ArgumentCaptor<TransactionSynchronization> cap = ArgumentCaptor.forClass(TransactionSynchronization.class);
+            tx.verify(() -> TransactionSynchronizationManager.registerSynchronization(cap.capture()));
+            cap.getValue().afterCommit();
+            dictUtils.verify(() -> DictUtils.removeDictCache("sys_x"), times(1));
         }
-    }
-
-    @Test
-    @DisplayName("删除：空输入直接返回，不触碰任何 mapper")
-    void deleteEmptyInputIsNoOp() {
-        dictTypeService.deleteDictTypeByIds(new Long[] {});
-
-        verify(dictTypeMapper, never()).selectDictTypeByIds(any());
-        verify(dictTypeMapper, never()).deleteDictTypeByIds(any());
     }
 }

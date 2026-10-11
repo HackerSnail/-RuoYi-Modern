@@ -1,6 +1,7 @@
 package com.ruoyi.system.domain;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
@@ -58,6 +59,7 @@ public class SysNotice extends BaseEntity {
         this.noticeType = noticeType;
     }
 
+    @Pattern(regexp = "[12]", message = "公告类型只能是1(通知)或2(公告)")
     public String getNoticeType() {
         return noticeType;
     }
@@ -74,6 +76,7 @@ public class SysNotice extends BaseEntity {
         this.status = status;
     }
 
+    @Pattern(regexp = "[01]", message = "公告状态只能是0(正常)或1(关闭)")
     public String getStatus() {
         return status;
     }

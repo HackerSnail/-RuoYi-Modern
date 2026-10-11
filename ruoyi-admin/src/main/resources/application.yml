@@ -164,6 +164,10 @@ xss:
   # 过滤开关
   enabled: true
   # 排除链接（多个用逗号分隔）
-  excludes: /system/notice
+  # 注：/system/notice 曾是“一刀切转义”时代为保护富文本而加的豁免；现 EscapeUtil.clean 已改为
+  # jsoup Safelist.relaxed 白名单净化（保留 p/b/img 等安全标签、剥 script/on*/javascript:/data:），
+  # 故不再豁免公告，让公告内容(add/edit)经白名单清洗，闭合存储型 XSS。
+  # 若将来接入需保留内联 style/class 的富文本编辑器，应改为放宽 SAFELIST 属性，而非重新豁免整条链路。
+  excludes:
   # 匹配链接
   urlPatterns: /system/*,/monitor/*,/tool/*

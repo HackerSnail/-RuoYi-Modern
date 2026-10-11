@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.connection.RedisServerCommands;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -84,9 +85,12 @@ public class CacheController {
     public AjaxResult getInfo() {
         Map<String, Object> result = redisTemplate.execute((RedisCallback<Map<String, Object>>) connection -> {
             Map<String, Object> data = new HashMap<>(3);
-            data.put("info", connection.info());
-            data.put("dbSize", connection.dbSize());
-            data.put("commandStats", toPieList(connection.info("commandstats")));
+            RedisServerCommands serverCommands = connection.serverCommands();
+
+            data.put("info", serverCommands.info());
+            data.put("dbSize", serverCommands.dbSize());
+            data.put("commandStats",
+                    toPieList(serverCommands.info("commandstats")));
             return data;
         });
         return AjaxResult.success(result);
@@ -159,10 +163,10 @@ public class CacheController {
      * 危险点：一次操作清掉整个 db 的键——在线用户全部掉线、字典/配置/限流/防重计数全部失效，
      * 极易引发缓存雪崩把数据库打满，且其它共用该实例的业务也会被误清。因此加了三重拦截：
      * <ol>
-     *   <li>前端弹窗要求输入确认口令后才发请求（本仓库不含前端，需同步改造监控页）；</li>
-     *   <li>后端强校验确认口令 {@value #CLEAR_ALL_CONFIRM_TOKEN}，不匹配直接拒绝，
-     *       挡住脚本误调、请求重试与抓包重放；</li>
-     *   <li>限超级管理员执行，普通管理员即使有 monitor:cache:list 权限也调不动。</li>
+     * <li>前端弹窗要求输入确认口令后才发请求（本仓库不含前端，需同步改造监控页）；</li>
+     * <li>后端强校验确认口令 {@value #CLEAR_ALL_CONFIRM_TOKEN}，不匹配直接拒绝，
+     * 挡住脚本误调、请求重试与抓包重放；</li>
+     * <li>限超级管理员执行，普通管理员即使有 monitor:cache:list 权限也调不动。</li>
      * </ol>
      * 若该能力不需要，直接删掉本方法即可彻底下线，按前缀清理的
      * {@code /clearCacheName/{cacheName}} 与单键清理不受影响。
@@ -171,7 +175,8 @@ public class CacheController {
      */
     @PreAuthorize("@ss.hasPermi('monitor:cache:list')")
     @DeleteMapping("/clearCacheAll")
-    public AjaxResult clearCacheAll(@RequestParam(name = "confirm", required = false, defaultValue = "") String confirm) {
+    public AjaxResult clearCacheAll(
+            @RequestParam(name = "confirm", required = false, defaultValue = "") String confirm) {
         if (!CLEAR_ALL_CONFIRM_TOKEN.equals(confirm)) {
             return AjaxResult.error("二次确认口令错误，已拒绝清空全部缓存");
         }

@@ -1,7 +1,9 @@
 package com.ruoyi.framework.aspectj;
 
 import java.util.Collection;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.ArrayUtils;
@@ -15,6 +17,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.multipart.MultipartFile;
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.filter.Filter;
+import com.alibaba.fastjson2.filter.ValueFilter;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.domain.model.LoginUser;
@@ -48,6 +52,21 @@ public class LogAspect {
 
     /** 参数最大长度限制 */
     private static final int PARAM_MAX_LENGTH = 2000;
+
+    /**
+     * 需值级部分脱敏的敏感 PII 属性名（均小写，比对时 toLowerCase）。
+     * 与 EXCLUDE_PROPERTIES 分工：凭据类(password/token 等)整字段剔除，PII 类(手机号/证件/邮箱/银行卡)保留可读、仅部分脱敏。
+     */
+    private static final Set<String> PHONE_KEYS = Set.of("phone", "phonenumber", "mobile", "mobileno", "mobilephone",
+            "tel", "telephone", "contactphone");
+    private static final Set<String> ID_CARD_KEYS = Set.of("idcard", "idcardno", "idnumber", "idno", "identitycard",
+            "certno", "certificateno", "sensateidcard");
+    private static final Set<String> EMAIL_KEYS = Set.of("email", "mail", "emailaddress", "useremail");
+    private static final Set<String> BANK_CARD_KEYS = Set.of("bankcard", "bankcardno", "bankno", "cardno",
+            "bankaccount", "accountno", "bankaccountno");
+
+    /** 序列化时的值级脱敏过滤器：按属性名对手机号/证件/邮箱/银行卡做部分脱敏，其余值原样返回 */
+    public static final ValueFilter SENSITIVE_VALUE_FILTER = (object, name, value) -> maskSensitiveValue(name, value);
 
     private final AsyncManager asyncManager;
 
@@ -145,7 +164,7 @@ public class LogAspect {
         // 是否需要保存response，参数和值
         if (log.isSaveResponseData() && StringUtils.isNotNull(jsonResult)) {
             try {
-                operLog.setJsonResult(StringUtils.substring(JSON.toJSONString(jsonResult), 0, 2000));
+                operLog.setJsonResult(StringUtils.substring(toMaskedJson(jsonResult, log.excludeParamNames()), 0, PARAM_MAX_LENGTH));
             } catch (Exception ex) {
                 // 返回值序列化失败(循环引用/大对象等)时降级记占位串，保住 title/status/costTime 等其余字段
                 LogAspect.log.error("操作日志返回值序列化失败", ex);
@@ -168,8 +187,8 @@ public class LogAspect {
             String params = argsArrayToString(joinPoint.getArgs(), excludeParamNames);
             operLog.setOperParam(params);
         } else {
-            operLog.setOperParam(StringUtils.substring(
-                    JSON.toJSONString(paramsMap, excludePropertyPreFilter(excludeParamNames)), 0, PARAM_MAX_LENGTH));
+            operLog.setOperParam(
+                    StringUtils.substring(toMaskedJson(paramsMap, excludeParamNames), 0, PARAM_MAX_LENGTH));
         }
     }
 
@@ -182,7 +201,7 @@ public class LogAspect {
             for (Object o : paramsArray) {
                 if (StringUtils.isNotNull(o) && !isFilterObject(o)) {
                     try {
-                        String jsonObj = JSON.toJSONString(o, excludePropertyPreFilter(excludeParamNames));
+                        String jsonObj = toMaskedJson(o, excludeParamNames);
                         params.append(jsonObj).append(" ");
                         if (params.length() >= PARAM_MAX_LENGTH) {
                             return StringUtils.substring(params.toString(), 0, PARAM_MAX_LENGTH);
@@ -201,6 +220,61 @@ public class LogAspect {
      */
     public PropertyPreExcludeFilter excludePropertyPreFilter(String[] excludeParamNames) {
         return new PropertyPreExcludeFilter().addExcludes(ArrayUtils.addAll(EXCLUDE_PROPERTIES, excludeParamNames));
+    }
+
+    /**
+     * 组合“整字段剔除(凭据) + 值级脱敏(PII)”两个过滤器做序列化，供请求参数/入参/响应体三处统一调用。
+     * fastjson2 接受 Filter[]：SimplePropertyPreFilter(剔除) 与 ValueFilter(脱敏) 同为 Filter、依次生效。
+     */
+    private String toMaskedJson(Object obj, String[] excludeParamNames) {
+        return JSON.toJSONString(obj,
+                new Filter[] { excludePropertyPreFilter(excludeParamNames), SENSITIVE_VALUE_FILTER });
+    }
+
+    /**
+     * 按属性名归类对 PII 值做部分脱敏；非字符串/空值/未命中名单原样返回。包级可见纯函数，便于无 Spring 单测。
+     */
+    static Object maskSensitiveValue(String name, Object value) {
+        if (name == null || !(value instanceof String s) || s.isEmpty()) {
+            return value;
+        }
+        String key = name.toLowerCase(Locale.ROOT);
+        if (PHONE_KEYS.contains(key)) {
+            return maskMiddle(s, 3, 4);
+        }
+        if (ID_CARD_KEYS.contains(key)) {
+            return maskMiddle(s, 4, 4);
+        }
+        if (BANK_CARD_KEYS.contains(key)) {
+            return maskMiddle(s, 0, 4);
+        }
+        if (EMAIL_KEYS.contains(key)) {
+            return maskEmail(s);
+        }
+        return value;
+    }
+
+    /** 保留头 head 位与尾 tail 位、中间以等长星号替换；长度≤head+tail 时整体脱敏不外泄 */
+    static String maskMiddle(String s, int head, int tail) {
+        int len = s.length();
+        if (len <= head + tail) {
+            return "*".repeat(len);
+        }
+        StringBuilder sb = new StringBuilder(len);
+        sb.append(s, 0, head).append("*".repeat(len - head - tail));
+        if (tail > 0) {
+            sb.append(s, len - tail, len);
+        }
+        return sb.toString();
+    }
+
+    /** 邮箱保留首字符与域名(a***@domain)；无 @ 则退化为只留首字符 */
+    static String maskEmail(String s) {
+        int at = s.indexOf('@');
+        if (at <= 0) {
+            return maskMiddle(s, 1, 0);
+        }
+        return s.charAt(0) + "***" + s.substring(at);
     }
 
     /**

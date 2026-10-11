@@ -34,6 +34,19 @@ public class AsyncFactory {
     private static final int MAX_MSG_LEN = 255;
 
     /**
+     * sys_oper_log 各列宽度（对齐 DDL：title(50)/method(200)/request_method(10)/oper_name(50)/
+     * dept_name(50)/oper_ip(128)/oper_location(255)）。入库前据此 trim+截断做纵深防御，与 recordLogininfor 同法；
+     * operParam/jsonResult/errorMsg/operUrl 已由 LogAspect 截到列宽，此处不重复。status/businessType 等由服务端枚举生成，不经此。
+     */
+    private static final int MAX_OPER_TITLE_LEN = 50;
+    private static final int MAX_OPER_METHOD_LEN = 200;
+    private static final int MAX_OPER_REQUEST_METHOD_LEN = 10;
+    private static final int MAX_OPER_NAME_LEN = 50;
+    private static final int MAX_DEPT_NAME_LEN = 50;
+    private static final int MAX_OPER_IP_LEN = 128;
+    private static final int MAX_OPER_LOCATION_LEN = 255;
+
+    /**
      * 记录登录信息
      * 
      * @param username  用户名
@@ -92,8 +105,15 @@ public class AsyncFactory {
         return new Runnable() {
             @Override
             public void run() {
-                // 远程查询操作地点
-                operLog.setOperLocation(AddressUtils.getRealAddressByIP(operLog.getOperIp()));
+                // 纵深防御：按 sys_oper_log 各列宽 trim+截断，避免超长/脏输入(如伪造的超长 XFF、异常 HTTP 方法)在严格模式下撑爆整条审计
+                operLog.setOperIp(cap(operLog.getOperIp(), MAX_OPER_IP_LEN));
+                operLog.setOperName(cap(operLog.getOperName(), MAX_OPER_NAME_LEN));
+                operLog.setDeptName(cap(operLog.getDeptName(), MAX_DEPT_NAME_LEN));
+                operLog.setTitle(cap(operLog.getTitle(), MAX_OPER_TITLE_LEN));
+                operLog.setMethod(cap(operLog.getMethod(), MAX_OPER_METHOD_LEN));
+                operLog.setRequestMethod(cap(operLog.getRequestMethod(), MAX_OPER_REQUEST_METHOD_LEN));
+                // 远程查询操作地点（用截断后的 IP 查询即可），同样按列宽截断
+                operLog.setOperLocation(cap(AddressUtils.getRealAddressByIP(operLog.getOperIp()), MAX_OPER_LOCATION_LEN));
                 SpringUtils.getBean(ISysOperLogService.class).insertOperlog(operLog);
             }
         };

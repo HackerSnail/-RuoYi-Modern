@@ -12,7 +12,7 @@ import com.ruoyi.common.utils.poi.ExcelHandlerAdapter;
 /**
  * 自定义导出Excel数据注解
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)

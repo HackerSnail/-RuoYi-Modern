@@ -19,7 +19,7 @@ import com.ruoyi.generator.domain.GenTableColumn;
  * {@code updateBy}/{@code remark}。
  * </p>
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class GenTableEditDTO extends BaseEntity {
     private static final long serialVersionUID = 1L;

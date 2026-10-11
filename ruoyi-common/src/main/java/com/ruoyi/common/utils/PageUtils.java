@@ -8,7 +8,7 @@ import com.ruoyi.common.utils.sql.SqlUtil;
 /**
  * 分页工具类
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public final class PageUtils {
     private PageUtils() {

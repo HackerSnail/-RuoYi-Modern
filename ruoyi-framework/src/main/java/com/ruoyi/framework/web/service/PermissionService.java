@@ -14,7 +14,7 @@ import com.ruoyi.framework.security.context.PermissionContextHolder;
 /**
  * RuoYi首创 自定义权限实现，ss取自SpringSecurity首字母
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Service("ss")
 public class PermissionService {

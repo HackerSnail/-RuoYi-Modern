@@ -95,7 +95,7 @@ import com.ruoyi.common.utils.reflect.ReflectUtils;
  * 非线程安全，必须每个请求 new 一个新实例，禁止跨请求共享或复用同一 ExcelUtil。
  * （多 Sheet 导出中若干 ExcelUtil 共享同一个 Workbook 属单线程顺序写入，安全。）
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class ExcelUtil<T> {
     private static final Logger log = LoggerFactory.getLogger(ExcelUtil.class);

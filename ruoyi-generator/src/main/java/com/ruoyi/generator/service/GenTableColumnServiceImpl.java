@@ -13,7 +13,7 @@ import com.ruoyi.generator.mapper.GenTableColumnMapper;
  * 本类为薄委托层：除删除需将逗号分隔字符串转 Long[] 外，其余方法直接转发 GenTableColumnMapper。
  * </p>
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Service
 public class GenTableColumnServiceImpl implements IGenTableColumnService {

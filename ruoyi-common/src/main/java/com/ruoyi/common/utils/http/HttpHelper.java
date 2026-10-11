@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 /**
  * 通用 http 工具封装
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public final class HttpHelper {
     /**

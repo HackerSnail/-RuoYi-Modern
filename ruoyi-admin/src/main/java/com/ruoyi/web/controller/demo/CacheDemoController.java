@@ -20,7 +20,7 @@ import com.ruoyi.framework.multicache.MultiLevelCacheService;
  * 通过简单 HTTP 端点暴露，便于冒烟验证与学习。标注 {@link Anonymous} 免鉴权。
  * 整个演示由 {@code demo.cache.enabled=true} 显式开启（缺省不注册），以免匿名端点进入生产。
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Anonymous
 @RestController

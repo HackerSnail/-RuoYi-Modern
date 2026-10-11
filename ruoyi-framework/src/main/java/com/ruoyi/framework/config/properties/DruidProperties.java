@@ -9,7 +9,7 @@ import com.alibaba.druid.pool.DruidDataSource;
 /**
  * druid 配置属性
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Component
 public class DruidProperties {

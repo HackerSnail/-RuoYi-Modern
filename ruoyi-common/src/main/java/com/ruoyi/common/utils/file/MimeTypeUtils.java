@@ -5,7 +5,7 @@ import java.util.Locale;
 /**
  * 媒体类型工具类
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public final class MimeTypeUtils {
     public static final String IMAGE_PNG = "image/png";

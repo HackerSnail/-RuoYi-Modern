@@ -24,7 +24,7 @@ import com.ruoyi.system.service.ISysNoticeReadService;
  * updateNotice 存在性回查（建1）、deleteNoticeByIds 空守卫（建2）、级联清理与删本体同事务的编排顺序（必3）。
  * 纯 mock mapper/已读服务，无需 Spring/Redis；@Transactional 的原子性由集成启动与框架保证，此处验编排逻辑。
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 class SysNoticeServiceImplTest {
 

@@ -16,7 +16,7 @@ import com.ruoyi.system.service.ISysOperLogService;
 /**
  * 异步工厂（产生任务用）
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class AsyncFactory {
     private static final Logger sys_user_logger = LoggerFactory.getLogger("sys-user");

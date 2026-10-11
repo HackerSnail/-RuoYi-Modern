@@ -22,7 +22,7 @@ import com.ruoyi.framework.config.ServerConfig;
 /**
  * 通用请求处理
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @RestController
 @RequestMapping("/common")

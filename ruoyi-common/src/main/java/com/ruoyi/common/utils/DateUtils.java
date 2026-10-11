@@ -22,7 +22,7 @@ import org.apache.commons.lang3.time.DateFormatUtils;
 /**
  * 时间工具类
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class DateUtils {
     /** 默认时区：固定东八区，避免随容器/CI 的 JVM 默认时区漂移导致 Date↔Local 转换结果偏移 */

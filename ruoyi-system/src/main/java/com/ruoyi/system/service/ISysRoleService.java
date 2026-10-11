@@ -8,7 +8,7 @@ import com.ruoyi.system.domain.SysUserRole;
 /**
  * 角色业务层
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public interface ISysRoleService {
     /**

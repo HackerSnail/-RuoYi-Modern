@@ -3,7 +3,7 @@ package com.ruoyi.common.enums;
 /**
  * 操作状态
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  *
  */
 public enum BusinessStatus {

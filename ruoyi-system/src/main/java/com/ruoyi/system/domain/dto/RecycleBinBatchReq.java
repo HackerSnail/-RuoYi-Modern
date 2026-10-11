@@ -5,7 +5,7 @@ package com.ruoyi.system.domain.dto;
  * <p>
  * restore 仅用 ids；purge 额外用 confirm 承载二次确认（非 true 则整请求拒绝）。
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class RecycleBinBatchReq {
     /** 目标主键数组 */

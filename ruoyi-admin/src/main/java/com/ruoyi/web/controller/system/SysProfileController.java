@@ -27,7 +27,7 @@ import com.ruoyi.system.service.ISysUserService;
 /**
  * 个人信息 业务处理
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @RestController
 @RequestMapping("/system/user/profile")

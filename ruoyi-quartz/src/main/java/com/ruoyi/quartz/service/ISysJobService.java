@@ -12,7 +12,7 @@ import com.ruoyi.quartz.domain.SysJob;
  * {@code @Transactional} 中：DB 未写成功则 Scheduler 不动；Scheduler 同步失败则 DB 回滚，
  * 最终与 sys_job 表保持一致。{@code run()} 为只读+触发（仅从库重载并触发已注册任务、不写 DB），不参与该双写契约。
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public interface ISysJobService {
     /**

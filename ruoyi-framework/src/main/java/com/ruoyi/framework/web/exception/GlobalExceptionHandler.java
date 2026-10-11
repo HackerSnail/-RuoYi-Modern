@@ -35,7 +35,7 @@ import com.ruoyi.common.utils.html.EscapeUtil;
 /**
  * 全局异常处理器
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {

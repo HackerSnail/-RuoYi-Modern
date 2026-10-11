@@ -42,7 +42,7 @@ import com.ruoyi.common.utils.StringUtils;
  * {@link DnsResolver}，能把"域名解析→安全校验→实际连接"绑定到同一批 IP，从而闭合 DNS 重绑定
  * （rebinding）竞态——这是在 {@code HttpURLConnection}/{@code java.net.http} 上无法干净做到的。
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public final class HttpUtils {
     private static final Logger log = LoggerFactory.getLogger(HttpUtils.class);

@@ -3,7 +3,7 @@ package com.ruoyi.common.exception;
 /**
  * 全局异常
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class GlobalException extends RuntimeException {
     private static final long serialVersionUID = 1L;

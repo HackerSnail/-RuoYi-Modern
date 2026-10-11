@@ -13,7 +13,7 @@ import com.ruoyi.common.constant.Constants;
 /**
  * 资源文件配置加载
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Configuration
 public class I18nConfig implements WebMvcConfigurer {

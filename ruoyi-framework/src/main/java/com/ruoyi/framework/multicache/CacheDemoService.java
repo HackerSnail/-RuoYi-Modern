@@ -17,7 +17,7 @@ import com.ruoyi.common.core.redis.SafeCacheService;
  * 缺省不注册，避免锁/演示用的匿名端点与每实例计数器进入生产；计数器为每 JVM 实例独立，仅供本地演示。
  * </p>
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Service
 @ConditionalOnProperty(value = "demo.cache.enabled", havingValue = "true")

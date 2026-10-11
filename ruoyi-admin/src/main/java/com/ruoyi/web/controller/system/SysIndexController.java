@@ -19,7 +19,7 @@ import com.ruoyi.system.service.ISysUserService;
 /**
  * 首页
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @RestController
 public class SysIndexController {

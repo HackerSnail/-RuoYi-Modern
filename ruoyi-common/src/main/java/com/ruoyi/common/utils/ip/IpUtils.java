@@ -9,7 +9,7 @@ import com.ruoyi.common.utils.StringUtils;
 /**
  * 获取IP方法
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class IpUtils {
     public static final String REGX_0_255 = "(25[0-5]|2[0-4]\\d|1\\d{2}|[1-9]\\d|\\d)";

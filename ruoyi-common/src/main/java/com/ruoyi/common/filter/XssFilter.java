@@ -17,7 +17,7 @@ import com.ruoyi.common.enums.HttpMethod;
 /**
  * 防止XSS攻击的过滤器
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class XssFilter implements Filter {
     /**

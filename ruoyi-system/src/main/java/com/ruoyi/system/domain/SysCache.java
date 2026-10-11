@@ -11,7 +11,7 @@ import com.ruoyi.common.utils.StringUtils;
  * 这样 {@code CacheController} 里共享的静态列表即使被外部拿到元素引用，
  * 也无法再把某个条目改坏（unmodifiableList 只能挡结构性修改，挡不住元素内部被改）。
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public final class SysCache {
     /** 缓存名称 */

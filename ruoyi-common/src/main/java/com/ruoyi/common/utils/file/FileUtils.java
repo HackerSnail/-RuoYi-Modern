@@ -21,7 +21,7 @@ import com.ruoyi.common.utils.uuid.IdUtils;
 /**
  * 文件处理工具类
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public final class FileUtils {
     private FileUtils() {

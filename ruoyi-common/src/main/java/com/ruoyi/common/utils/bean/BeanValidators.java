@@ -10,7 +10,7 @@ import jakarta.validation.Validator;
 /**
  * bean对象属性验证
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public final class BeanValidators {
     private static final Logger log = LoggerFactory.getLogger(BeanValidators.class);

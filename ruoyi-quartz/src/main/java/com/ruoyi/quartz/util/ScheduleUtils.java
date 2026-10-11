@@ -23,7 +23,7 @@ import com.ruoyi.quartz.domain.SysJob;
 /**
  * 定时任务工具类
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  *
  */
 public class ScheduleUtils {

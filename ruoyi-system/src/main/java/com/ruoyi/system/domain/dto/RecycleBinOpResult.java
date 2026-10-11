@@ -9,7 +9,7 @@ import java.util.List;
  * 批处理采用"每项独立事务 + 部分成功"语义：整体请求恒 200，成败逐项体现在 items，
  * 由前端据 status/reason 渲染。计数与 items 由 Service 通过 addSuccess/addFailure 累加。
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class RecycleBinOpResult {
     /** 单项处理状态 */

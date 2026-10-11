@@ -14,7 +14,7 @@ import com.ruoyi.common.utils.StringUtils;
  * {@link #clean(String)}（委托给 jsoup 的 {@link Safelist} 白名单净化），HTML/属性/URL 等上下文需要
  * 各自的编码策略，不能靠本类的 escape 一概而论。
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public final class EscapeUtil {
     public static final String RE_HTML_MARK = "(<[^<]*?>)|(<[\\s]*?/[^<]*?>)|(<[^<]*?/[\\s]*?>)";

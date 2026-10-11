@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit;
  * 自动续期（业务未执行完不会因过期而失锁）。
  * </p>
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)

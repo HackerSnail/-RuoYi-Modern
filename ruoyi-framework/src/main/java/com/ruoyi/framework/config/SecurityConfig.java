@@ -23,7 +23,7 @@ import com.ruoyi.framework.security.handle.LogoutSuccessHandlerImpl;
 /**
  * spring security配置
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @EnableMethodSecurity(prePostEnabled = true)
 @Configuration

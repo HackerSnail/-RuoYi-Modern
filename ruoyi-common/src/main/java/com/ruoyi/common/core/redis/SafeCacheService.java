@@ -19,7 +19,7 @@ import org.springframework.stereotype.Component;
  * 把过期时间点打散，避免同一时刻集中失效。</li>
  * </ul>
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Component
 public class SafeCacheService {

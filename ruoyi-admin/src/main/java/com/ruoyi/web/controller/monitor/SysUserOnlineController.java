@@ -24,7 +24,7 @@ import com.ruoyi.system.service.ISysUserOnlineService;
 /**
  * 在线用户监控
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @RestController
 @RequestMapping("/monitor/online")

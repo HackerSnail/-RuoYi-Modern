@@ -17,7 +17,7 @@ import com.ruoyi.generator.domain.GenTableColumn;
  * 注入而非读全局静态；其余无状态算法辅助方法保持静态。消费方（{@code GenTableServiceImpl}）注入本 bean 后调用。
  * </p>
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Component
 public class GenUtils {

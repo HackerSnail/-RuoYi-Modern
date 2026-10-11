@@ -8,7 +8,7 @@ import com.ruoyi.system.domain.SysOperLog;
 /**
  * 操作日志 数据层
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public interface SysOperLogMapper {
     /**

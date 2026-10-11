@@ -7,7 +7,7 @@ import com.ruoyi.common.utils.StringUtils;
 /**
  * UserAgent解析工具类
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class UserAgentUtils {
 

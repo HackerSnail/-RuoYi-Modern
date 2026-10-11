@@ -9,7 +9,7 @@ import com.ruoyi.common.utils.StringUtils;
 /**
  * 业务表 gen_table
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class GenTable extends BaseEntity {
     private static final long serialVersionUID = 1L;

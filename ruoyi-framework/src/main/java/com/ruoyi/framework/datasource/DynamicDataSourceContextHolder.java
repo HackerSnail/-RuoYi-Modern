@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 /**
  * 数据源切换处理
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class DynamicDataSourceContextHolder {
     public static final Logger log = LoggerFactory.getLogger(DynamicDataSourceContextHolder.class);

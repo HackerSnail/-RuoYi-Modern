@@ -14,7 +14,7 @@ import com.ruoyi.common.core.domain.BaseEntity;
 /**
  * 岗位表 sys_post
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class SysPost extends BaseEntity {
     private static final long serialVersionUID = 1L;

@@ -5,7 +5,7 @@ import java.util.Arrays;
 /**
  * 文件上传无效扩展名异常类
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class InvalidExtensionException extends FileUploadException {
     private static final long serialVersionUID = 1L;

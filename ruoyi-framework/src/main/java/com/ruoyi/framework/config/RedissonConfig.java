@@ -12,7 +12,7 @@ import com.ruoyi.common.utils.StringUtils;
  * Redisson 手动装配：直接复用应用已有的 spring.data.redis.* 连接参数构建单机 RedissonClient，
  * 不引入 redisson-spring-boot-starter，规避其对 Spring Boot 4 自动装配的兼容不确定性。
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Configuration
 public class RedissonConfig {

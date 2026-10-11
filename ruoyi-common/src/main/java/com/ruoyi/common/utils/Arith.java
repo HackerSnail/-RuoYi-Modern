@@ -10,7 +10,7 @@ import java.math.RoundingMode;
  * {@link IllegalArgumentException}（BigDecimal 无法表示非有限数）。
  * {@link #div(double, double, int)} 的除数为 0 时同样抛 {@link IllegalArgumentException}。
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public final class Arith {
 

@@ -3,7 +3,7 @@ package com.ruoyi.common.constant;
 /**
  * 返回状态码
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class HttpStatus {
     /**

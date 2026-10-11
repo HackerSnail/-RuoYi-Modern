@@ -26,7 +26,7 @@ import com.ruoyi.quartz.service.ISysJobService;
 /**
  * 调度任务信息操作处理
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @RestController
 @RequestMapping("/monitor/job")

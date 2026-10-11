@@ -24,7 +24,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
  * <p>
  * 仅用于演示 Swagger/OpenAPI 注解与增删改查接口形态，数据存在内存 LinkedHashMap 中，重启即丢失。
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Tag(name = "用户信息管理")
 @RestController

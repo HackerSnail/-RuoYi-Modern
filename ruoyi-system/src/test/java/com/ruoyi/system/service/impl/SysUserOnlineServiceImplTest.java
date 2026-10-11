@@ -23,7 +23,7 @@ import com.ruoyi.system.domain.SysUserOnline;
  * tokenId 只承载传入的脱敏 handle（真实会话键不外泄）。
  * 纯 POJO 测试，无需 Spring/Redis。
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 class SysUserOnlineServiceImplTest {
 

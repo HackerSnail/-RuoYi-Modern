@@ -3,7 +3,7 @@ package com.ruoyi.framework.web.domain.server;
 /**
  * 系统相关信息
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class Sys {
     /**

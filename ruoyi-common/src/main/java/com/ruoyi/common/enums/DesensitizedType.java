@@ -6,7 +6,7 @@ import com.ruoyi.common.utils.DesensitizedUtil;
 /**
  * 脱敏类型
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public enum DesensitizedType {
     /**

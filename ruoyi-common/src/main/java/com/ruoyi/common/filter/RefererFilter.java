@@ -15,7 +15,7 @@ import jakarta.servlet.http.HttpServletResponse;
 /**
  * 防盗链过滤器
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class RefererFilter implements Filter {
     /**

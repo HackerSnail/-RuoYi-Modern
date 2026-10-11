@@ -16,7 +16,7 @@ import com.ruoyi.framework.multicache.MultiLevelCacheService;
  * 二级缓存失效广播的订阅端配置：监听 {@link MultiLevelCacheService#INVALIDATE_CHANNEL} 频道，
  * 收到 key 后清除本节点 Caffeine L1，从而实现多节点本地缓存的最终一致失效。
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Configuration
 public class MultiLevelCacheListenerConfig {

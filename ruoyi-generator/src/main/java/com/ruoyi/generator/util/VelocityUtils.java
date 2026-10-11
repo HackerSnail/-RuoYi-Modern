@@ -18,7 +18,7 @@ import com.ruoyi.generator.domain.GenTableColumn;
 /**
  * 模板处理工具类
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class VelocityUtils {
     /** 项目空间路径 */

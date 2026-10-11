@@ -25,7 +25,7 @@ import com.ruoyi.system.service.ISysDeptService;
 /**
  * 部门信息
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @RestController
 @RequestMapping("/system/dept")

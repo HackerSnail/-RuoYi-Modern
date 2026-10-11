@@ -7,7 +7,7 @@ import com.ruoyi.generator.domain.GenTable;
 /**
  * 业务 服务层
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public interface IGenTableService {
     /**

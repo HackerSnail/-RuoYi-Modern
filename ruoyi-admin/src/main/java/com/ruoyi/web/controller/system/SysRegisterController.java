@@ -13,7 +13,7 @@ import com.ruoyi.system.service.ISysConfigService;
 /**
  * 注册验证
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @RestController
 public class SysRegisterController extends BaseController {

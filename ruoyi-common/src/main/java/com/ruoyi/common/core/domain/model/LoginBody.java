@@ -3,7 +3,7 @@ package com.ruoyi.common.core.domain.model;
 /**
  * 用户登录对象
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class LoginBody {
     /**

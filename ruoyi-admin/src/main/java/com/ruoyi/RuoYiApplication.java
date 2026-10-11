@@ -7,7 +7,7 @@ import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
 /**
  * 启动程序
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @SpringBootApplication(exclude = { DataSourceAutoConfiguration.class })
 public class RuoYiApplication {

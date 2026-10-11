@@ -9,7 +9,7 @@ import com.ruoyi.system.service.ISysUserOnlineService;
 /**
  * 在线用户 服务层处理
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Service
 public class SysUserOnlineServiceImpl implements ISysUserOnlineService {

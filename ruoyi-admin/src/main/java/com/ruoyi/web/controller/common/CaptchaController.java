@@ -22,7 +22,7 @@ import com.ruoyi.system.service.ISysConfigService;
 /**
  * 验证码操作处理
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @RestController
 public class CaptchaController {

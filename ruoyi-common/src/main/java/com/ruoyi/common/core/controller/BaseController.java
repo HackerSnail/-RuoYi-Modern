@@ -28,7 +28,7 @@ import com.ruoyi.common.utils.sql.SqlUtil;
 /**
  * web层通用数据处理
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class BaseController {
     protected final Logger logger = LoggerFactory.getLogger(this.getClass());

@@ -3,7 +3,7 @@ package com.ruoyi.common.exception.job;
 /**
  * 计划策略异常
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class TaskException extends Exception {
     private static final long serialVersionUID = 1L;

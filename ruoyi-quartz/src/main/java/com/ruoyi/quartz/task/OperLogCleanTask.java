@@ -28,7 +28,7 @@ import com.ruoyi.system.service.ISysOperLogService;
  *   <li>{@code operLogCleanTask.clean(90)} —— 不带引号时按整型解析，同样支持。</li>
  * </ul>
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Component("operLogCleanTask")
 public class OperLogCleanTask {

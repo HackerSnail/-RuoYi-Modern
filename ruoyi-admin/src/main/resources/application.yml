@@ -128,7 +128,7 @@ pagehelper:
 # 代码生成配置（原 generator.yml 并入此处，由 GenConfig @ConfigurationProperties(prefix=gen) 绑定）
 gen:
   # 作者
-  author: ruoyi
+  author: HackerSnail <2306002088@qq.com>
   # 默认生成包路径 system 需改成自己的模块名称 如 system monitor tool
   packageName: com.ruoyi.system
   # 自动去除表前缀，默认是false

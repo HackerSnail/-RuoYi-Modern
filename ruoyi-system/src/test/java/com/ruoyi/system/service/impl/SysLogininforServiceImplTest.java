@@ -18,7 +18,7 @@ import com.ruoyi.system.mapper.SysLogininforMapper;
  * {@link SysLogininforServiceImpl} 单元测试：覆盖清空行数估算(方案C)、批量删除返值校验(建2)、
  * 按天归档入参校验三条本次落地主线。纯 mock mapper，无需 Spring/Redis。
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 class SysLogininforServiceImplTest {
 

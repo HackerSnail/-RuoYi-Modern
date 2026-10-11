@@ -12,7 +12,7 @@ import com.ruoyi.common.utils.StringUtils;
 /**
  * Treeselect树结构实体类
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class TreeSelect implements Serializable {
     private static final long serialVersionUID = 1L;

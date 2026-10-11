@@ -5,7 +5,7 @@ import com.ruoyi.common.utils.StringUtils;
 /**
  * 分页数据
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class PageDomain {
     /** 当前记录起始索引 */

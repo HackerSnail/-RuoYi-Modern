@@ -39,7 +39,7 @@ import com.ruoyi.common.core.domain.AjaxResult;
  * 可用配置项 {@code ruoyi.http-status-advice.enabled=false} 整体停用本 advice（退回“恒 HTTP 200 + body.code”旧行为）。
  *
  * @see GlobalExceptionHandler
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @RestControllerAdvice
 public class HttpStatusResponseAdvice implements ResponseBodyAdvice<Object> {

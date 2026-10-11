@@ -7,7 +7,7 @@ import com.ruoyi.common.utils.ServletUtils;
 /**
  * 服务相关配置
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Component
 public class ServerConfig {

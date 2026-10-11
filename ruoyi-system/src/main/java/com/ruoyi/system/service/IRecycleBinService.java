@@ -14,7 +14,7 @@ import com.ruoyi.system.domain.dto.RecycleBinOpResult;
  * 列表按类型分三个方法（各自挂 @DataScope，别名与对应 selectXxxList 一致）；
  * 恢复/彻底删除保持类型无关，按 RecycleBinType 在服务层内部分派，逐项独立处理并汇总结果。
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public interface IRecycleBinService {
     /**

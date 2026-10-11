@@ -27,7 +27,7 @@ import com.ruoyi.system.service.ISysUserService;
 /**
  * 登录验证
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @RestController
 public class SysLoginController {

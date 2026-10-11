@@ -3,7 +3,7 @@ package com.ruoyi.common.exception;
 /**
  * 工具类异常
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class UtilException extends RuntimeException {
     private static final long serialVersionUID = 8247610319171014183L;

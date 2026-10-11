@@ -9,7 +9,7 @@ import com.ruoyi.system.domain.vo.RouterVo;
 /**
  * 菜单 业务层
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public interface ISysMenuService {
     /**

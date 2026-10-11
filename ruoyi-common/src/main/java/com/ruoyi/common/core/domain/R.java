@@ -6,7 +6,7 @@ import com.ruoyi.common.constant.HttpStatus;
 /**
  * 响应信息主体
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class R<T> implements Serializable {
     private static final long serialVersionUID = 1L;

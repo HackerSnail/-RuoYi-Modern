@@ -22,7 +22,7 @@ import com.ruoyi.system.service.ISysLogininforService;
  *   <li>{@code logininforCleanTask.clean(180)} —— 不带引号时按整型解析，同样支持。</li>
  * </ul>
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Component("logininforCleanTask")
 public class LogininforCleanTask {

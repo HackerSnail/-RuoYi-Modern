@@ -21,7 +21,7 @@ import com.ruoyi.common.utils.ip.IpUtils;
 /**
  * 限流处理
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Aspect
 @Component

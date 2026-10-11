@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 /**
  * 线程相关工具类.
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public final class Threads {
     private static final Logger logger = LoggerFactory.getLogger(Threads.class);

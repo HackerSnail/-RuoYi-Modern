@@ -46,7 +46,7 @@ import com.ruoyi.generator.util.VelocityUtils;
 /**
  * 业务 服务层实现
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Service
 public class GenTableServiceImpl implements IGenTableService {

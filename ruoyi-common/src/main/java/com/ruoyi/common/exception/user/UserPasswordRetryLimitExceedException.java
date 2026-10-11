@@ -3,7 +3,7 @@ package com.ruoyi.common.exception.user;
 /**
  * 用户错误最大次数异常类
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class UserPasswordRetryLimitExceedException extends UserException {
     private static final long serialVersionUID = 1L;

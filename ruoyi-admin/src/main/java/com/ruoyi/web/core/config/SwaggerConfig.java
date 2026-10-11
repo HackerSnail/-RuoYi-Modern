@@ -13,7 +13,7 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
 /**
  * Swagger2的接口配置
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Configuration
 public class SwaggerConfig {

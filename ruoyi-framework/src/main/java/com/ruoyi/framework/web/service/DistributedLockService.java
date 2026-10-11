@@ -13,7 +13,7 @@ import com.ruoyi.common.exception.ServiceException;
  * 编程式分布式锁服务：注解 {@code @DistributedLock} 之外的手动入口，便于在无法用注解标注、
  * 或需要在同一方法内对不同 key 分段加锁的场景使用。leaseTime&lt;0 时由 Redisson 看门狗自动续期。
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Service
 public class DistributedLockService {

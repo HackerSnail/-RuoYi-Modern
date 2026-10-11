@@ -19,7 +19,7 @@ import com.ruoyi.system.service.ISysUserService;
 /**
  * 用户验证处理
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {

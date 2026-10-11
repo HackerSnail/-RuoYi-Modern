@@ -32,7 +32,7 @@ import javax.crypto.SecretKey;
 /**
  * token验证处理
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Component
 public class TokenService {

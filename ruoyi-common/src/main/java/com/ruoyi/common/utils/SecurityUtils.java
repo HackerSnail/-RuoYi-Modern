@@ -16,7 +16,7 @@ import com.ruoyi.common.exception.ServiceException;
 /**
  * 安全服务工具类
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public final class SecurityUtils {
     /**

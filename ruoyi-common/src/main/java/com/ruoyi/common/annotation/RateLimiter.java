@@ -11,7 +11,7 @@ import com.ruoyi.common.enums.LimitType;
 /**
  * 限流注解
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)

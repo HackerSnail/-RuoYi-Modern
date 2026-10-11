@@ -3,7 +3,7 @@ package com.ruoyi.common.enums;
 /**
  * 限流类型
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 
 public enum LimitType {

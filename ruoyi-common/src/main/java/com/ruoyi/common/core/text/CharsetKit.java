@@ -7,7 +7,7 @@ import com.ruoyi.common.utils.StringUtils;
 /**
  * 字符集工具类
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class CharsetKit {
     /** ISO-8859-1 */

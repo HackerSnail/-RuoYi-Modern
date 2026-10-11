@@ -15,7 +15,7 @@ import org.springframework.data.redis.connection.MessageListener;
  * 缓存失效本身是幂等的轻量本地操作，偶发丢弃可由 L1 兜底 TTL 最终收敛。
  * </p>
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class CacheInvalidateListener implements MessageListener {
     private static final Logger log = LoggerFactory.getLogger(CacheInvalidateListener.class);

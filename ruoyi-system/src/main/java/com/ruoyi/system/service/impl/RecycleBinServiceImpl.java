@@ -30,7 +30,7 @@ import com.ruoyi.system.service.ISysUserService;
  * 超管经切面短路（不加范围条件）必命中，非超管越界则查空即拒。恢复/彻底删除逐项独立处理，
  * 每项仅一条状态变更语句（单语句天然原子），批内一项失败不回滚其余，故方法本身不开事务。
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Service
 public class RecycleBinServiceImpl implements IRecycleBinService {

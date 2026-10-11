@@ -19,7 +19,7 @@ import com.ruoyi.framework.web.domain.Server;
  * 读方拿到的永远是"已完整构造、之后不再被改写"的快照，不存在读到"改一半"的问题（对比原地改写共享对象的写法）。
  * </p>
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Component
 public class ServerMonitorService {

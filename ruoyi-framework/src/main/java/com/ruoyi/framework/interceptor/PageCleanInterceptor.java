@@ -31,7 +31,7 @@ import com.ruoyi.common.utils.PageUtils;
  * （如 RepeatSubmitInterceptor）在 preHandle 中直接中断请求，
  * afterCompletion 仍会回调到本拦截器。
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Component
 public class PageCleanInterceptor implements HandlerInterceptor {

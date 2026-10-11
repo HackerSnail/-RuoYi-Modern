@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
  * 可测试、可隔离、可按环境覆盖。
  * </p>
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Component
 @ConfigurationProperties(prefix = "gen")

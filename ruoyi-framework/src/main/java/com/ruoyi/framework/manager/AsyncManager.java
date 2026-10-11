@@ -12,7 +12,7 @@ import jakarta.annotation.PreDestroy;
 /**
  * 异步任务管理器
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Component
 public class AsyncManager {

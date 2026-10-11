@@ -7,7 +7,7 @@ package com.ruoyi.common.enums;
  * 可保持类型无关；type 到各 Mapper 的实际分派在 ruoyi-system 的服务层完成，
  * 此处不引用任何 system 层类型，避免 common 反向依赖 system。
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public enum RecycleBinType {
     /** 用户 */

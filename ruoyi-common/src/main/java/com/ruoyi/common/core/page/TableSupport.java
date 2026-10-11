@@ -6,7 +6,7 @@ import com.ruoyi.common.utils.ServletUtils;
 /**
  * 表格数据处理
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class TableSupport {
     /**

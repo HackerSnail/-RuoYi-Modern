@@ -5,7 +5,7 @@ import com.ruoyi.common.utils.StringUtils;
 /**
  * 字符串格式化
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class StrFormatter {
     public static final String EMPTY_JSON = "{}";

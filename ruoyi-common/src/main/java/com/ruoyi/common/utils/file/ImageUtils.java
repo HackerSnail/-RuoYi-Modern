@@ -17,7 +17,7 @@ import com.ruoyi.common.utils.StringUtils;
 /**
  * 图片处理工具类
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public final class ImageUtils {
     private static final Logger log = LoggerFactory.getLogger(ImageUtils.class);

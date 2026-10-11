@@ -16,7 +16,7 @@ import com.ruoyi.common.exception.ServiceException;
  * <b>严禁用于密码存储或任何安全/签名场景</b>——MD5 计算极快、无盐、已被证明存在碰撞漏洞。
  * 密码请走 SecurityUtils#encryptPassword（BCrypt）；API 签名请走 SignUtils（HMAC-SHA256）。
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public final class Md5Utils {
     private static final Logger log = LoggerFactory.getLogger(Md5Utils.class);

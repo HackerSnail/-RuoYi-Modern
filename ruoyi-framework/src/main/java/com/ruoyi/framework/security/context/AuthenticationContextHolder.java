@@ -5,7 +5,7 @@ import org.springframework.security.core.Authentication;
 /**
  * 身份验证信息
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class AuthenticationContextHolder {
     /**

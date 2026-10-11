@@ -27,7 +27,7 @@ import com.ruoyi.common.utils.StringUtils;
  * 避免误释放他人锁；获取失败抛出业务异常提示重试。
  * </p>
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Aspect
 @Component

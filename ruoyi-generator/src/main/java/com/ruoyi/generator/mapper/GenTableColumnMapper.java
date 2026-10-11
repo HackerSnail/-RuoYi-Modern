@@ -7,7 +7,7 @@ import com.ruoyi.generator.domain.GenTableColumn;
 /**
  * 业务字段 数据层
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public interface GenTableColumnMapper {
     /**

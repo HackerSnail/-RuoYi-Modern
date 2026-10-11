@@ -24,7 +24,7 @@ import com.ruoyi.common.core.text.Convert;
 /**
  * 客户端工具类
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public final class ServletUtils {
     private static final Logger log = LoggerFactory.getLogger(ServletUtils.class);

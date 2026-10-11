@@ -18,7 +18,7 @@ import com.ruoyi.common.xss.Xss;
 /**
  * 用户对象 sys_user
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class SysUser extends BaseEntity {
     private static final long serialVersionUID = 1L;

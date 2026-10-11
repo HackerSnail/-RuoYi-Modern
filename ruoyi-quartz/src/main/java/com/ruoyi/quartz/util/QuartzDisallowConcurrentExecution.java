@@ -14,7 +14,7 @@ import com.ruoyi.quartz.domain.SysJob;
  * 彼此之间仍可并发执行，本注解并非“全系统同一时刻只跑一个任务”的全局互斥；若确需全局串行或
  * 跨节点（集群）互斥，须另加分布式锁，不能依赖此注解。
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  *
  */
 @DisallowConcurrentExecution

@@ -22,7 +22,7 @@ import com.ruoyi.common.utils.StringUtils;
  * name/version/copyrightYear 三个字段，静态部分的 accessor 仍要手写，
  * 反而让一个类里混两套风格；项目当前也没有引入 lombok 依赖。
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Component
 @ConfigurationProperties(prefix = "ruoyi")

@@ -10,7 +10,7 @@ import com.ruoyi.system.domain.SysUserOnline;
  * {@code tokenId} 一律由调用方（监控页）传入的脱敏 handle 填充，本层从不读
  * {@code LoginUser.getToken()}。
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public interface ISysUserOnlineService {
     /**

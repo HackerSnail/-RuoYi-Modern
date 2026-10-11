@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
  * 第 i 个哈希位置 = floorMod(h1 + i*h2, bitSize)，用 O(1) 个基哈希近似 k 个独立哈希函数。
  * </p>
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Component
 public class RedisBloomFilter {

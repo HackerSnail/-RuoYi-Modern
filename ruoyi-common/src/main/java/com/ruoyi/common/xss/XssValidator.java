@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
  * 并非完整的 XSS 净化方案；需要保留富文本的场景应依赖白名单净化（XssFilter /
  * XssHttpServletRequestWrapper 那条 jsoup 清洗链路），不要把它当作可靠 XSS 防线。
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class XssValidator implements ConstraintValidator<Xss, String> {
     /** 预编译，避免每次校验都 Pattern.compile */

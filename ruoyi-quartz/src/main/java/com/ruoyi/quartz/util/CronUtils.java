@@ -7,7 +7,7 @@ import org.quartz.CronExpression;
 /**
  * cron表达式工具类
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  *
  */
 public class CronUtils {

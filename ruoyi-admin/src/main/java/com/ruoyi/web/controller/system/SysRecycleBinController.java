@@ -33,7 +33,7 @@ import com.ruoyi.system.service.IRecycleBinService;
  * 调 PermissionService.hasPermi 断言——白名单先于权限串，杜绝把用户输入拼进鉴权（见 spec §12）。
  * 恢复/彻底删除返回逐项结果 RecycleBinOpResult，部分成功以 HTTP 200 承载。
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @RestController
 @RequestMapping("/system/recyclebin")

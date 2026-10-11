@@ -12,7 +12,7 @@ import com.ruoyi.common.enums.DesensitizedType;
 /**
  * 数据脱敏注解
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.FIELD, ElementType.METHOD })

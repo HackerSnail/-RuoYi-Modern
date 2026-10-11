@@ -12,7 +12,7 @@ import com.ruoyi.common.utils.spring.SpringUtils;
 /**
  * 字典工具类
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class DictUtils {
     /**

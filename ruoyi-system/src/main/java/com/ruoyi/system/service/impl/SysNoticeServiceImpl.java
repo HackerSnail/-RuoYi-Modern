@@ -13,7 +13,7 @@ import com.ruoyi.system.service.ISysNoticeService;
 /**
  * 公告 服务层实现
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Service
 public class SysNoticeServiceImpl implements ISysNoticeService {

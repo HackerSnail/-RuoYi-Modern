@@ -6,7 +6,7 @@ import org.apache.commons.lang3.builder.ToStringStyle;
 /**
  * 用户和岗位关联 sys_user_post
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class SysUserPost {
     /** 用户ID */

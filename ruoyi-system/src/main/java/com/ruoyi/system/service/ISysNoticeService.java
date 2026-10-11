@@ -6,7 +6,7 @@ import com.ruoyi.system.domain.SysNotice;
 /**
  * 公告 服务层
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public interface ISysNoticeService {
     /**

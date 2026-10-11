@@ -14,7 +14,7 @@ import com.ruoyi.common.utils.SecurityUtils;
 /**
  * 登录密码方法
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Component
 public class SysPasswordService {

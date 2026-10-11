@@ -25,7 +25,7 @@ import com.ruoyi.system.service.ISysNoticeService;
 /**
  * 公告 信息操作处理
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @RestController
 @RequestMapping("/system/notice")

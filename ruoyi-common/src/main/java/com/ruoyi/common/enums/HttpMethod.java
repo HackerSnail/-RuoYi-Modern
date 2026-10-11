@@ -7,7 +7,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * 请求方式
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public enum HttpMethod {
     GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS, TRACE;

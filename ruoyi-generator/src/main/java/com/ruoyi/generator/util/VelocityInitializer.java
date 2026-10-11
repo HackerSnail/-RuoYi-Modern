@@ -22,7 +22,7 @@ import com.ruoyi.common.constant.Constants;
  * 应改为实例 bean 注入以获得隔离、可测试与天然线程安全。
  * </p>
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Component
 public class VelocityInitializer {

@@ -15,7 +15,7 @@ import com.ruoyi.common.utils.StringUtils;
 /**
  * Repeatable 过滤器
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class RepeatableFilter implements Filter {
     /** JSON 请求体允许被包装读入内存的上限，超出直接拒绝，防止大 body 耗尽内存 */

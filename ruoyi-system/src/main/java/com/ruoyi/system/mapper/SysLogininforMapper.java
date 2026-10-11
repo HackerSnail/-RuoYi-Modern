@@ -7,7 +7,7 @@ import com.ruoyi.system.domain.SysLogininfor;
 /**
  * 系统访问日志情况信息 数据层
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public interface SysLogininforMapper {
     /**

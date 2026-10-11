@@ -22,7 +22,7 @@ import com.ruoyi.framework.web.service.TokenService;
 /**
  * 自定义退出处理类 返回成功
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Component
 public class LogoutSuccessHandlerImpl implements LogoutSuccessHandler {

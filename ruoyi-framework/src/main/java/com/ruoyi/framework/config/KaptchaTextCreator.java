@@ -6,7 +6,7 @@ import com.google.code.kaptcha.text.impl.DefaultTextCreator;
 /**
  * 验证码文本生成器
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class KaptchaTextCreator extends DefaultTextCreator {
     /** 算术操作数随机源：SecureRandom 单例（线程安全），避免每次 getText 新建、并提升抗预测性 */

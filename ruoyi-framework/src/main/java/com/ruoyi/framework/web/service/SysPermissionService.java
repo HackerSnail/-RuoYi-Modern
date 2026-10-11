@@ -16,7 +16,7 @@ import com.ruoyi.system.service.ISysRoleService;
 /**
  * 用户权限处理
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Component
 public class SysPermissionService {

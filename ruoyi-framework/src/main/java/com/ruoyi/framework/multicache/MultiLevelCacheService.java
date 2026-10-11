@@ -19,7 +19,7 @@ import com.ruoyi.common.core.redis.RedisJson;
  * 跨节点广播的订阅端注册见 {@code MultiLevelCacheListenerConfig}（{@link #onInvalidateMessage} 由 {@code CacheInvalidateListener} 回调）。
  * </p>
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Service
 public class MultiLevelCacheService {

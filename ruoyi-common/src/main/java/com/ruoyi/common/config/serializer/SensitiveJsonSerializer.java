@@ -16,7 +16,7 @@ import com.ruoyi.common.utils.SecurityUtils;
 /**
  * 数据脱敏序列化过滤
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class SensitiveJsonSerializer extends StdSerializer<String> {
     private final DesensitizedType desensitizedType;

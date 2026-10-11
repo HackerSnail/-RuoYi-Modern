@@ -28,7 +28,7 @@ import com.ruoyi.system.mapper.SysOperLogMapper;
  * cleanOperLogBefore 入参校验+分批循环到 0+总量上限提前结束(#3)。
  * 纯 mock mapper，无需 Spring/Redis；分批用例含真实 Thread.sleep(常量 100ms)，累计 <400ms。
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 class SysOperLogServiceImplTest {
 

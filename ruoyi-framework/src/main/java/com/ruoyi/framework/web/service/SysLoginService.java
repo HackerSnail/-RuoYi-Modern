@@ -31,7 +31,7 @@ import com.ruoyi.system.service.ISysUserService;
 /**
  * 登录校验方法
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Component
 public class SysLoginService {

@@ -7,7 +7,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 /**
  * 权限信息
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class PermissionContextHolder {
     /** 命名空间前缀避免与共享 request attribute 空间里其它属性撞名（SCOPE_REQUEST 直委托到 request.setAttribute，并非隔离内部 map） */

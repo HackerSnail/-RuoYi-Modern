@@ -11,7 +11,7 @@ import com.alibaba.fastjson2.TypeReference;
  * （{@code JSONObject}/{@code JSONArray}/基本类型）。当业务需要具体 POJO（如 LoginUser）时，
  * 由调用方在读取时显式提供目标类型，本工具据此完成一次类型绑定转换。
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public final class RedisJson {
     private RedisJson() {

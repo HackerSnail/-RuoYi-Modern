@@ -19,7 +19,7 @@ import com.ruoyi.common.exception.ServiceException;
  * <b>不用于密码存储</b>——密码请走 SecurityUtils#encryptPassword（BCrypt，自带盐与自适应代价）。
  * HMAC 与 SHA-256 均为 JDK 保证存在的算法；计算失败显式抛出 {@link ServiceException}，绝不静默返回可疑值。
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public final class SignUtils {
     private static final String SHA_256 = "SHA-256";

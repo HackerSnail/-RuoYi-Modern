@@ -18,7 +18,7 @@ import com.ruoyi.framework.web.service.TokenService;
 /**
  * token过滤器 验证token有效性
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Component
 public class JwtAuthenticationTokenFilter extends OncePerRequestFilter {

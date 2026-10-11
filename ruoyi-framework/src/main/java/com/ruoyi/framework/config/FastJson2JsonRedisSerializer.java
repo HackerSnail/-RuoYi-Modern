@@ -9,7 +9,7 @@ import com.alibaba.fastjson2.JSON;
 /**
  * Redis使用FastJson序列化
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 public class FastJson2JsonRedisSerializer<T> implements RedisSerializer<T> {
     private static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;

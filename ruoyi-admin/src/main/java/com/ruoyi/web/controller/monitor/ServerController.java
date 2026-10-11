@@ -10,7 +10,7 @@ import com.ruoyi.framework.web.service.ServerMonitorService;
 /**
  * 服务器监控
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @RestController
 @RequestMapping("/monitor/server")

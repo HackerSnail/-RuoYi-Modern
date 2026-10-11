@@ -5,7 +5,7 @@ import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.StringUtils;
 
 /**
- * @author ruoyi 序列生成类
+ * @author HackerSnail <2306002088@qq.com> 序列生成类
  */
 public class Seq {
     // 通用序列类型

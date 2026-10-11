@@ -17,7 +17,7 @@ import com.ruoyi.common.utils.StringUtils;
 /**
  * Filter配置
  *
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Configuration
 public class FilterConfig {

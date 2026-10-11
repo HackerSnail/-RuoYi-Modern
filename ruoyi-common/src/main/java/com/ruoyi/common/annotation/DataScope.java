@@ -9,7 +9,7 @@ import java.lang.annotation.Target;
 /**
  * 数据权限过滤注解
  * 
- * @author ruoyi
+ * @author HackerSnail <2306002088@qq.com>
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)

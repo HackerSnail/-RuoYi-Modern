@@ -12,7 +12,7 @@ import org.quartz.CronExpression;
  */
 public class CronUtils {
     /**
-     * 返回一个布尔值代表一个给定的Cron表达式的有效性
+     * 判断给定的 Cron 表达式是否有效
      *
      * @param cronExpression Cron表达式
      * @return boolean 表达式是否有效
@@ -22,7 +22,7 @@ public class CronUtils {
     }
 
     /**
-     * 返回一个字符串值,表示该消息无效Cron表达式给出有效性
+     * 返回 Cron 表达式的错误描述；表达式有效时返回 null
      *
      * @param cronExpression Cron表达式
      * @return String 无效时返回表达式错误描述,如果有效返回null
@@ -37,7 +37,7 @@ public class CronUtils {
     }
 
     /**
-     * 返回下一个执行时间根据给定的Cron表达式
+     * 根据给定的 Cron 表达式返回下一个执行时间
      *
      * @param cronExpression Cron表达式
      * @return Date 下次Cron表达式执行时间
@@ -47,7 +47,7 @@ public class CronUtils {
             CronExpression cron = new CronExpression(cronExpression);
             return cron.getNextValidTimeAfter(new Date(System.currentTimeMillis()));
         } catch (ParseException e) {
-            throw new IllegalArgumentException(e.getMessage());
+            throw new IllegalArgumentException("无效的 Cron 表达式：" + cronExpression, e);
         }
     }
 }

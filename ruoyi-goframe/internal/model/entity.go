@@ -105,6 +105,23 @@ type SysDictData struct {
 	Default bool `json:"default"`
 }
 
+// SysNotice 对应 sys_notice + BaseEntity（com.ruoyi.system.domain.SysNotice）。
+// selectNoticeVo 取全列（含 update_by/update_time/remark，notice_content 经 cast(... as char) 转字符串）。
+// IsRead 派生自 getIsRead()：@JsonProperty("isRead") 恒序列化（CRUD 查询不取该列 → 默认 false），非 DB 列。
+type SysNotice struct {
+	NoticeId     int64       `json:"noticeId"     orm:"notice_id"`
+	NoticeTitle  string      `json:"noticeTitle"  orm:"notice_title"`
+	NoticeType   string      `json:"noticeType"   orm:"notice_type"`
+	NoticeContent string     `json:"noticeContent" orm:"notice_content"`
+	Status       string      `json:"status"`
+	CreateBy     string      `json:"createBy"   orm:"create_by"`
+	CreateTime   *gtime.Time `json:"createTime" orm:"create_time"`
+	UpdateBy     string      `json:"updateBy"   orm:"update_by"`
+	UpdateTime   *gtime.Time `json:"updateTime" orm:"update_time"`
+	Remark       string      `json:"remark"`
+	IsRead       bool        `json:"isRead"`
+}
+
 // SysDept 部门：既用于 getInfo 里 user.dept 子对象，也用于 /system/dept 全量出参。
 // 字段对齐 com.ruoyi.common.core.domain.entity.SysDept + BaseEntity（Jackson 默认输出全部字段，含 null）。
 type SysDept struct {

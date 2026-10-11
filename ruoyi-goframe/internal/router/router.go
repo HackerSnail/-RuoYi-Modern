@@ -106,5 +106,11 @@ func Register(s *ghttp.Server) {
 		g.PUT("/system/dict/data", middleware.Permi("system:dict:edit", controller.DictDataEdit))
 		g.GET("/system/dict/data/{dictCode}", middleware.Permi("system:dict:query", controller.DictDataGetInfo))
 		g.DELETE("/system/dict/data/{dictCodes}", middleware.Permi("system:dict:remove", controller.DictDataRemove))
+		// 通知公告 /system/notice（C1 核心 CRUD；getInfo 无 permi 仅需登录；list 静态先于 {noticeId}/{noticeIds} 动态）
+		g.GET("/system/notice/list", middleware.Permi("system:notice:list", controller.NoticeList))
+		g.POST("/system/notice", middleware.Permi("system:notice:add", controller.NoticeAdd))
+		g.PUT("/system/notice", middleware.Permi("system:notice:edit", controller.NoticeEdit))
+		g.GET("/system/notice/{noticeId}", controller.NoticeGetInfo)
+		g.DELETE("/system/notice/{noticeIds}", middleware.Permi("system:notice:remove", controller.NoticeRemove))
 	})
 }

@@ -91,5 +91,20 @@ func Register(s *ghttp.Server) {
 		g.DELETE("/system/config/refreshCache", middleware.Permi("system:config:refresh", controller.ConfigRefreshCache))
 		g.GET("/system/config/{configId}", middleware.Permi("system:config:query", controller.ConfigGetInfo))
 		g.DELETE("/system/config/{configIds}", middleware.Permi("system:config:remove", controller.ConfigRemove))
+		// 字典类型 /system/dict/type（optionselect/refreshCache 静态先于 {dictId}/{dictIds} 动态；optionselect 无 permi）
+		g.GET("/system/dict/type/list", middleware.Permi("system:dict:list", controller.DictTypeList))
+		g.GET("/system/dict/type/optionselect", controller.DictTypeOptionSelect)
+		g.POST("/system/dict/type", middleware.Permi("system:dict:add", controller.DictTypeAdd))
+		g.PUT("/system/dict/type", middleware.Permi("system:dict:edit", controller.DictTypeEdit))
+		g.DELETE("/system/dict/type/refreshCache", middleware.Permi("system:dict:refresh", controller.DictTypeRefreshCache))
+		g.GET("/system/dict/type/{dictId}", middleware.Permi("system:dict:query", controller.DictTypeGetInfo))
+		g.DELETE("/system/dict/type/{dictIds}", middleware.Permi("system:dict:remove", controller.DictTypeRemove))
+		// 字典数据 /system/dict/data（list/type 静态先于 {dictCode}/{dictCodes} 动态；data/type/{dictType} 无 permi，走敏感黑名单）
+		g.GET("/system/dict/data/list", middleware.Permi("system:dict:list", controller.DictDataList))
+		g.GET("/system/dict/data/type/{dictType}", controller.DictDataType)
+		g.POST("/system/dict/data", middleware.Permi("system:dict:add", controller.DictDataAdd))
+		g.PUT("/system/dict/data", middleware.Permi("system:dict:edit", controller.DictDataEdit))
+		g.GET("/system/dict/data/{dictCode}", middleware.Permi("system:dict:query", controller.DictDataGetInfo))
+		g.DELETE("/system/dict/data/{dictCodes}", middleware.Permi("system:dict:remove", controller.DictDataRemove))
 	})
 }

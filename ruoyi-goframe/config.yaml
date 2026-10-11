@@ -49,6 +49,11 @@ ruoyi:
   addressEnabled: false
   captchaType: "math"
   httpStatusAdvice: true
+  # 公开只读参数键白名单（对应 ruoyi.publicConfigKeys）：/system/config/configKey/{key} 无鉴权，仅这些键可被任意登录用户读取
+  publicConfigKeys: "sys.account.captchaEnabled,sys.account.registerUser"
+  # 敏感字典类型黑名单（对应 ruoyi.sensitiveDictTypes）：/system/dict/data/type/{dictType} 无鉴权，命中此列表的类型需 system:dict:list
+  # 留空=所有字典开放（与 Java application.yml 默认一致）
+  sensitiveDictTypes: ""
 
 # 用户密码策略：对齐 user.password.*
 user:

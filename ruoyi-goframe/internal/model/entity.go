@@ -68,6 +68,43 @@ type SysConfig struct {
 	Remark      string      `json:"remark"`
 }
 
+// SysDictType 字典类型：对齐 com.ruoyi.common.core.domain.entity.SysDictType + BaseEntity 的 Jackson 输出。
+// selectDictTypeVo 仅取 dict_id/dict_name/dict_type/status/create_by/create_time/remark（不取 update_*），
+// 故 UpdateBy/UpdateTime 保持零值（同 Java resultMap 对这些列不映射）。
+type SysDictType struct {
+	DictId     int64       `json:"dictId"     orm:"dict_id"`
+	DictName   string      `json:"dictName"   orm:"dict_name"`
+	DictType   string      `json:"dictType"   orm:"dict_type"`
+	Status     string      `json:"status"`
+	CreateBy   string      `json:"createBy"   orm:"create_by"`
+	CreateTime *gtime.Time `json:"createTime" orm:"create_time"`
+	UpdateBy   string      `json:"updateBy"   orm:"update_by"`
+	UpdateTime *gtime.Time `json:"updateTime" orm:"update_time"`
+	Remark     string      `json:"remark"`
+}
+
+// SysDictData 字典数据：对齐 com.ruoyi.common.core.domain.entity.SysDictData + BaseEntity 的 Jackson 输出。
+// selectDictDataVo 不取 update_by/update_time，出参保持零值。Default 派生自 getDefault()（isDefault=="Y"），
+// 与 getIsDefault() 并存——Jackson 会同时输出 "isDefault"(String) 与 "default"(boolean)。
+type SysDictData struct {
+	DictCode   int64       `json:"dictCode"   orm:"dict_code"`
+	DictSort   int64       `json:"dictSort"   orm:"dict_sort"`
+	DictLabel  string      `json:"dictLabel"  orm:"dict_label"`
+	DictValue  string      `json:"dictValue"  orm:"dict_value"`
+	DictType   string      `json:"dictType"   orm:"dict_type"`
+	CssClass   string      `json:"cssClass"   orm:"css_class"`
+	ListClass  string      `json:"listClass"  orm:"list_class"`
+	IsDefault  string      `json:"isDefault"  orm:"is_default"`
+	Status     string      `json:"status"`
+	CreateBy   string      `json:"createBy"   orm:"create_by"`
+	CreateTime *gtime.Time `json:"createTime" orm:"create_time"`
+	UpdateBy   string      `json:"updateBy"   orm:"update_by"`
+	UpdateTime *gtime.Time `json:"updateTime" orm:"update_time"`
+	Remark     string      `json:"remark"`
+	// Default 派生自 getDefault()：isDefault=="Y" 为 true，非 DB 列，scan 时回填。
+	Default bool `json:"default"`
+}
+
 // SysDept 部门：既用于 getInfo 里 user.dept 子对象，也用于 /system/dept 全量出参。
 // 字段对齐 com.ruoyi.common.core.domain.entity.SysDept + BaseEntity（Jackson 默认输出全部字段，含 null）。
 type SysDept struct {

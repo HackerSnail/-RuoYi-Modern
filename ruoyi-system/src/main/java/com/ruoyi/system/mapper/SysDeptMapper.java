@@ -61,6 +61,22 @@ public interface SysDeptMapper {
     public int hasChildByDeptId(Long deptId);
 
     /**
+     * 统计回收站（del_flag='2'）中该部门的直系子部门数量（物理销毁父级前防子级永久悬空）
+     *
+     * @param deptId 部门ID
+     * @return 回收站中的直系子部门数量
+     */
+    public int hasRecycledChildByDeptId(Long deptId);
+
+    /**
+     * 统计回收站（del_flag='2'）中挂在该部门下的用户数量（物理销毁部门前防用户永久悬空）
+     *
+     * @param deptId 部门ID
+     * @return 回收站中该部门下的用户数量
+     */
+    public int countRecycledUserByDeptId(Long deptId);
+
+    /**
      * 查询部门是否存在用户
      * 
      * @param deptId 部门ID

@@ -244,6 +244,74 @@ public class RecycleBinServiceImplTest {
         verify(deptMapper, never()).deleteDeptByIdPhysically(any());
     }
 
+    @Test
+    @DisplayName("彻底删除部门：回收站中仍有下级部门 → 阻断销毁 FAILED（防子级悬空）")
+    void purgeDeptBlockedByRecycledChildDept() {
+        SysDept trash = new SysDept();
+        trash.setDeptId(21L);
+        trash.setDeptName("旧研发部");
+        when(deptMapper.selectDeletedDeptById(21L)).thenReturn(trash);
+        when(deptMapper.selectDeletedDeptList(any())).thenReturn(Collections.singletonList(trash));
+        when(deptMapper.hasChildByDeptId(21L)).thenReturn(0);
+        when(deptMapper.hasRecycledChildByDeptId(21L)).thenReturn(1);
+
+        RecycleBinOpResult result = service.purge(RecycleBinType.DEPT, new Long[] { 21L }, true);
+
+        assertEquals(1, result.getFailCount());
+        assertTrue(result.getItems().get(0).getReason().contains("回收站中存在下级部门"));
+        verify(deptMapper, never()).deleteDeptByIdPhysically(any());
+    }
+
+    @Test
+    @DisplayName("彻底删除部门：回收站中仍有该部门下用户 → 阻断销毁 FAILED（防用户悬空）")
+    void purgeDeptBlockedByRecycledUser() {
+        SysDept trash = new SysDept();
+        trash.setDeptId(22L);
+        trash.setDeptName("旧测试部");
+        when(deptMapper.selectDeletedDeptById(22L)).thenReturn(trash);
+        when(deptMapper.selectDeletedDeptList(any())).thenReturn(Collections.singletonList(trash));
+        when(deptMapper.hasChildByDeptId(22L)).thenReturn(0);
+        when(deptMapper.hasRecycledChildByDeptId(22L)).thenReturn(0);
+        when(deptMapper.checkDeptExistUser(22L)).thenReturn(0);
+        when(deptMapper.countRecycledUserByDeptId(22L)).thenReturn(1);
+
+        RecycleBinOpResult result = service.purge(RecycleBinType.DEPT, new Long[] { 22L }, true);
+
+        assertEquals(1, result.getFailCount());
+        assertTrue(result.getItems().get(0).getReason().contains("该部门下的用户"));
+        verify(deptMapper, never()).deleteDeptByIdPhysically(any());
+    }
+
+    // ===== 异常脱敏：非预期异常不外泄原始 message =====
+
+    @Test
+    @DisplayName("恢复遇非预期异常（如 SQL/NPE）→ 回传通用文案、不含底层原文")
+    void restoreUnexpectedExceptionSanitized() {
+        when(userMapper.selectDeletedUserById(1L))
+                .thenThrow(new RuntimeException("Table 'ry-vue.sys_user' doesn't exist; bad SQL grammar"));
+
+        RecycleBinOpResult result = service.restore(RecycleBinType.USER, new Long[] { 1L });
+
+        assertEquals(1, result.getFailCount());
+        assertEquals("操作失败，请联系管理员", result.getItems().get(0).getReason());
+        assertTrue(!result.getItems().get(0).getReason().contains("sys_user"), "不应泄露表名/SQL");
+        verify(userMapper, never()).restoreUserById(any());
+    }
+
+    @Test
+    @DisplayName("恢复遇业务护栏（ServiceException）→ 原文案面向操作者安全回传")
+    void restoreServiceExceptionMessagePreserved() {
+        SysUser trash = deletedUser(1L, "alice");
+        when(userMapper.selectDeletedUserById(1L)).thenReturn(trash);
+        when(userMapper.selectDeletedUserList(any())).thenReturn(Collections.emptyList());
+
+        RecycleBinOpResult result = service.restore(RecycleBinType.USER, new Long[] { 1L });
+
+        assertEquals(1, result.getFailCount());
+        assertTrue(result.getItems().get(0).getReason().contains("数据范围"), "越权护栏文案应原样回传");
+        verify(userMapper, never()).restoreUserById(any());
+    }
+
     // ===== 批处理：部分成功 =====
 
     @Test

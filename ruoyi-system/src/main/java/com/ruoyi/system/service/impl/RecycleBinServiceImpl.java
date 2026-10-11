@@ -1,6 +1,8 @@
 package com.ruoyi.system.service.impl;
 
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import com.ruoyi.common.annotation.DataScope;
 import com.ruoyi.common.core.domain.entity.SysDept;
@@ -32,6 +34,8 @@ import com.ruoyi.system.service.ISysUserService;
  */
 @Service
 public class RecycleBinServiceImpl implements IRecycleBinService {
+    private static final Logger log = LoggerFactory.getLogger(RecycleBinServiceImpl.class);
+
     private final SysUserMapper userMapper;
 
     private final SysRoleMapper roleMapper;
@@ -82,8 +86,14 @@ public class RecycleBinServiceImpl implements IRecycleBinService {
         for (Long id : ids) {
             try {
                 result.addSuccess(id, restoreOne(type, id));
-            } catch (Exception e) {
+            } catch (ServiceException e) {
+                // 业务护栏文案（越权拒绝/身份冲突/悬空引用等）本就面向操作者，可安全回传
                 result.addFailure(id, null, e.getMessage());
+            } catch (Exception e) {
+                // 非预期异常（DataAccessException/NPE 等）原始 message 可能含表名/SQL/堆栈语义，
+                // 对外仅给通用文案，真实原因落日志留痕
+                log.error("回收站恢复失败 type={} id={}", type, id, e);
+                result.addFailure(id, null, "操作失败，请联系管理员");
             }
         }
         return result;
@@ -104,8 +114,14 @@ public class RecycleBinServiceImpl implements IRecycleBinService {
         for (Long id : ids) {
             try {
                 result.addSuccess(id, purgeOne(type, id));
-            } catch (Exception e) {
+            } catch (ServiceException e) {
+                // 业务护栏文案（越权拒绝/自删锁死/不可销毁等）本就面向操作者，可安全回传
                 result.addFailure(id, null, e.getMessage());
+            } catch (Exception e) {
+                // 非预期异常（DataAccessException/NPE 等）原始 message 可能含表名/SQL/堆栈语义，
+                // 对外仅给通用文案，真实原因落日志留痕
+                log.error("回收站彻底删除失败 type={} id={}", type, id, e);
+                result.addFailure(id, null, "操作失败，请联系管理员");
             }
         }
         return result;
@@ -261,12 +277,19 @@ public class RecycleBinServiceImpl implements IRecycleBinService {
             throw new ServiceException("部门不在回收站");
         }
         assertDeptInScope(deptId);
-        // 阻断造孤儿的物理删：仍有活跃下级或在职用户挂在其下则拒绝
+        // 阻断造孤儿的物理删：仍有活跃下级/在职用户，或回收站中的下级部门/用户挂在其下则拒绝
+        // （后者若不拦，父被物理销毁后，软删子级将来恢复会因"上级部门不存在"、软删用户会因"所属部门不存在"被永久拒绝，成孤儿堆）
         if (deptMapper.hasChildByDeptId(deptId) > 0) {
             throw new ServiceException("存在活跃下级部门，不可销毁");
         }
+        if (deptMapper.hasRecycledChildByDeptId(deptId) > 0) {
+            throw new ServiceException("回收站中存在下级部门，不可销毁（请先恢复或销毁下级）");
+        }
         if (deptMapper.checkDeptExistUser(deptId) > 0) {
             throw new ServiceException("部门下存在在职用户，不可销毁");
+        }
+        if (deptMapper.countRecycledUserByDeptId(deptId) > 0) {
+            throw new ServiceException("回收站中存在该部门下的用户，不可销毁（请先恢复或销毁相关用户）");
         }
         if (deptMapper.deleteDeptByIdPhysically(deptId) == 0) {
             throw new ServiceException("删除失败：记录不存在");

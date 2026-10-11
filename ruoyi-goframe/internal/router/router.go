@@ -76,5 +76,12 @@ func Register(s *ghttp.Server) {
 		g.PUT("/system/user", middleware.Permi("system:user:edit", controller.UserEdit))
 		g.GET("/system/user/{userId}", middleware.Permi("system:user:query", controller.UserGetInfo))
 		g.DELETE("/system/user/{userIds}", middleware.Permi("system:user:remove", controller.UserRemove))
+		// 岗位 /system/post（optionselect/list 静态先于 {postId} 动态；Java optionselect 无 @PreAuthorize，仅挂 Auth）
+		g.GET("/system/post/list", middleware.Permi("system:post:list", controller.PostList))
+		g.GET("/system/post/optionselect", controller.PostOptionSelect)
+		g.POST("/system/post", middleware.Permi("system:post:add", controller.PostAdd))
+		g.PUT("/system/post", middleware.Permi("system:post:edit", controller.PostEdit))
+		g.GET("/system/post/{postId}", middleware.Permi("system:post:query", controller.PostGetInfo))
+		g.DELETE("/system/post/{postIds}", middleware.Permi("system:post:remove", controller.PostRemove))
 	})
 }

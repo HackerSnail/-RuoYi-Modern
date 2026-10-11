@@ -138,7 +138,12 @@ public class SysRoleController extends BaseController {
     public AjaxResult dataScope(@RequestBody SysRole role) {
         roleService.checkRoleAllowed(role);
         roleService.checkRoleDataScope(role.getRoleId());
-        return toAjax(roleService.authDataScope(role));
+        int rows = roleService.authDataScope(role);
+        if (rows > 0) {
+            // 数据范围变更改变缓存角色快照，DataScopeAspect 依缓存 roles 过滤，强制持有者重登使其即刻生效
+            tokenService.delLoginUsersByRoleId(role.getRoleId());
+        }
+        return toAjax(rows);
     }
 
     /**
@@ -151,7 +156,12 @@ public class SysRoleController extends BaseController {
         roleService.checkRoleAllowed(role);
         roleService.checkRoleDataScope(role.getRoleId());
         role.setUpdateBy(getUsername());
-        return toAjax(roleService.updateRoleStatus(role));
+        int rows = roleService.updateRoleStatus(role);
+        if (rows > 0) {
+            // 角色停用/启用改变缓存角色状态快照，软刷新读不到新状态，强制持有者重登使其即刻生效
+            tokenService.delLoginUsersByRoleId(role.getRoleId());
+        }
+        return toAjax(rows);
     }
 
     /**
@@ -202,7 +212,12 @@ public class SysRoleController extends BaseController {
     @Log(title = "角色管理", businessType = BusinessType.GRANT)
     @PutMapping("/authUser/cancel")
     public AjaxResult cancelAuthUser(@RequestBody SysUserRole userRole) {
-        return toAjax(roleService.deleteAuthUser(userRole));
+        int rows = roleService.deleteAuthUser(userRole);
+        if (rows > 0) {
+            // 取消某用户的角色：其缓存 roles 快照失效，强制下线使其权限即刻收敛
+            tokenService.delLoginUsers(userRole.getUserId());
+        }
+        return toAjax(rows);
     }
 
     /**
@@ -212,7 +227,13 @@ public class SysRoleController extends BaseController {
     @Log(title = "角色管理", businessType = BusinessType.GRANT)
     @PutMapping("/authUser/cancelAll")
     public AjaxResult cancelAuthUserAll(Long roleId, Long[] userIds) {
-        return toAjax(roleService.deleteAuthUsers(roleId, userIds));
+        int rows = roleService.deleteAuthUsers(roleId, userIds);
+        if (rows > 0 && userIds != null) {
+            for (Long userId : userIds) {
+                tokenService.delLoginUsers(userId);
+            }
+        }
+        return toAjax(rows);
     }
 
     /**
@@ -223,7 +244,13 @@ public class SysRoleController extends BaseController {
     @PutMapping("/authUser/selectAll")
     public AjaxResult selectAuthUserAll(Long roleId, Long[] userIds) {
         roleService.checkRoleDataScope(roleId);
-        return toAjax(roleService.insertAuthUsers(roleId, userIds));
+        int rows = roleService.insertAuthUsers(roleId, userIds);
+        if (rows > 0 && userIds != null) {
+            for (Long userId : userIds) {
+                tokenService.delLoginUsers(userId);
+            }
+        }
+        return toAjax(rows);
     }
 
     /**

@@ -28,6 +28,7 @@ import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.file.FileUploadUtils;
 import com.ruoyi.common.utils.file.MimeTypeUtils;
 import com.ruoyi.common.utils.poi.ExcelUtil;
+import com.ruoyi.framework.web.service.TokenService;
 import com.ruoyi.system.service.ISysDeptService;
 import com.ruoyi.system.service.ISysPostService;
 import com.ruoyi.system.service.ISysRoleService;
@@ -49,12 +50,15 @@ public class SysUserController extends BaseController {
 
     private final ISysPostService postService;
 
+    private final TokenService tokenService;
+
     public SysUserController(ISysUserService userService, ISysRoleService roleService,
-            ISysDeptService deptService, ISysPostService postService) {
+            ISysDeptService deptService, ISysPostService postService, TokenService tokenService) {
         this.userService = userService;
         this.roleService = roleService;
         this.deptService = deptService;
         this.postService = postService;
+        this.tokenService = tokenService;
     }
 
     /**
@@ -243,6 +247,9 @@ public class SysUserController extends BaseController {
         userService.checkUserDataScope(userId);
         roleService.checkRoleDataScope(roleIds);
         userService.insertUserAuth(userId, roleIds);
+        // 用户角色成员关系变化会改动缓存 LoginUser 的 roles 快照，软刷新权限集无法反映新角色集合，
+        // 故强制该用户下线重新登录，令收回/新增的角色及其数据范围即刻生效。
+        tokenService.delLoginUsers(userId);
         return success();
     }
 

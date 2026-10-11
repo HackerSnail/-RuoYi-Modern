@@ -2,6 +2,7 @@ package com.ruoyi.framework.web.service;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -120,13 +121,7 @@ public class TokenService {
         if (userId == null) {
             return 0;
         }
-        String pattern = CacheConstants.LOGIN_TOKEN_KEY + "*";
-        Collection<String> keys = redisCache.keys(pattern);
-        if (keys == null || keys.isEmpty()) {
-            return 0;
-        }
-        // 一次 MGET 分批取回全部在线会话，替代逐 key GET 的 N+1 往返；multiGetObject 已剔除不存在的 null
-        List<LoginUser> loginUsers = redisCache.multiGetObject(keys);
+        List<LoginUser> loginUsers = collectOnlineLoginUsers();
         int count = 0;
         for (LoginUser loginUser : loginUsers) {
             if (loginUser == null || loginUser.getUser() == null) {
@@ -263,15 +258,7 @@ public class TokenService {
      * @param permissionService 权限服务
      */
     public void refreshPermissionByRoleId(Long roleId, SysPermissionService permissionService) {
-        // 扫描所有在线 token
-        String pattern = CacheConstants.LOGIN_TOKEN_KEY + "*";
-        Collection<String> keys = redisCache.keys(pattern);
-        if (keys == null || keys.isEmpty()) {
-            return;
-        }
-        // 一次 MGET 分批取回全部在线会话（500/批），替代逐 key GET 的 N+1 往返；
-        // multiGetObject 已剔除过期/不存在的键返回的 null
-        List<LoginUser> loginUsers = redisCache.multiGetObject(keys);
+        List<LoginUser> loginUsers = collectOnlineLoginUsers();
         for (LoginUser loginUser : loginUsers) {
             if (loginUser.getUser() == null || loginUser.getUser().isAdmin()) {
                 // 管理员拥有所有权限，跳过
@@ -287,6 +274,71 @@ public class TokenService {
             loginUser.setPermissions(permissionService.getMenuPermission(loginUser.getUser()));
             refreshToken(loginUser);
             log.info("角色[{}]权限变更，已刷新在线用户[{}]的权限缓存", roleId, loginUser.getUsername());
+        }
+    }
+
+    /**
+     * 取回全部在线会话：SCAN login_tokens:* 后一次分批 MGET（multiGetObject 已剔除过期/不存在的 null）。
+     * 供“按用户/按角色/全量”的权限失效逻辑复用，避免各处重复 SCAN+MGET 样板。
+     */
+    private List<LoginUser> collectOnlineLoginUsers() {
+        String pattern = CacheConstants.LOGIN_TOKEN_KEY + "*";
+        Collection<String> keys = redisCache.keys(pattern);
+        if (keys == null || keys.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return redisCache.multiGetObject(keys);
+    }
+
+    /**
+     * 强制持有指定角色的在线用户重新登录：扫描在线会话，凡非管理员且拥有该角色者一并下线。
+     * <p>
+     * 用于角色停用 / 数据范围变更——二者改变的是缓存 LoginUser 里的角色状态/数据范围快照，
+     * 而软刷新(refreshPermissionByRoleId)按缓存角色状态聚合权限、读不到“刚被置停用/新数据范围”，
+     * 故必须下线让持有者重建快照，使被收回的权限/新数据范围即刻生效（下次请求即 401）。
+     *
+     * @param roleId 变更的角色ID
+     * @return 被强制下线的会话数
+     */
+    public int delLoginUsersByRoleId(Long roleId) {
+        if (roleId == null) {
+            return 0;
+        }
+        List<LoginUser> loginUsers = collectOnlineLoginUsers();
+        int count = 0;
+        for (LoginUser loginUser : loginUsers) {
+            if (loginUser == null || loginUser.getUser() == null || loginUser.getUser().isAdmin()) {
+                // 管理员拥有所有权限，无需因某角色变更而下线
+                continue;
+            }
+            boolean hasRole = loginUser.getUser().getRoles() != null
+                    && loginUser.getUser().getRoles().stream().anyMatch(r -> roleId.equals(r.getRoleId()));
+            if (!hasRole) {
+                continue;
+            }
+            delLoginUser(loginUser.getToken());
+            count++;
+        }
+        if (count > 0) {
+            log.info("角色[{}]停用/数据范围变更，已强制 {} 个持有该角色的在线会话重新登录", roleId, count);
+        }
+        return count;
+    }
+
+    /**
+     * 刷新全部在线非管理员用户的权限集合（会话保持、不下线）。
+     * <p>
+     * 用于菜单编辑——菜单权限字符变化会经 getMenuPermission 逐角色实时查库反映，且不涉及用户角色
+     * 成员关系变化，故软刷新即可、无需强制重登。菜单为低频管理操作，全量扫描在线会话可接受。
+     */
+    public void refreshAllOnlineUserPermission(SysPermissionService permissionService) {
+        List<LoginUser> loginUsers = collectOnlineLoginUsers();
+        for (LoginUser loginUser : loginUsers) {
+            if (loginUser == null || loginUser.getUser() == null || loginUser.getUser().isAdmin()) {
+                continue;
+            }
+            loginUser.setPermissions(permissionService.getMenuPermission(loginUser.getUser()));
+            refreshToken(loginUser);
         }
     }
 }

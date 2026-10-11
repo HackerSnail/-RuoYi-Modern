@@ -20,6 +20,8 @@ import com.ruoyi.common.core.domain.entity.SysMenu;
 import com.ruoyi.common.core.text.Convert;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.common.utils.StringUtils;
+import com.ruoyi.framework.web.service.SysPermissionService;
+import com.ruoyi.framework.web.service.TokenService;
 import com.ruoyi.system.service.ISysMenuService;
 
 /**
@@ -32,8 +34,15 @@ import com.ruoyi.system.service.ISysMenuService;
 public class SysMenuController extends BaseController {
     private final ISysMenuService menuService;
 
-    public SysMenuController(ISysMenuService menuService) {
+    private final TokenService tokenService;
+
+    private final SysPermissionService permissionService;
+
+    public SysMenuController(ISysMenuService menuService, TokenService tokenService,
+            SysPermissionService permissionService) {
         this.menuService = menuService;
+        this.tokenService = tokenService;
+        this.permissionService = permissionService;
     }
 
     /**
@@ -117,7 +126,13 @@ public class SysMenuController extends BaseController {
             return error("修改菜单'" + menu.getMenuName() + "'失败，路由名称或地址已存在");
         }
         menu.setUpdateBy(getUsername());
-        return toAjax(menuService.updateMenu(menu));
+        int rows = menuService.updateMenu(menu);
+        if (rows > 0) {
+            // 菜单权限字符/可见性变化影响引用该菜单的角色，刷新全部在线用户权限集（会话保持、不下线）；
+            // 注：新增菜单尚未绑定任何角色、已分配菜单又被 checkMenuExistRole 禁止删除，二者对在线权限均可证明为 no-op，故仅在 edit 刷新。
+            tokenService.refreshAllOnlineUserPermission(permissionService);
+        }
+        return toAjax(rows);
     }
 
     /**

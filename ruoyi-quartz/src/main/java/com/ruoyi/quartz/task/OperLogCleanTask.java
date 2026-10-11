@@ -17,6 +17,10 @@ import com.ruoyi.system.service.ISysOperLogService;
  * 必须放在 com.ruoyi.quartz.task 包下：Constants.JOB_WHITELIST_STR 只放行该包，
  * 否则 sys_job 保存时会被"目标字符串不在白名单内"拦下。
  * <p>
+ * 维护提醒：若日后确需把本类迁往其他包，务必同步把新包名加入 Constants.JOB_WHITELIST_STR，
+ * 否则迁移后再新建/编辑该任务的 sys_job 记录会被白名单校验拦下（白名单在保存期 validateJob
+ * 强制，非执行期；已存记录按 bean 名反射执行，不受包迁移影响）。
+ * <p>
  * invokeTarget 写法：
  * <ul>
  *   <li>{@code operLogCleanTask.clean()} —— 保留天数取 ruoyi.operLogRetentionDays；</li>

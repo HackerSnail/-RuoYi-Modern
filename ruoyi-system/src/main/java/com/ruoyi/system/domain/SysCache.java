@@ -1,5 +1,7 @@
 package com.ruoyi.system.domain;
 
+import java.util.Objects;
+
 import com.ruoyi.common.utils.StringUtils;
 
 /**
@@ -57,5 +59,26 @@ public final class SysCache {
 
     public String getRemark() {
         return remark;
+    }
+
+    /**
+     * 值语义：身份由 cacheName + cacheKey 决定（cacheValue/remark 不参与），
+     * 使该不可变对象在 Set/Map 或 contains 去重时按值而非按引用比较。null 安全。
+     */
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof SysCache)) {
+            return false;
+        }
+        SysCache that = (SysCache) o;
+        return Objects.equals(cacheName, that.cacheName) && Objects.equals(cacheKey, that.cacheKey);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(cacheName, cacheKey);
     }
 }

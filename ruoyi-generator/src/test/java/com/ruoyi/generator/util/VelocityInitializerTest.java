@@ -18,7 +18,8 @@ import com.ruoyi.common.constant.Constants;
  *
  * <p>
  * 用与启动期完全相同的 {@code initVelocity()} 装配全局引擎后，真实从 classpath 取一个 .vm 模板并 merge，
- * 锁死"loader 配置（resource.loaders=class + classpath 加载器）+ input.encoding"能在 Velocity 2.3 下加载并渲染，
+ * 锁死"loader 配置（resource.loaders=class + classpath 加载器）+ input.encoding"能在
+ * Velocity 2.3 下加载并渲染，
  * 补齐此前"全仓无任何测试真正跑过 Velocity 渲染路径"的空白——任何 loader 配置回归都会在此暴露。
  * </p>
  */

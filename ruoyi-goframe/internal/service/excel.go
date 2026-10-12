@@ -230,8 +230,8 @@ func reverseByExp(propertyValue, converter, separator string) string {
 
 // ExcelImportColumn 定义从模板/导入表读回的一列：按表头名（非顺序）定位，取值文本经可选反向转换后交给 Set。
 type ExcelImportColumn struct {
-	Name      string               // 表头显示名（对齐 @Excel name）
-	Converter string               // readConverterExp：读取时反向（显示值→键）；空则按数值串归一
+	Name      string                     // 表头显示名（对齐 @Excel name）
+	Converter string                     // readConverterExp：读取时反向（显示值→键）；空则按数值串归一
 	Set       func(row any, text string) // 把最终文本写回实体字段
 }
 

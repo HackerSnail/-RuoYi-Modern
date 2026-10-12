@@ -34,7 +34,8 @@ import jakarta.servlet.http.HttpServletResponse;
  *
  * <p>
  * 覆盖：① {@code importTableSave} 空 tables 守卫（不应触达按名查询，避免 {@code in ()} SQL 语法错误）；
- * ② {@code batchGenCode} 空 tables 抛业务异常；③ {@code createTableSave} 建表前防覆盖（已存在则拒绝、绝不执行 DDL）；
+ * ② {@code batchGenCode} 空 tables 抛业务异常；③ {@code createTableSave}
+ * 建表前防覆盖（已存在则拒绝、绝不执行 DDL）；
  * ④ {@code createTableSave} 建表成功但导入失败的"半完成"不一致态——失败信息须带回已建表名，便于运维回滚。
  * 全程用 Mockito 隔离 service 与 SecurityUtils 静态上下文，无需 Spring 容器、零副作用。
  * </p>

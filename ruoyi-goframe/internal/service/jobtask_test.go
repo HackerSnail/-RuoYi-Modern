@@ -12,14 +12,14 @@ func TestLookupTask(t *testing.T) {
 		wantOK   bool
 		wantArgs []string
 	}{
-		{"operLogCleanTask.clean('90')", true, []string{"90"}},   // 引号字符串参
-		{"operLogCleanTask.clean(90)", true, []string{"90"}},      // 整型字面量
-		{`operLogCleanTask.clean("90")`, true, []string{"90"}},    // 双引号
-		{"operLogCleanTask.clean", true, nil},                     // 无括号
-		{"operLogCleanTask.clean()", true, nil},                   // 空括号
+		{"operLogCleanTask.clean('90')", true, []string{"90"}}, // 引号字符串参
+		{"operLogCleanTask.clean(90)", true, []string{"90"}},   // 整型字面量
+		{`operLogCleanTask.clean("90")`, true, []string{"90"}}, // 双引号
+		{"operLogCleanTask.clean", true, nil},                  // 无括号
+		{"operLogCleanTask.clean()", true, nil},                // 空括号
 		{"logininforCleanTask.clean", true, nil},
 		{"logininforCleanTask.clean('30')", true, []string{"30"}},
-		{"ryTask.demoMethod", false, nil},                       // 未注册 bean
+		{"ryTask.demoMethod", false, nil},                                             // 未注册 bean
 		{"com.ruoyi.quartz.task.OperLogCleanTask.clean('90')", false, []string{"90"}}, // 全类名：解析正确但不在注册表（bean 名 key 不匹配）
 	}
 	for _, c := range cases {

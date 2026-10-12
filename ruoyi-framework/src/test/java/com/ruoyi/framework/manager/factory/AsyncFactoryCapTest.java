@@ -11,7 +11,8 @@ import org.junit.jupiter.api.Test;
  *
  * <p>
  * cap 是本轮为 SysLogininfor 写路径加的纵深防御助手——不依赖 Request 上下文/DB，可直接调用。
- * 记录既有 SysLoginServiceTest/SysRegisterServiceTest 均 mockStatic(AsyncFactory) 校验静态调用入参，
+ * 记录既有 SysLoginServiceTest/SysRegisterServiceTest 均 mockStatic(AsyncFactory)
+ * 校验静态调用入参，
  * 不执行返回的 Runnable.run()，故本助手与其互不影响。
  * </p>
  */

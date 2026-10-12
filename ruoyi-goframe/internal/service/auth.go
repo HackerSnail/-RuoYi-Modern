@@ -286,13 +286,13 @@ func BuildUserInfoPayload(ctx context.Context, lu *model.LoginUser) g.Map {
 	roles := getRolePermission(ctx, user)
 	perms := getMenuPermission(ctx, user)
 	return g.Map{
-		"user":                  user,
-		"roles":                 roles,
-		"permissions":           perms,
-		"pwdChrtype":            defaultStr(selectConfigByKey(ctx, "sys.account.chrtype"), "0"),
-		"isDefaultModifyPwd":    false,
-		"isPasswordExpired":     false,
-		"forceChangePassword":   false,
+		"user":                user,
+		"roles":               roles,
+		"permissions":         perms,
+		"pwdChrtype":          defaultStr(selectConfigByKey(ctx, "sys.account.chrtype"), "0"),
+		"isDefaultModifyPwd":  false,
+		"isPasswordExpired":   false,
+		"forceChangePassword": false,
 	}
 }
 

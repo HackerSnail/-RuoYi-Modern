@@ -129,7 +129,8 @@ public class SysMenuController extends BaseController {
         int rows = menuService.updateMenu(menu);
         if (rows > 0) {
             // 菜单权限字符/可见性变化影响引用该菜单的角色，刷新全部在线用户权限集（会话保持、不下线）；
-            // 注：新增菜单尚未绑定任何角色、已分配菜单又被 checkMenuExistRole 禁止删除，二者对在线权限均可证明为 no-op，故仅在 edit 刷新。
+            // 注：新增菜单尚未绑定任何角色、已分配菜单又被 checkMenuExistRole 禁止删除，二者对在线权限均可证明为 no-op，故仅在 edit
+            // 刷新。
             tokenService.refreshAllOnlineUserPermission(permissionService);
         }
         return toAjax(rows);

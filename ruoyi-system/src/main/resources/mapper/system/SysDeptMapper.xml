@@ -58,12 +58,12 @@
 		sys_dept where del_flag = '0' and parent_id = #{deptId} limit 1 </select>
 
 	<!-- 回收站：统计 del_flag='2' 的直系子部门（物理销毁父部门前阻断，防子级将来恢复时无上级而成孤儿） -->
-	<select id="hasRecycledChildByDeptId" parameterType="Long" resultType="int"> select count(1) from
-		sys_dept where del_flag = '2' and parent_id = #{deptId} limit 1 </select>
+	<select id="hasRecycledChildByDeptId" parameterType="Long" resultType="int"> select count(1)
+		from sys_dept where del_flag = '2' and parent_id = #{deptId} limit 1 </select>
 
 	<!-- 回收站：统计 del_flag='2' 且挂在该部门下的用户（物理销毁部门前阻断，防用户将来恢复时无所属部门而成孤儿） -->
-	<select id="countRecycledUserByDeptId" parameterType="Long" resultType="int"> select count(1) from
-		sys_user where del_flag = '2' and dept_id = #{deptId} limit 1 </select>
+	<select id="countRecycledUserByDeptId" parameterType="Long" resultType="int"> select count(1)
+		from sys_user where del_flag = '2' and dept_id = #{deptId} limit 1 </select>
 
 	<!-- 通过 ancestors 字段 find_in_set 递归查询所有子孙部门（不只直系子级） -->
 	<select id="selectChildrenDeptById" parameterType="Long" resultMap="SysDeptResult"> select *
@@ -161,11 +161,16 @@
 
 	<!-- 回收站：分页查询已软删除部门列表，镜像 selectDeptList 的可选过滤+数据范围+排序，仅将 del_flag 条件由 '0' 改为 '2' -->
 	<select id="selectDeletedDeptList" parameterType="SysDept" resultMap="SysDeptResult">
-		<include refid="selectDeptVo" /> where d.del_flag = '2' <if test="deptId != null and deptId != 0"> AND dept_id = #{deptId} </if>
-		<if test="parentId != null and parentId != 0"> AND parent_id = #{parentId} </if>
-		<if test="deptName != null and deptName != ''"> AND dept_name like concat('%', #{deptName}, '%') </if>
+		<include refid="selectDeptVo" /> where d.del_flag = '2' <if
+			test="deptId != null and deptId != 0"> AND dept_id = #{deptId} </if>
+		<if
+			test="parentId != null and parentId != 0"> AND parent_id = #{parentId} </if>
+		<if
+			test="deptName != null and deptName != ''"> AND dept_name like concat('%', #{deptName},
+		'%') </if>
 		<if test="status != null and status != ''"> AND status = #{status} </if>
-		<!-- 数据范围过滤 --> ${params.dataScope} order by d.parent_id, d.order_num </select>
+		<!-- 数据范围过滤 -->
+		${params.dataScope} order by d.parent_id, d.order_num </select>
 
 	<!-- 回收站：按主键取软删除部门，限定 del_flag='2'，供恢复前取 parent_id/dept_name 做冲突与悬空校验 -->
 	<select id="selectDeletedDeptById" parameterType="Long" resultMap="SysDeptResult">
@@ -176,7 +181,7 @@
 		dept_id = #{deptId} and del_flag = '2' </update>
 
 	<!-- 回收站：彻底删除（真·物理 DELETE）单个部门，不可逆；部门无关联表 -->
-	<delete id="deleteDeptByIdPhysically" parameterType="Long"> delete from sys_dept where dept_id
-		= #{deptId} </delete>
+	<delete id="deleteDeptByIdPhysically" parameterType="Long"> delete from sys_dept where dept_id =
+		#{deptId} </delete>
 
 </mapper>

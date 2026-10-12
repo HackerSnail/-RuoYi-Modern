@@ -24,7 +24,8 @@ import com.ruoyi.quartz.service.ISysJobService;
  * <p>
  * 覆盖：① changeStatus 对 selectJobById 结果不判空 → 传错/不存在的 jobId 时
  * {@code newJob.setStatus(...)} 直接 NPE 500；② remove 现为薄委托——空选/限长校验已下沉
- * {@code SysJobServiceImpl.deleteJobByIds}，Controller 只调用 Service 并透传其 ServiceException
+ * {@code SysJobServiceImpl.deleteJobByIds}，Controller 只调用 Service 并透传其
+ * ServiceException
  * （由全局异常处理转友好 error），不再自行预检。
  * </p>
  */

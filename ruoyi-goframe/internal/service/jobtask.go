@@ -36,6 +36,7 @@ const (
 //   - beanName  = substringBefore(target,"(") 再 substringBeforeLast(".",)；
 //   - methodName= substringBefore(target,"(") 再 substringAfterLast(".",)；
 //   - args      = substringBetweenLast("(",")") 去包裹引号后的字面量列表（引号内逗号不拆）。
+//
 // key=beanName+"."+methodName；命中返回 handler+args+true，否则 (nil,nil,false)。
 func lookupTask(invokeTarget string) (taskHandler, []string, bool) {
 	head := subBefore(invokeTarget, "(")

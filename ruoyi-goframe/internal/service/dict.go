@@ -232,7 +232,7 @@ func UpdateDictType(ctx context.Context, dict *model.SysDictType, updateBy strin
 	}
 	var oldType string
 	err := g.DB().Transaction(ctx, func(ctx context.Context, tx gdb.TX) error {
-		oldRec, e := tx.GetOne(selectDictTypeVo + " where dict_id = ?" /*nolint*/, dict.DictId)
+		oldRec, e := tx.GetOne(selectDictTypeVo+" where dict_id = ?" /*nolint*/, dict.DictId)
 		if oldRec == nil || oldRec.IsEmpty() {
 			return fmt.Errorf("NOTFOUND")
 		}

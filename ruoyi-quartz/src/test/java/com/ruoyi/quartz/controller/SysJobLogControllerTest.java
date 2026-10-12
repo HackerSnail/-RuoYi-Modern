@@ -22,7 +22,8 @@ import com.ruoyi.quartz.service.ISysJobLogService;
  *
  * <p>
  * 覆盖：① getInfo 查回 null 返回 error 而非 success(null)；② remove 现为薄委托——空选/限长校验已
- * 下沉 {@code SysJobLogServiceImpl.deleteJobLogByIds}，Controller 只调用 Service 并透传其 ServiceException。
+ * 下沉 {@code SysJobLogServiceImpl.deleteJobLogByIds}，Controller 只调用 Service 并透传其
+ * ServiceException。
  * </p>
  */
 public class SysJobLogControllerTest {

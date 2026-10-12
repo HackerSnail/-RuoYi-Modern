@@ -533,7 +533,7 @@ func SelectUnallocatedList(ctx context.Context, roleId int64, userName, phonenum
 	return scanUsers(res.Rows), res.Total, nil
 }
 
-// appendUserLikeFilters 追加登录名/手机号模糊条件（对齐 <if test="xxx != null and xxx != ''">）。
+// appendUserLikeFilters 追加登录名/手机号模糊条件（对齐 <if test="xxx != null and xxx != ”">）。
 func appendUserLikeFilters(sql string, args *[]interface{}, userName, phonenumber string) (string, []interface{}) {
 	if userName != "" {
 		sql += " and u.user_name like concat('%', ?, '%')"

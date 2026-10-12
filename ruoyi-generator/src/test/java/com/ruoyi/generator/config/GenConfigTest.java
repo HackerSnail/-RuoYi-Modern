@@ -15,9 +15,12 @@ import com.ruoyi.generator.util.GenUtils;
  * {@link GenConfig} 配置绑定测试。
  *
  * <p>
- * 本次重构把配置来源从"generator.yml 被 DefaultPropertySourceFactory 当 properties 误解析、再靠 @Value 读压平后的顶层键"
- * 改为标准 {@code @ConfigurationProperties(prefix=gen)} 绑定 application.yml 的 {@code gen.*}。
- * 本测试用 {@link ApplicationContextRunner} 以与 application.yml 完全一致的 camelCase 键名喂属性，断言六个字段
+ * 本次重构把配置来源从"generator.yml 被 DefaultPropertySourceFactory 当 properties
+ * 误解析、再靠 @Value 读压平后的顶层键"
+ * 改为标准 {@code @ConfigurationProperties(prefix=gen)} 绑定 application.yml 的
+ * {@code gen.*}。
+ * 本测试用 {@link ApplicationContextRunner} 以与 application.yml 完全一致的 camelCase
+ * 键名喂属性，断言六个字段
  * 精确绑定到实例——锁死前缀/camelCase 键这条最易出错的绑定契约，防止回归成 null。
  * </p>
  */

@@ -34,7 +34,8 @@ public class ScheduleUtils {
      * @return 具体执行任务类（根据 concurrent 标志选择允许/禁止并发执行的 Job 实现）
      */
     private static Class<? extends Job> getQuartzJobClass(SysJob sysJob) {
-        // concurrent 为允许时用普通 Job；否则用带 @DisallowConcurrentExecution 的子类，同一 JobDetail 不会并发执行
+        // concurrent 为允许时用普通 Job；否则用带 @DisallowConcurrentExecution 的子类，同一 JobDetail
+        // 不会并发执行
         boolean isConcurrent = ScheduleConstants.CONCURRENT_ALLOW.equals(sysJob.getConcurrent());
         return isConcurrent ? QuartzJobExecution.class : QuartzDisallowConcurrentExecution.class;
     }

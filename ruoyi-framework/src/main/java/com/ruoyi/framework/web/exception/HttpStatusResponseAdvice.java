@@ -18,8 +18,10 @@ import com.ruoyi.common.core.domain.AjaxResult;
  * 全站真实 HTTP 状态码收口：在写响应体前，按 {@link AjaxResult} 的 code 把传输层 HTTP 状态设为语义正确的值。
  *
  * <p>
- * 之所以用 {@link ResponseBodyAdvice} 而非逐个改 {@code GlobalExceptionHandler}：大量业务失败是控制器
- * <b>内联直接 {@code return error()/toAjax()}</b>（不经异常 advice），只有本 advice 能同时覆盖控制器内联返回
+ * 之所以用 {@link ResponseBodyAdvice} 而非逐个改
+ * {@code GlobalExceptionHandler}：大量业务失败是控制器
+ * <b>内联直接 {@code return error()/toAjax()}</b>（不经异常 advice），只有本 advice
+ * 能同时覆盖控制器内联返回
  * 与 {@code @ExceptionHandler} 返回值（二者都走消息转换器的返回处理）。响应体内容保持原样（code 仍在 body 里），
  * 只调整传输层状态码，二者解耦。
  * </p>
@@ -27,16 +29,20 @@ import com.ruoyi.common.core.domain.AjaxResult;
  * <p>
  * 映射策略：白名单内的已知 HTTP 语义码原样生效；白名单之外（含非 HTTP 业务码 {@code WARN=601}、
  * {@code ServiceException} 的任意码、越界值）统一回退 HTTP 400，不把业务拒绝伪装成 500 服务端故障。
- * 关于 code=500：{@code AjaxResult.error(msg)} 的默认 code=500 与真·系统故障同码、无法在 advice 层按 code 区分，
+ * 关于 code=500：{@code AjaxResult.error(msg)} 的默认 code=500 与真·系统故障同码、无法在 advice
+ * 层按 code 区分，
  * 故白名单<b>不含 500</b>——普通业务失败（内联 error()/校验类）携带的 500 一律回退 HTTP 400；真正的系统故障由
- * {@code GlobalExceptionHandler} 的 RuntimeException/Exception handler 以 {@code ResponseEntity} 显式返回 HTTP 500
+ * {@code GlobalExceptionHandler} 的 RuntimeException/Exception handler 以
+ * {@code ResponseEntity} 显式返回 HTTP 500
  * （本 advice 见响应状态已非 200 便不覆写），从而把两者在传输层区分开。
  * </p>
  *
  * <p>
- * 与 {@link GlobalExceptionHandler} 刻意强耦合：其兜底 handler 依赖本 advice“见响应状态已非 200 便不覆写”
+ * 与 {@link GlobalExceptionHandler} 刻意强耦合：其兜底 handler 依赖本 advice“见响应状态已非 200
+ * 便不覆写”
  * 这一约定来保住真·系统故障的 HTTP 500；改动本类的映射或守卫前须同步查看该类，反之亦然。
- * 可用配置项 {@code ruoyi.http-status-advice.enabled=false} 整体停用本 advice（退回“恒 HTTP 200 + body.code”旧行为）。
+ * 可用配置项 {@code ruoyi.http-status-advice.enabled=false} 整体停用本 advice（退回“恒 HTTP
+ * 200 + body.code”旧行为）。
  *
  * @see GlobalExceptionHandler
  * @author HackerSnail <2306002088@qq.com>
@@ -58,7 +64,8 @@ public class HttpStatusResponseAdvice implements ResponseBodyAdvice<Object> {
     private static final int FALLBACK_CLIENT_ERROR = HttpStatus.BAD_REQUEST;
 
     /**
-     * 总开关：默认开启。设为 {@code false}（{@code ruoyi.http-status-advice.enabled=false}）整体停用状态码改写，
+     * 总开关：默认开启。设为
+     * {@code false}（{@code ruoyi.http-status-advice.enabled=false}）整体停用状态码改写，
      * 退回“传输层恒 HTTP 200 + body.code”的旧行为（例如改由网关统一处理状态码时）。
      */
     @Value("${ruoyi.http-status-advice.enabled:true}")

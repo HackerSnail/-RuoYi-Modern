@@ -68,9 +68,9 @@ var opLogCredentialKeys = map[string]bool{
 
 // PII 值级部分脱敏名单（均小写）：与凭据类分工——PII 保留可读、仅部分打码。
 var (
-	opLogPhoneKeys   = map[string]bool{"phone": true, "phonenumber": true, "mobile": true, "mobileno": true, "mobilephone": true, "tel": true, "telephone": true, "contactphone": true}
-	opLogIdCardKeys  = map[string]bool{"idcard": true, "idcardno": true, "idnumber": true, "idno": true, "identitycard": true, "certno": true, "certificateno": true, "sensateidcard": true}
-	opLogEmailKeys   = map[string]bool{"email": true, "mail": true, "emailaddress": true, "useremail": true}
+	opLogPhoneKeys    = map[string]bool{"phone": true, "phonenumber": true, "mobile": true, "mobileno": true, "mobilephone": true, "tel": true, "telephone": true, "contactphone": true}
+	opLogIdCardKeys   = map[string]bool{"idcard": true, "idcardno": true, "idnumber": true, "idno": true, "identitycard": true, "certno": true, "certificateno": true, "sensateidcard": true}
+	opLogEmailKeys    = map[string]bool{"email": true, "mail": true, "emailaddress": true, "useremail": true}
 	opLogBankCardKeys = map[string]bool{"bankcard": true, "bankcardno": true, "bankno": true, "cardno": true, "bankaccount": true, "accountno": true, "bankaccountno": true}
 )
 

@@ -83,20 +83,20 @@ public class SysConfig extends BaseEntity {
     public void setConfigType(String configType) {
         this.configType = configType;
     }
-    
+
     @Override
     public String toString() {
-        return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
-            .append("configId", getConfigId())
-            .append("configName", getConfigName())
-            .append("configKey", getConfigKey())
-            .append("configValue", getConfigValue())
-            .append("configType", getConfigType())
-            .append("createBy", getCreateBy())
-            .append("createTime", getCreateTime())
-            .append("updateBy", getUpdateBy())
-            .append("updateTime", getUpdateTime())
-            .append("remark", getRemark())
-            .toString();
+        return new ToStringBuilder(this, ToStringStyle.MULTI_LINE_STYLE)
+                .append("configId", getConfigId())
+                .append("configName", getConfigName())
+                .append("configKey", getConfigKey())
+                .append("configValue", getConfigValue())
+                .append("configType", getConfigType())
+                .append("createBy", getCreateBy())
+                .append("createTime", getCreateTime())
+                .append("updateBy", getUpdateBy())
+                .append("updateTime", getUpdateTime())
+                .append("remark", getRemark())
+                .toString();
     }
 }

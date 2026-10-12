@@ -122,7 +122,7 @@ public class SysJobLog extends BaseEntity {
     public void setStartTime(LocalDateTime startTime) {
         this.startTime = startTime;
     }
-    
+
     public LocalDateTime getEndTime() {
         return endTime;
     }
@@ -133,17 +133,17 @@ public class SysJobLog extends BaseEntity {
 
     @Override
     public String toString() {
-        return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
-            .append("jobLogId", getJobLogId())
-            .append("jobName", getJobName())
-            .append("jobGroup", getJobGroup())
-            .append("invokeTarget", getInvokeTarget())
-            .append("jobMessage", getJobMessage())
-            .append("status", getStatus())
-            .append("exceptionInfo", briefExceptionInfo())
-            .append("startTime", getStartTime())
-            .append("endTime", getEndTime())
-            .toString();
+        return new ToStringBuilder(this, ToStringStyle.MULTI_LINE_STYLE)
+                .append("jobLogId", getJobLogId())
+                .append("jobName", getJobName())
+                .append("jobGroup", getJobGroup())
+                .append("invokeTarget", getInvokeTarget())
+                .append("jobMessage", getJobMessage())
+                .append("status", getStatus())
+                .append("exceptionInfo", briefExceptionInfo())
+                .append("startTime", getStartTime())
+                .append("endTime", getEndTime())
+                .toString();
     }
 
     /** 异常栈可能多行，toString 仅取首行做概要，避免调试/日志打印被整段栈刷屏 */

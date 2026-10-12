@@ -5,33 +5,33 @@ package consts
 
 // 业务响应码（对应 HttpStatus）。前端 axios 拦截器与错误收口都按这些码判定。
 const (
-	CodeSuccess = 200 // 操作成功
-	CodeError   = 500 // 通用业务失败（与真·系统故障同码，靠传输层状态码区分）
-	CodeWarn    = 601 // 警告（非 HTTP 码）
-	CodeBadRequest     = 400
-	CodeUnauthorized   = 401
-	CodeForbidden      = 403
+	CodeSuccess             = 200 // 操作成功
+	CodeError               = 500 // 通用业务失败（与真·系统故障同码，靠传输层状态码区分）
+	CodeWarn                = 601 // 警告（非 HTTP 码）
+	CodeBadRequest          = 400
+	CodeUnauthorized        = 401
+	CodeForbidden           = 403
 	CodeInternalServerError = 500
 )
 
 // 令牌相关（对应 Constants）。
 const (
-	Token         = "token"      // 登录响应里令牌所处的顶层字段名
-	TokenPrefix   = "Bearer "    // Authorization 头前缀
-	LoginUserKey  = "login_user_key" // JWT claim：会话 uuid
-	JWTUsername   = "sub"        // JWT claim：用户名
-	CaptchaExpirationMinutes = 2 // 验证码有效期
+	Token                    = "token"          // 登录响应里令牌所处的顶层字段名
+	TokenPrefix              = "Bearer "        // Authorization 头前缀
+	LoginUserKey             = "login_user_key" // JWT claim：会话 uuid
+	JWTUsername              = "sub"            // JWT claim：用户名
+	CaptchaExpirationMinutes = 2                // 验证码有效期
 )
 
 // Redis 缓存键前缀（对应 CacheConstants）。与 Java 完全同名，便于同库观察。
 const (
-	RedisLoginToken  = "login_tokens:"
-	RedisCaptchaCode = "captcha_codes:"
-	RedisSysConfig   = "sys_config:"
-	RedisSysDict     = "sys_dict:"
+	RedisLoginToken   = "login_tokens:"
+	RedisCaptchaCode  = "captcha_codes:"
+	RedisSysConfig    = "sys_config:"
+	RedisSysDict      = "sys_dict:"
 	RedisRepeatSubmit = "repeat_submit:"
 	RedisRateLimit    = "rate_limit:"
-	RedisPwdErrCnt   = "pwd_err_cnt:"
+	RedisPwdErrCnt    = "pwd_err_cnt:"
 )
 
 // 权限/角色标识（对应 Constants）。
@@ -42,21 +42,21 @@ const (
 
 // 菜单/用户标识（对应 UserConstants）。
 const (
-	Normal       = "0"
-	Exception    = "1"
-	Yes          = "Y"
-	YesFrame     = "0" // 是否外链：是（UserConstants.YES_FRAME）
-	NoFrame      = "1" // 是否外链：否（UserConstants.NO_FRAME）
-	MenuShow     = "0"
-	MenuHide     = "1"
-	MenuCacheNo  = "1" // is_cache=1 不缓存
-	TypeDir      = "M" // 目录
-	TypeMenu     = "C" // 菜单
-	TypeButton   = "F" // 按钮
-	Layout       = "Layout"
-	ParentView   = "ParentView"
-	InnerLink    = "InnerLink"
-	MenuRootID   = int64(0)
+	Normal      = "0"
+	Exception   = "1"
+	Yes         = "Y"
+	YesFrame    = "0" // 是否外链：是（UserConstants.YES_FRAME）
+	NoFrame     = "1" // 是否外链：否（UserConstants.NO_FRAME）
+	MenuShow    = "0"
+	MenuHide    = "1"
+	MenuCacheNo = "1" // is_cache=1 不缓存
+	TypeDir     = "M" // 目录
+	TypeMenu    = "C" // 菜单
+	TypeButton  = "F" // 按钮
+	Layout      = "Layout"
+	ParentView  = "ParentView"
+	InnerLink   = "InnerLink"
+	MenuRootID  = int64(0)
 
 	// 部门/角色状态（对应 UserConstants.DEPT_*/ROLE_*）。
 	DeptNormal  = "0"
@@ -119,25 +119,25 @@ const (
 
 // sys_oper_log 各列宽上限（对齐 AsyncFactory.recordOper 的纵深防御 cap + LogAspect 截断）。
 const (
-	OpLogTitleLen      = 50
-	OpLogMethodLen     = 200
-	OpLogReqMethodLen  = 10
-	OpLogOperNameLen   = 50
-	OpLogDeptNameLen   = 50
-	OpLogOperIpLen     = 128
-	OpLogOperLocLen    = 255
-	OpLogUrlLen        = 255
-	OpLogParamMaxLen   = 2000 // 对应 LogAspect.PARAM_MAX_LENGTH
-	OpLogErrorMsgLen   = 2000
+	OpLogTitleLen     = 50
+	OpLogMethodLen    = 200
+	OpLogReqMethodLen = 10
+	OpLogOperNameLen  = 50
+	OpLogDeptNameLen  = 50
+	OpLogOperIpLen    = 128
+	OpLogOperLocLen   = 255
+	OpLogUrlLen       = 255
+	OpLogParamMaxLen  = 2000 // 对应 LogAspect.PARAM_MAX_LENGTH
+	OpLogErrorMsgLen  = 2000
 )
 
 // 登录/注册事件类型（对应 Constants.LOGIN_SUCCESS/LOGOUT/REGISTER/LOGIN_FAIL）：
 // 作为 recordLogininfor 的 status 实参，仅表事件类型；logininfor 落库状态由它映射（见下）。
 const (
-	EvLoginSuccess = "Success" // LOGIN_SUCCESS
-	EvLogout       = "Logout"  // LOGOUT
+	EvLoginSuccess = "Success"  // LOGIN_SUCCESS
+	EvLogout       = "Logout"   // LOGOUT
 	EvRegister     = "Register" // REGISTER
-	EvLoginFail    = "Error"   // LOGIN_FAIL
+	EvLoginFail    = "Error"    // LOGIN_FAIL
 )
 
 // sys_logininfor.status（对应 Constants.SUCCESS/FAIL：0 成功 1 失败）。AsyncFactory.recordLogininfor

@@ -13,7 +13,8 @@ import org.junit.jupiter.api.Test;
  *
  * <p>
  * 覆盖本轮修复点：① toString 不再调用 getNextValidTime（无效 cron 时打印不崩、不含 nextValidTime 行）；
- * ② getNextValidTime 对空/非法 cron 一律返回 null 而非抛 IllegalArgumentException（保护列表序列化不因脏数据 500）。
+ * ② getNextValidTime 对空/非法 cron 一律返回 null 而非抛
+ * IllegalArgumentException（保护列表序列化不因脏数据 500）。
  * </p>
  */
 public class SysJobTest {

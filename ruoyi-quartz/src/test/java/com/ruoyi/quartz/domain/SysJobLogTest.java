@@ -36,7 +36,8 @@ public class SysJobLogTest {
     @DisplayName("toString：exceptionInfo 多行栈只取首行")
     void toStringTrimsExceptionInfoToFirstLine() {
         SysJobLog log = new SysJobLog();
-        log.setExceptionInfo("java.lang.RuntimeException: boom\n\tat com.demo.Foo.bar(Foo.java:1)\n\tat com.demo.Baz.run(Baz.java:2)");
+        log.setExceptionInfo(
+                "java.lang.RuntimeException: boom\n\tat com.demo.Foo.bar(Foo.java:1)\n\tat com.demo.Baz.run(Baz.java:2)");
 
         String s = log.toString();
         assertTrue(s.contains("java.lang.RuntimeException: boom"), "首行概要应保留");

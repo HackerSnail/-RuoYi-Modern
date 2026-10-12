@@ -85,7 +85,7 @@ public final class SecurityUtils {
     /**
      * 判断密码是否相同
      *
-     * @param rawPassword 真实密码
+     * @param rawPassword     真实密码
      * @param encodedPassword 加密后字符
      * @return 结果
      */
@@ -126,7 +126,7 @@ public final class SecurityUtils {
      * 判断是否包含权限
      * 
      * @param authorities 权限列表
-     * @param permission 权限字符串
+     * @param permission  权限字符串
      * @return 用户是否具备某权限
      */
     public static boolean hasPermi(Collection<String> authorities, String permission) {
@@ -158,7 +158,7 @@ public final class SecurityUtils {
      * 判断是否包含角色
      * 
      * @param roles 角色列表
-     * @param role 角色
+     * @param role  角色
      * @return 用户是否具备某角色权限
      */
     public static boolean hasRole(Collection<String> roles, String role) {

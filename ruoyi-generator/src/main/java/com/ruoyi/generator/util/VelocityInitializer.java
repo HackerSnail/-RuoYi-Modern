@@ -11,13 +11,15 @@ import com.ruoyi.common.constant.Constants;
  *
  * <p>
  * 用 {@link PostConstruct} 在应用启动期把 Velocity 全局单例引擎初始化一次，渲染处
- * （{@code GenTableServiceImpl}）直接 {@code Velocity.getTemplate} 复用，不再各自 init。初始化失败即抛中断启动
+ * （{@code GenTableServiceImpl}）直接 {@code Velocity.getTemplate} 复用，不再各自
+ * init。初始化失败即抛中断启动
  * （生成器为核心功能，不可降级）。
  * </p>
  *
  * <p>
  * 选型说明：本仓沿用 Velocity 全局单例而非 {@code VelocityEngine} 实例 bean——全仓仅此一处
- * {@code Velocity.init}、无第二调用者；启动期由 Spring 单线程串行初始化，{@code @PostConstruct} 完成先于容器就绪，
+ * {@code Velocity.init}、无第二调用者；启动期由 Spring 单线程串行初始化，{@code @PostConstruct}
+ * 完成先于容器就绪，
  * 后续请求对其可见，故不存在并发初始化竞态，无需幂等守卫。若未来引入 {@code VelocityEngine} 实例或多处 init，
  * 应改为实例 bean 注入以获得隔离、可测试与天然线程安全。
  * </p>
@@ -49,7 +51,8 @@ public class VelocityInitializer {
         Properties p = new Properties();
         try {
             // Velocity 2.x 显式配置：仅启用名为 class 的 classpath 资源加载器
-            // （2.x 正确 key 形式是复数 resource.loaders 列表 + resource.loader.<name>.class，勿用 1.7 的 resource.loader/<name>.resource.loader.class）
+            // （2.x 正确 key 形式是复数 resource.loaders 列表 + resource.loader.<name>.class，勿用 1.7 的
+            // resource.loader/<name>.resource.loader.class）
             p.setProperty("resource.loaders", "class");
             p.setProperty("resource.loader.class.class",
                     "org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader");

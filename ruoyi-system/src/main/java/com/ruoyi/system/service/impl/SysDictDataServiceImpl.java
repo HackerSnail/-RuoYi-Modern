@@ -112,7 +112,8 @@ public class SysDictDataServiceImpl implements ISysDictDataService {
     public int insertDictData(SysDictData data) {
         // 存在性校验：向不存在的字典类型下写数据会产生孤儿字典项
         assertDictTypeExists(data.getDictType());
-        // 唯一性纵深：Controller 已前置校验，此处收口，防止其它调用方绕过；DB (dict_type,dict_value) UNIQUE 兜底 TOCTOU
+        // 唯一性纵深：Controller 已前置校验，此处收口，防止其它调用方绕过；DB (dict_type,dict_value) UNIQUE 兜底
+        // TOCTOU
         if (!checkDictValueUnique(data)) {
             throw new ServiceException(
                     "新增字典数据'" + data.getDictLabel() + "'失败，同类型下键值已存在：" + data.getDictValue());

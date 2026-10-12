@@ -39,7 +39,8 @@ public class DistributedLockService {
         RLock lock = redissonClient.getLock(key);
         boolean acquired = false;
         try {
-            // leaseTime<0 走不指定租期的二参 tryLock，由 Redisson 看门狗自动续期（等价 tryLock(waitTime,-1,unit)）
+            // leaseTime<0 走不指定租期的二参 tryLock，由 Redisson 看门狗自动续期（等价
+            // tryLock(waitTime,-1,unit)）
             acquired = leaseTime < 0 ? lock.tryLock(waitTime, unit) : lock.tryLock(waitTime, leaseTime, unit);
             if (!acquired) {
                 log.warn("获取分布式锁失败, key={}, waitTime={} {}", key, waitTime, unit);

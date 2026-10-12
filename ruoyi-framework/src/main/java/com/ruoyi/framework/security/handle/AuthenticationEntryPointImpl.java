@@ -34,7 +34,8 @@ public class AuthenticationEntryPointImpl implements AuthenticationEntryPoint, S
         int code = HttpStatus.UNAUTHORIZED;
         String msg = StringUtils.format("请求访问：{}，认证失败，无法访问系统资源", request.getRequestURI());
         String body = JSON.toJSONString(AjaxResult.error(code, msg));
-        // 不经 renderString（其内部强制 setStatus(200) 会把 401 覆写），直接写传输层 401 + application/json;charset=UTF-8
+        // 不经 renderString（其内部强制 setStatus(200) 会把 401 覆写），直接写传输层 401 +
+        // application/json;charset=UTF-8
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());

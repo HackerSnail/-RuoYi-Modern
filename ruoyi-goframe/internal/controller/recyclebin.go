@@ -33,7 +33,7 @@ func rbResolveType(r *ghttp.Request) (service.RecycleBinType, *model.LoginUser, 
 	typeStr := r.GetRouter("type").String()
 	t, ok := service.ParseRecycleBinType(typeStr)
 	if !ok {
-		api.Send(r, api.Err("非法的回收站类型：" + typeStr))
+		api.Send(r, api.Err("非法的回收站类型："+typeStr))
 		return service.RecycleBinType{}, nil, false
 	}
 	return t, lu, true

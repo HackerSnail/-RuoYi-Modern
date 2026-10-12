@@ -239,7 +239,8 @@ public class VelocityUtils {
         String mybatisPath = MYBATIS_PATH + "/" + moduleName;
         String vuePath = "vue";
 
-        // domain 与 sub-domain 显式互斥：sub-domain 先判，避免 "sub-domain.java.vm" 含 "domain.java.vm" 子串造成的顺序耦合覆盖
+        // domain 与 sub-domain 显式互斥：sub-domain 先判，避免 "sub-domain.java.vm" 含
+        // "domain.java.vm" 子串造成的顺序耦合覆盖
         if (template.contains("sub-domain.java.vm")
                 && StringUtils.equals(GenConstants.TPL_SUB, genTable.getTplCategory())) {
             GenTable subTable = genTable.getSubTable();

@@ -37,11 +37,13 @@ public class JwtAuthenticationTokenFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         // token 非法(格式/签名)或缓存读取异常已由 TokenService.getLoginUser 内部 try-catch 吞掉并返回 null，
         // 且本仓 JWT 未设 exp、会话有效期由 Redis key TTL 决定(过期即 key 不存在→返 null)，故此处无需再包异常：
-        // loginUser==null 即跳过、直接放行，交后续 @PreAuthorize / AuthenticationEntryPoint 统一返回 401
+        // loginUser==null 即跳过、直接放行，交后续 @PreAuthorize / AuthenticationEntryPoint 统一返回
+        // 401
         LoginUser loginUser = tokenService.getLoginUser(request);
         if (StringUtils.isNotNull(loginUser) && StringUtils.isNull(SecurityUtils.getAuthentication())) {
             tokenService.verifyToken(loginUser);
-            UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(loginUser, null, loginUser.getAuthorities());
+            UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(loginUser,
+                    null, loginUser.getAuthorities());
             authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authenticationToken);
         }

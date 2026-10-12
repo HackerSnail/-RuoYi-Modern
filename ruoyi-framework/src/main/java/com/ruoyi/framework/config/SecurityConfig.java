@@ -103,9 +103,11 @@ public class SecurityConfig {
                 // CSRF禁用，因为不使用session
                 .csrf(csrf -> csrf.disable())
                 // 安全响应头：defaultsDisabled() 关闭全部默认安全头，再仅显式开启 frame-options(sameOrigin)。
-                // 备注：Spring Security 6.1 起全面转向 Customizer lambda DSL，旧的无参链式访问器（如 headers()/cacheControl()
+                // 备注：Spring Security 6.1 起全面转向 Customizer lambda DSL，旧的无参链式访问器（如
+                // headers()/cacheControl()
                 // 直接返回 configurer 的写法）被标 deprecated-for-removal、至 7.x 已移除；本类已用 lambda 形式，
-                // CacheControlConfig#disable() 本身则未废弃。此处未重新启用 cacheControl，使 cache-control 维持原有“不输出”
+                // CacheControlConfig#disable() 本身则未废弃。此处未重新启用 cacheControl，使 cache-control
+                // 维持原有“不输出”
                 // 语义（defaultsDisabled() 默认即不含 cache-control）；副作用：defaultsDisabled() 一并关掉了
                 // X-Content-Type-Options/HSTS/Referrer-Policy 等默认头。
                 .headers(headers -> headers

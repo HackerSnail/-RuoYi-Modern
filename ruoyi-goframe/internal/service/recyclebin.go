@@ -72,7 +72,9 @@ type rbBizError struct{ msg string }
 
 func (e *rbBizError) Error() string { return e.msg }
 
-func rbBizf(format string, a ...interface{}) error { return &rbBizError{msg: fmt.Sprintf(format, a...)} }
+func rbBizf(format string, a ...interface{}) error {
+	return &rbBizError{msg: fmt.Sprintf(format, a...)}
+}
 
 // ============================ 结果累加 ============================
 

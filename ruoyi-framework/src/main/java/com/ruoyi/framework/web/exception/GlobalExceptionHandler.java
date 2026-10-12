@@ -54,7 +54,8 @@ public class GlobalExceptionHandler {
     /**
      * 请求方式不支持
      * <p>
-     * 用 {@code BAD_METHOD(405)} 作业务码，经 HttpStatusResponseAdvice 透传为真实 HTTP 405（语义比默认 500→400 更精确）。
+     * 用 {@code BAD_METHOD(405)} 作业务码，经 HttpStatusResponseAdvice 透传为真实 HTTP
+     * 405（语义比默认 500→400 更精确）。
      */
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public AjaxResult handleHttpRequestMethodNotSupported(HttpRequestMethodNotSupportedException e,
@@ -80,10 +81,12 @@ public class GlobalExceptionHandler {
      * 用户/文件等基础异常（{@link BaseException} 及其子类：登录鉴权失败、验证码失效、上传超限等）
      * <p>
      * {@link BaseException#getMessage()} 已把 i18n code 解析为面向用户的明确文案，属预期内业务失败，
-     * 应与 {@link ServiceException} 同档处理：warn 记录、返回普通 {@code AjaxResult}（默认 code=500），
+     * 应与 {@link ServiceException} 同档处理：warn 记录、返回普通 {@code AjaxResult}（默认
+     * code=500），
      * 经 {@code HttpStatusResponseAdvice} 映射为真实 HTTP 400。否则这类异常会落到兜底
      * {@link #handleRuntimeException} 被伪装成 HTTP 500 “系统繁忙”，前端既拿不到文案、状态码语义也错。
-     * {@code BaseException} 比 {@code RuntimeException} 更 specific，Spring 按最具体匹配稳选本方法，
+     * {@code BaseException} 比 {@code RuntimeException} 更 specific，Spring
+     * 按最具体匹配稳选本方法，
      * 不影响既有 {@code ServiceException} 等分支。
      */
     @ExceptionHandler(BaseException.class)
@@ -157,7 +160,8 @@ public class GlobalExceptionHandler {
     /**
      * 系统异常
      * <p>
-     * 同 {@link #handleRuntimeException}：真·系统故障显式返回 HTTP 500，与业务失败的 code=500→HTTP 400 区分开。
+     * 同 {@link #handleRuntimeException}：真·系统故障显式返回 HTTP 500，与业务失败的 code=500→HTTP
+     * 400 区分开。
      *
      * @see HttpStatusResponseAdvice
      */
@@ -214,7 +218,8 @@ public class GlobalExceptionHandler {
      * <p>
      * ConstraintViolationException 继承 RuntimeException，若不单独拦截会落到兜底
      * handleRuntimeException 返回笼统的“系统繁忙，请稍后再试”，前端拿不到字段级错误；
-     * 此处与 BindException/MethodArgumentNotValidException 对称，返回全部违规的字段级明细（propertyPath + message），而非仅首条。
+     * 此处与 BindException/MethodArgumentNotValidException
+     * 对称，返回全部违规的字段级明细（propertyPath + message），而非仅首条。
      */
     @ExceptionHandler(ConstraintViolationException.class)
     public AjaxResult handleConstraintViolationException(ConstraintViolationException e, HttpServletRequest request) {

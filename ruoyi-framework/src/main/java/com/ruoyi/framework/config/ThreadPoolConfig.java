@@ -58,7 +58,8 @@ public class ThreadPoolConfig {
         // 线程池对拒绝任务(无线程可用)的处理策略
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         // 优雅停机：容器关闭时等待在途任务完成，最长等待 30 秒（后续按最长任务耗时再调）。
-        // 不调 initialize()——ThreadPoolTaskExecutor 实现 InitializingBean，Spring 创建 bean 时会自动
+        // 不调 initialize()——ThreadPoolTaskExecutor 实现 InitializingBean，Spring 创建 bean
+        // 时会自动
         // 走 afterPropertiesSet()→initialize()；此处若再显式调用会造成线程池二次初始化(遗留孤儿线程)。
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(30);

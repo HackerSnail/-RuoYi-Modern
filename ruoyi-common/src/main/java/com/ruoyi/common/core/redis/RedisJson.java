@@ -35,7 +35,8 @@ public final class RedisJson {
     }
 
     /**
-     * 将通用结构按 {@code TypeReference}（可表达泛型，如 {@code new TypeReference<List<SysDictData>>(){}}）转换。
+     * 将通用结构按 {@code TypeReference}（可表达泛型，如
+     * {@code new TypeReference<List<SysDictData>>(){}}）转换。
      *
      * @param raw  反序列化得到的通用结构，可为 null
      * @param type 目标泛型类型

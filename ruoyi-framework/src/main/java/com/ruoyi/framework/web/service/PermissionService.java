@@ -144,7 +144,7 @@ public class PermissionService {
      * 判断是否包含权限
      * 
      * @param permissions 权限列表
-     * @param permission 权限字符串
+     * @param permission  权限字符串
      * @return 用户是否具备某权限
      */
     private boolean hasPermissions(Set<String> permissions, String permission) {

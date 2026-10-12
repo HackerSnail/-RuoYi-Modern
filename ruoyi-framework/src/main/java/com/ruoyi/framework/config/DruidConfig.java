@@ -47,7 +47,8 @@ public class DruidConfig {
 
     /**
      * 动态数据源：@Primary 作为全局默认数据源，以 master 为默认目标，聚合主/从供 DynamicDataSource 按上下文切换。
-     * 从库用 @Qualifier + ObjectProvider 按 bean 名注入：slave.enabled=false 时该 bean 不存在，getIfAvailable() 返回 null，
+     * 从库用 @Qualifier + ObjectProvider 按 bean 名注入：slave.enabled=false 时该 bean
+     * 不存在，getIfAvailable() 返回 null，
      * 等价于原先 SpringUtils.getBean + catch NoSuchBeanDefinitionException 的“从库可选”语义；
      * 若从库已启用却创建失败，则容器启动即失败（fail-fast），不再静默降级为无从库。
      */
@@ -63,7 +64,8 @@ public class DruidConfig {
         }
         // DynamicDataSource 保持为纯路由壳：默认库与目标映射在此显式装配；
         // 它作为 @Bean 返回且继承 AbstractRoutingDataSource(实现 InitializingBean)，
-        // Spring 会在工厂方法返回后自动回调 afterPropertiesSet() 完成 targetDataSources → resolvedDataSources 解析，
+        // Spring 会在工厂方法返回后自动回调 afterPropertiesSet() 完成 targetDataSources →
+        // resolvedDataSources 解析，
         // 无需在此手动调用。
         DynamicDataSource dynamicDataSource = new DynamicDataSource();
         dynamicDataSource.setDefaultTargetDataSource(masterDataSource);

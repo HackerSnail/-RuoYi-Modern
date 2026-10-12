@@ -53,7 +53,8 @@ public class JobInvokeUtilTest {
     void rejectsSiblingPackageBoundaryFqn() {
         SysJob job = new SysJob();
         job.setInvokeTarget("com.ruoyi.quartz.taskevil.Foo.bar()");
-        // beanName=com.ruoyi.quartz.taskevil.Foo 不以 "com.ruoyi.quartz.task." 开头 → guard 拒，先于 Class.forName
+        // beanName=com.ruoyi.quartz.taskevil.Foo 不以 "com.ruoyi.quartz.task." 开头 → guard
+        // 拒，先于 Class.forName
         assertThrows(IllegalArgumentException.class, () -> JobInvokeUtil.invokeMethod(job));
     }
 }

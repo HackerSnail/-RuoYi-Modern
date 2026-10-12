@@ -1,11 +1,11 @@
 // Package service —— 代码生成列 mapper，逐条对齐 GenTableColumnMapper.xml 的语义。
 //
 // 判空口径说明（null≈空串约定，与 batch 15 同款）：Go string 无法区分 Java 的 null 与 ""。
-//   - insert/batchInsert：XML 各字段判 `!= null and != ''`（batchInsert 用固定列、未设为 NULL，注释已言
-//     下游用 isNotEmpty 判定 NULL≈'' 等价），故本仓以「空串跳过 insert 列 / batchInsert 写空串」近似，行为等价。
+//   - insert/batchInsert：XML 各字段判 `!= null and != ”`（batchInsert 用固定列、未设为 NULL，注释已言
+//     下游用 isNotEmpty 判定 NULL≈” 等价），故本仓以「空串跳过 insert 列 / batchInsert 写空串」近似，行为等价。
 //   - updateGenTableColumn：XML 判 `!= null` 以保留 '0'；本仓对 is_* 用「非空即写」——因这些值来自
 //     information_schema CASE 恒为 '0'/'1'（非空）或 initColumnField 置 '1'，唯二 null 场景（未设置）
-//     在 Go 为空串→跳过，与 Java 一致；仅 columnComment 空注释 Java 会写 ''、本仓跳过（唯一细微差异，
+//     在 Go 为空串→跳过，与 Java 一致；仅 columnComment 空注释 Java 会写 ”、本仓跳过（唯一细微差异，
 //     影响可忽略：下次同步会带回真实注释）。
 package service
 

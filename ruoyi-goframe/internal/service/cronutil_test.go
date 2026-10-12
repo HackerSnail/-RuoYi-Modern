@@ -14,7 +14,7 @@ func TestCronIsValid(t *testing.T) {
 		"0 0 9 * * MON-FRI", // 工作日 09:00（周英文名）
 		"* * * * * ?",       // 每秒（week 段 ?）
 		"0 15 10 ? * MON-FRI",
-		"0 0 12 1,15 * ?",  // 逗号枚举
+		"0 0 12 1,15 * ?",   // 逗号枚举
 		"0 0 8 * JAN-JUN ?", // 月英文名区间
 	}
 	for _, p := range valid {

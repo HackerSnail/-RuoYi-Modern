@@ -291,13 +291,13 @@ func SelectUserById(ctx context.Context, userId int64) *model.SysUser {
 	u.Admin = u.UserId == 1
 	if u.DeptId != 0 || gconv.String(m["dept_name"]) != "" {
 		u.Dept = &model.SysDept{
-			DeptId:   gconv.Int64(m["dept_id"]),
-			ParentId: gconv.Int64(m["parent_id"]),
+			DeptId:    gconv.Int64(m["dept_id"]),
+			ParentId:  gconv.Int64(m["parent_id"]),
 			Ancestors: gconv.String(m["ancestors"]),
-			DeptName: gconv.String(m["dept_name"]),
-			OrderNum: gconv.Int(m["order_num"]),
-			Leader:   gconv.String(m["leader"]),
-			Status:   gconv.String(m["dept_status"]),
+			DeptName:  gconv.String(m["dept_name"]),
+			OrderNum:  gconv.Int(m["order_num"]),
+			Leader:    gconv.String(m["leader"]),
+			Status:    gconv.String(m["dept_status"]),
 		}
 	}
 	// 折叠角色集合（按 role_id 去重；role_id 为空则跳过）
@@ -709,8 +709,9 @@ func SelectUserPostGroup(ctx context.Context, userName string) string {
 
 // UpdateUserProfile 复刻 updateUser 动态列 mapper 的可观测语义子集：仅落 profile 明确可改的四列 + update_time。
 // 指针 nil 表示请求未含该键（对齐 Java setXxx(null) → mapper `<if xxx != null>` 跳过该列）：
-//   - nick_name/sex：非 nil 且非空串才写（Java 条件 `!= null and != ''`，故无法清空）；
+//   - nick_name/sex：非 nil 且非空串才写（Java 条件 `!= null and != ”`，故无法清空）；
 //   - email/phonenumber：非 nil 即写（Java 条件仅 `!= null`，故可提交空串清空）。
+//
 // 注：Java 会把缓存快照其余非空列（dept_id/avatar/status…）一并回写，但那对同值 DB 是无操作，
 // 且有「用陈旧缓存覆盖管理员后续编辑」隐患，故此处刻意省略——最终库状态一致（update_time 恒变，affected≥1）。
 func UpdateUserProfile(ctx context.Context, userId int64, nickName, email, phonenumber, sex *string) int {

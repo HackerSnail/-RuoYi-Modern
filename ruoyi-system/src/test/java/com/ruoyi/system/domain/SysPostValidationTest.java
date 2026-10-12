@@ -21,7 +21,8 @@ import jakarta.validation.ValidatorFactory;
  * <p>
  * 覆盖本轮新增约束：postCode 字符集白名单、status 枚举 0/1、postSort 非负；并验证 @Size(min=0) 去除无副作用。
  * 合法值放行、非法值拒绝、@Pattern 对 null 放行（status 兼容不传）。按属性路径过滤断言，隔离到单个字段。
- * add/edit 走 @Validated 会触发本约束；GET 列表查询参数不走 @Validated，故不影响以 postCode/status 作筛选条件。
+ * add/edit 走 @Validated 会触发本约束；GET 列表查询参数不走 @Validated，故不影响以 postCode/status
+ * 作筛选条件。
  * </p>
  */
 public class SysPostValidationTest {

@@ -39,7 +39,8 @@ public abstract class AbstractQuartzJob implements Job {
         SysJob sysJob = new SysJob();
         try {
             // 从合并后的 JobDataMap 还原出调度时的任务快照（创建 trigger 时放入的 TASK_PROPERTIES）
-            // 注意 Spring BeanUtils 参数顺序为 (source, target)，与已移除的自定义 copyBeanProp(dest, src) 相反
+            // 注意 Spring BeanUtils 参数顺序为 (source, target)，与已移除的自定义 copyBeanProp(dest, src)
+            // 相反
             BeanUtils.copyProperties(context.getMergedJobDataMap().get(ScheduleConstants.TASK_PROPERTIES), sysJob);
             before(context, sysJob);
             // 交由子类实现真正的反射调用逻辑（sysJob 于本方法开头 new，恒非 null，无需判空）
@@ -60,7 +61,7 @@ public abstract class AbstractQuartzJob implements Job {
      * 执行前
      *
      * @param context 工作执行上下文对象
-     * @param sysJob 系统计划任务
+     * @param sysJob  系统计划任务
      */
     protected void before(JobExecutionContext context, SysJob sysJob) {
         // 记录开始时间戳，供 after 计算耗时；用 ThreadLocal 隔离并发调度的执行线程
@@ -74,7 +75,7 @@ public abstract class AbstractQuartzJob implements Job {
      * 或落库出错，异常会从 execute 的 catch 块向外传播，既干扰 Quartz 工作线程、又会触发二次落库尝试。
      *
      * @param context 工作执行上下文对象
-     * @param sysJob 系统计划任务
+     * @param sysJob  系统计划任务
      */
     protected void after(JobExecutionContext context, SysJob sysJob, Exception e) {
         // 落库全程兜底，失败只记日志不外抛（清理已移交 execute 的 finally）
@@ -85,7 +86,8 @@ public abstract class AbstractQuartzJob implements Job {
             sysJobLog.setJobGroup(sysJob.getJobGroup());
             sysJobLog.setInvokeTarget(sysJob.getInvokeTarget());
             // 若异常发生在 before() 之前（如任务快照 TASK_PROPERTIES 缺失致 copyProperties 抛错），
-            // threadLocal 尚未 set → startTime 为 null；兜底取 endTime，避免 Duration.between(null,..) NPE
+            // threadLocal 尚未 set → startTime 为 null；兜底取 endTime，避免
+            // Duration.between(null,..) NPE
             LocalDateTime endTime = LocalDateTime.now();
             sysJobLog.setStartTime(startTime != null ? startTime : endTime);
             sysJobLog.setEndTime(endTime);
@@ -111,7 +113,7 @@ public abstract class AbstractQuartzJob implements Job {
      * 执行方法，由子类重载
      *
      * @param context 工作执行上下文对象
-     * @param sysJob 系统计划任务
+     * @param sysJob  系统计划任务
      * @throws Exception 执行过程中的异常
      */
     protected abstract void doExecute(JobExecutionContext context, SysJob sysJob) throws Exception;

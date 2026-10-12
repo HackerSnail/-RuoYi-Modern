@@ -23,9 +23,10 @@ import com.ruoyi.system.service.ISysOperLogService;
  * <p>
  * invokeTarget 写法：
  * <ul>
- *   <li>{@code operLogCleanTask.clean()} —— 保留天数取 ruoyi.operLogRetentionDays；</li>
- *   <li>{@code operLogCleanTask.clean('90')} —— 引号内为保留天数（字符串参数）；</li>
- *   <li>{@code operLogCleanTask.clean(90)} —— 不带引号时按整型解析，同样支持。</li>
+ * <li>{@code operLogCleanTask.clean()} —— 保留天数取
+ * ruoyi.operLogRetentionDays；</li>
+ * <li>{@code operLogCleanTask.clean('90')} —— 引号内为保留天数（字符串参数）；</li>
+ * <li>{@code operLogCleanTask.clean(90)} —— 不带引号时按整型解析，同样支持。</li>
  * </ul>
  *
  * @author HackerSnail <2306002088@qq.com>

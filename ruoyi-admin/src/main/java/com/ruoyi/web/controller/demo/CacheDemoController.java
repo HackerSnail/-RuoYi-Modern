@@ -71,7 +71,10 @@ public class CacheDemoController {
         return AjaxResult.success(data);
     }
 
-    /** 分布式锁演示（阻塞式互斥）：同一 taskId 并发调用，先到者持锁执行、后到者在 waitTime(3秒)内排队串行成功后依次返回；等待超时才返回"获取资源锁失败" */
+    /**
+     * 分布式锁演示（阻塞式互斥）：同一 taskId 并发调用，先到者持锁执行、后到者在
+     * waitTime(3秒)内排队串行成功后依次返回；等待超时才返回"获取资源锁失败"
+     */
     @GetMapping("/lock")
     public AjaxResult lock(@RequestParam String taskId) {
         return AjaxResult.success(cacheDemoService.doWithLock(taskId));

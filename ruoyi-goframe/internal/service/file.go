@@ -35,11 +35,11 @@ const resourcePrefix = "/profile"
 
 // 上传限制，对应 FileUploadUtils.DEFAULT_MAX_SIZE / DEFAULT_FILE_NAME_LENGTH / MAGIC_HEADER_LENGTH。
 const (
-	defaultMaxSize         = 50 * 1024 * 1024 // 50MB
-	defaultFileNameLength  = 100
-	defaultMaxSizeMB       = 50
-	magicHeaderLength      = 12
-	resourceMachineCode    = "A" // Seq.machineCode
+	defaultMaxSize        = 50 * 1024 * 1024 // 50MB
+	defaultFileNameLength = 100
+	defaultMaxSizeMB      = 50
+	magicHeaderLength     = 12
+	resourceMachineCode   = "A" // Seq.machineCode
 )
 
 // 后缀白名单集合，对应 MimeTypeUtils 各分组常量。

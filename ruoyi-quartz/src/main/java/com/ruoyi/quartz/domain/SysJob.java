@@ -145,19 +145,19 @@ public class SysJob extends BaseEntity {
 
     @Override
     public String toString() {
-        return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
-            .append("jobId", getJobId())
-            .append("jobName", getJobName())
-            .append("jobGroup", getJobGroup())
-            .append("cronExpression", getCronExpression())
-            .append("misfirePolicy", getMisfirePolicy())
-            .append("concurrent", getConcurrent())
-            .append("status", getStatus())
-            .append("createBy", getCreateBy())
-            .append("createTime", getCreateTime())
-            .append("updateBy", getUpdateBy())
-            .append("updateTime", getUpdateTime())
-            .append("remark", getRemark())
-            .toString();
+        return new ToStringBuilder(this, ToStringStyle.MULTI_LINE_STYLE)
+                .append("jobId", getJobId())
+                .append("jobName", getJobName())
+                .append("jobGroup", getJobGroup())
+                .append("cronExpression", getCronExpression())
+                .append("misfirePolicy", getMisfirePolicy())
+                .append("concurrent", getConcurrent())
+                .append("status", getStatus())
+                .append("createBy", getCreateBy())
+                .append("createTime", getCreateTime())
+                .append("updateBy", getUpdateBy())
+                .append("updateTime", getUpdateTime())
+                .append("remark", getRemark())
+                .toString();
     }
 }

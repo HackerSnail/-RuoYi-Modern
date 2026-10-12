@@ -7,29 +7,29 @@ import "github.com/gogf/gf/v2/os/gtime"
 // SysUser 对应 com.ruoyi.common.core.domain.entity.SysUser 的 getInfo 出参子集。
 // Password 刻意不序列化（Java 侧虽含字段但前端不用；不外泄哈希更安全）。
 type SysUser struct {
-	UserId      int64        `json:"userId"      orm:"user_id"`
-	DeptId      int64        `json:"deptId"      orm:"dept_id"`
-	UserName    string       `json:"userName"    orm:"user_name"`
-	NickName    string       `json:"nickName"    orm:"nick_name"`
-	Email       string       `json:"email"`
-	Phonenumber string       `json:"phonenumber"`
-	Sex         string       `json:"sex"`
-	Avatar      string       `json:"avatar"`
-	Status      string       `json:"status"`
-	DelFlag     string       `json:"delFlag"     orm:"del_flag"`
-	LoginIp     string       `json:"loginIp"     orm:"login_ip"`
-	LoginDate   *gtime.Time  `json:"loginDate"   orm:"login_date"`
-	CreateTime  *gtime.Time  `json:"createTime"  orm:"create_time"`
-	CreateBy    string       `json:"createBy"    orm:"create_by"`
-	UpdateTime  *gtime.Time  `json:"updateTime"  orm:"update_time"`
-	UpdateBy    string       `json:"updateBy"    orm:"update_by"`
-	Remark      string       `json:"remark"`
+	UserId        int64       `json:"userId"      orm:"user_id"`
+	DeptId        int64       `json:"deptId"      orm:"dept_id"`
+	UserName      string      `json:"userName"    orm:"user_name"`
+	NickName      string      `json:"nickName"    orm:"nick_name"`
+	Email         string      `json:"email"`
+	Phonenumber   string      `json:"phonenumber"`
+	Sex           string      `json:"sex"`
+	Avatar        string      `json:"avatar"`
+	Status        string      `json:"status"`
+	DelFlag       string      `json:"delFlag"     orm:"del_flag"`
+	LoginIp       string      `json:"loginIp"     orm:"login_ip"`
+	LoginDate     *gtime.Time `json:"loginDate"   orm:"login_date"`
+	CreateTime    *gtime.Time `json:"createTime"  orm:"create_time"`
+	CreateBy      string      `json:"createBy"    orm:"create_by"`
+	UpdateTime    *gtime.Time `json:"updateTime"  orm:"update_time"`
+	UpdateBy      string      `json:"updateBy"    orm:"update_by"`
+	Remark        string      `json:"remark"`
 	PwdUpdateDate *gtime.Time `json:"pwdUpdateDate" orm:"pwd_update_date"`
-	Dept        *SysDept     `json:"dept"`
-	Roles       []*SysRole   `json:"roles"`
-	RoleIds     []int64      `json:"roleIds"`
-	PostIds     []int64      `json:"postIds"`
-	RoleId      int64        `json:"roleId"`
+	Dept          *SysDept    `json:"dept"`
+	Roles         []*SysRole  `json:"roles"`
+	RoleIds       []int64     `json:"roleIds"`
+	PostIds       []int64     `json:"postIds"`
+	RoleId        int64       `json:"roleId"`
 	// Admin 派生自 isAdmin()（userId==1），非 DB 列，scan 时回填。
 	Admin bool `json:"admin"`
 	// Password 不参与 JSON：入参由控制器经 r.Get("password") 单独读取；出参恒不外泄。
@@ -109,39 +109,39 @@ type SysDictData struct {
 // selectNoticeVo 取全列（含 update_by/update_time/remark，notice_content 经 cast(... as char) 转字符串）。
 // IsRead 派生自 getIsRead()：@JsonProperty("isRead") 恒序列化（CRUD 查询不取该列 → 默认 false），非 DB 列。
 type SysNotice struct {
-	NoticeId     int64       `json:"noticeId"     orm:"notice_id"`
-	NoticeTitle  string      `json:"noticeTitle"  orm:"notice_title"`
-	NoticeType   string      `json:"noticeType"   orm:"notice_type"`
-	NoticeContent string     `json:"noticeContent" orm:"notice_content"`
-	Status       string      `json:"status"`
-	CreateBy     string      `json:"createBy"   orm:"create_by"`
-	CreateTime   *gtime.Time `json:"createTime" orm:"create_time"`
-	UpdateBy     string      `json:"updateBy"   orm:"update_by"`
-	UpdateTime   *gtime.Time `json:"updateTime" orm:"update_time"`
-	Remark       string      `json:"remark"`
-	IsRead       bool        `json:"isRead"`
+	NoticeId      int64       `json:"noticeId"     orm:"notice_id"`
+	NoticeTitle   string      `json:"noticeTitle"  orm:"notice_title"`
+	NoticeType    string      `json:"noticeType"   orm:"notice_type"`
+	NoticeContent string      `json:"noticeContent" orm:"notice_content"`
+	Status        string      `json:"status"`
+	CreateBy      string      `json:"createBy"   orm:"create_by"`
+	CreateTime    *gtime.Time `json:"createTime" orm:"create_time"`
+	UpdateBy      string      `json:"updateBy"   orm:"update_by"`
+	UpdateTime    *gtime.Time `json:"updateTime" orm:"update_time"`
+	Remark        string      `json:"remark"`
+	IsRead        bool        `json:"isRead"`
 }
 
 // SysDept 部门：既用于 getInfo 里 user.dept 子对象，也用于 /system/dept 全量出参。
 // 字段对齐 com.ruoyi.common.core.domain.entity.SysDept + BaseEntity（Jackson 默认输出全部字段，含 null）。
 type SysDept struct {
-	DeptId     int64        `json:"deptId"     orm:"dept_id"`
-	ParentId   int64        `json:"parentId"   orm:"parent_id"`
-	Ancestors  string       `json:"ancestors"`
-	DeptName   string       `json:"deptName"   orm:"dept_name"`
-	OrderNum   int          `json:"orderNum"   orm:"order_num"`
-	Leader     string       `json:"leader"`
-	Phone      string       `json:"phone"`
-	Email      string       `json:"email"`
-	Status     string       `json:"status"`
-	DelFlag    string       `json:"delFlag"    orm:"del_flag"`
-	ParentName string       `json:"parentName" orm:"parent_name"`
-	CreateBy   string       `json:"createBy"   orm:"create_by"`
-	CreateTime *gtime.Time  `json:"createTime" orm:"create_time"`
-	UpdateBy   string       `json:"updateBy"   orm:"update_by"`
-	UpdateTime *gtime.Time  `json:"updateTime" orm:"update_time"`
-	Remark     string       `json:"remark"`
-	Children   []*SysDept   `json:"children"`
+	DeptId     int64       `json:"deptId"     orm:"dept_id"`
+	ParentId   int64       `json:"parentId"   orm:"parent_id"`
+	Ancestors  string      `json:"ancestors"`
+	DeptName   string      `json:"deptName"   orm:"dept_name"`
+	OrderNum   int         `json:"orderNum"   orm:"order_num"`
+	Leader     string      `json:"leader"`
+	Phone      string      `json:"phone"`
+	Email      string      `json:"email"`
+	Status     string      `json:"status"`
+	DelFlag    string      `json:"delFlag"    orm:"del_flag"`
+	ParentName string      `json:"parentName" orm:"parent_name"`
+	CreateBy   string      `json:"createBy"   orm:"create_by"`
+	CreateTime *gtime.Time `json:"createTime" orm:"create_time"`
+	UpdateBy   string      `json:"updateBy"   orm:"update_by"`
+	UpdateTime *gtime.Time `json:"updateTime" orm:"update_time"`
+	Remark     string      `json:"remark"`
+	Children   []*SysDept  `json:"children"`
 }
 
 // SysRole 角色：既用于 /system/role 全量出参（对齐 SysRole + BaseEntity 的 Jackson 输出），
@@ -176,36 +176,36 @@ type SysRole struct {
 // SysMenu 对应 sys_menu + BaseEntity，字段/列名一一对应。children 供树构建填充，
 // 且必须像 Java 那样始终序列化（列表/详情回 []，非省略）。
 type SysMenu struct {
-	MenuId     int64      `json:"menuId"     orm:"menu_id"`
-	MenuName   string     `json:"menuName"   orm:"menu_name"`
-	ParentName string     `json:"parentName" orm:"parent_name"`
-	ParentId   int64      `json:"parentId"   orm:"parent_id"`
-	OrderNum   int        `json:"orderNum"   orm:"order_num"`
-	Path       string     `json:"path"`
-	Component  string     `json:"component"`
-	Query      string     `json:"query"`
-	RouteName  string     `json:"routeName"  orm:"route_name"`
-	IsFrame    string     `json:"isFrame"    orm:"is_frame"`
-	IsCache    string     `json:"isCache"    orm:"is_cache"`
-	MenuType   string     `json:"menuType"   orm:"menu_type"`
-	Visible    string     `json:"visible"`
-	Status     string     `json:"status"`
-	Perms      string     `json:"perms"`
-	Icon       string     `json:"icon"`
-	CreateBy   string     `json:"createBy"   orm:"create_by"`
+	MenuId     int64       `json:"menuId"     orm:"menu_id"`
+	MenuName   string      `json:"menuName"   orm:"menu_name"`
+	ParentName string      `json:"parentName" orm:"parent_name"`
+	ParentId   int64       `json:"parentId"   orm:"parent_id"`
+	OrderNum   int         `json:"orderNum"   orm:"order_num"`
+	Path       string      `json:"path"`
+	Component  string      `json:"component"`
+	Query      string      `json:"query"`
+	RouteName  string      `json:"routeName"  orm:"route_name"`
+	IsFrame    string      `json:"isFrame"    orm:"is_frame"`
+	IsCache    string      `json:"isCache"    orm:"is_cache"`
+	MenuType   string      `json:"menuType"   orm:"menu_type"`
+	Visible    string      `json:"visible"`
+	Status     string      `json:"status"`
+	Perms      string      `json:"perms"`
+	Icon       string      `json:"icon"`
+	CreateBy   string      `json:"createBy"   orm:"create_by"`
 	CreateTime *gtime.Time `json:"createTime" orm:"create_time"`
-	UpdateBy   string     `json:"updateBy"   orm:"update_by"`
+	UpdateBy   string      `json:"updateBy"   orm:"update_by"`
 	UpdateTime *gtime.Time `json:"updateTime" orm:"update_time"`
-	Remark     string     `json:"remark"`
-	Children   []*SysMenu `json:"children"`
+	Remark     string      `json:"remark"`
+	Children   []*SysMenu  `json:"children"`
 }
 
 // TreeSelect 对应 com.ruoyi.common.core.domain.TreeSelect：下拉树节点 {id,label,disabled,children?}。
 // disabled 为原始 boolean，Jackson 始终输出；children @JsonInclude(NON_EMPTY) → 空则省略。
 type TreeSelect struct {
-	Id       int64        `json:"id"`
-	Label    string       `json:"label"`
-	Disabled bool         `json:"disabled"`
+	Id       int64         `json:"id"`
+	Label    string        `json:"label"`
+	Disabled bool          `json:"disabled"`
 	Children []*TreeSelect `json:"children,omitempty"`
 }
 
@@ -220,18 +220,18 @@ type LoginBody struct {
 // LoginUser 缓存于 Redis login_tokens:{uuid} 的会话对象。Go 自签自发自己校验，形状只需自洽；
 // 保留 Java 侧常用字段名，便于后续两端观察对齐。
 type LoginUser struct {
-	UserId      int64      `json:"userId"`
-	Username    string     `json:"username"`
-	Token       string     `json:"token"` // 会话 uuid（Redis 键后缀）
-	LoginTime   int64      `json:"loginTime"`
-	ExpireTime  int64      `json:"expireTime"`
-	Ipaddr      string     `json:"ipaddr"`
+	UserId        int64    `json:"userId"`
+	Username      string   `json:"username"`
+	Token         string   `json:"token"` // 会话 uuid（Redis 键后缀）
+	LoginTime     int64    `json:"loginTime"`
+	ExpireTime    int64    `json:"expireTime"`
+	Ipaddr        string   `json:"ipaddr"`
 	LoginLocation string   `json:"loginLocation"`
-	Browser     string     `json:"browser"`
-	Os          string     `json:"os"`
-	Roles       []string   `json:"roles"`
-	Permissions []string   `json:"permissions"`
-	User        *SysUser   `json:"user"`
+	Browser       string   `json:"browser"`
+	Os            string   `json:"os"`
+	Roles         []string `json:"roles"`
+	Permissions   []string `json:"permissions"`
+	User          *SysUser `json:"user"`
 }
 
 // SysUserOnline 在线会话出参：对齐 com.ruoyi.system.domain.SysUserOnline 的 Jackson 输出。
@@ -410,8 +410,8 @@ type RecycleBinOpItem struct {
 // RecycleBinOpResult 回收站批量操作整体结果：批处理"每项独立、部分成功"，整体恒 200，
 // 成败逐项体现在 Items，对齐 RecycleBinOpResult 的 total/successCount/failCount/items。
 type RecycleBinOpResult struct {
-	Total        int                  `json:"total"`
-	SuccessCount int                  `json:"successCount"`
-	FailCount    int                  `json:"failCount"`
-	Items        []RecycleBinOpItem   `json:"items"`
+	Total        int                `json:"total"`
+	SuccessCount int                `json:"successCount"`
+	FailCount    int                `json:"failCount"`
+	Items        []RecycleBinOpItem `json:"items"`
 }

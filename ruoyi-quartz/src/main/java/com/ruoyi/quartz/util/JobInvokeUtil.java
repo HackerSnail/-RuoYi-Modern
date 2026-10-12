@@ -49,8 +49,8 @@ public class JobInvokeUtil {
     /**
      * 调用任务方法
      *
-     * @param bean 目标对象
-     * @param methodName 方法名称
+     * @param bean         目标对象
+     * @param methodName   方法名称
      * @param methodParams 方法参数
      */
     private static void invokeMethod(Object bean, String methodName, List<Object[]> methodParams)
@@ -129,7 +129,8 @@ public class JobInvokeUtil {
             }
             // double浮点类型，以D结尾
             else if (StringUtils.endsWith(str, "D")) {
-                params.add(new Object[] { Double.valueOf(StringUtils.substring(str, 0, str.length() - 1)), Double.class });
+                params.add(
+                        new Object[] { Double.valueOf(StringUtils.substring(str, 0, str.length() - 1)), Double.class });
             }
             // 其他类型归类为整形
             else {

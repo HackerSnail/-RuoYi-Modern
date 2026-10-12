@@ -72,7 +72,8 @@ public class SysJobController extends BaseController {
     /**
      * 新增定时任务
      * <p>
-     * invokeTarget/cron 的多级安全校验（防调度表被用作 RCE 入口）已下沉 {@code SysJobServiceImpl.insertJob}
+     * invokeTarget/cron 的多级安全校验（防调度表被用作 RCE 入口）已下沉
+     * {@code SysJobServiceImpl.insertJob}
      * 收口，覆盖所有入库路径（含非 HTTP 入口），Controller 不再重复校验。此处仅补 createBy（不信任前端）。
      * </p>
      */
@@ -87,7 +88,9 @@ public class SysJobController extends BaseController {
 
     /**
      * 修改定时任务
-     * <p>校验同新增，已下沉 {@code SysJobServiceImpl.updateJob} 收口。此处仅补 updateBy（不信任前端）。</p>
+     * <p>
+     * 校验同新增，已下沉 {@code SysJobServiceImpl.updateJob} 收口。此处仅补 updateBy（不信任前端）。
+     * </p>
      */
     @PreAuthorize("@ss.hasPermi('monitor:job:edit')")
     @Log(title = "定时任务", businessType = BusinessType.UPDATE)
@@ -118,8 +121,10 @@ public class SysJobController extends BaseController {
 
     /**
      * 定时任务立即执行一次
-     * <p>安全说明：Service 侧仅按 jobId 从库重载记录并触发已注册任务，不使用请求体的 invokeTarget，
-     * 故不构成绕过白名单的执行通道；详见 {@code SysJobServiceImpl.run}。</p>
+     * <p>
+     * 安全说明：Service 侧仅按 jobId 从库重载记录并触发已注册任务，不使用请求体的 invokeTarget，
+     * 故不构成绕过白名单的执行通道；详见 {@code SysJobServiceImpl.run}。
+     * </p>
      */
     @PreAuthorize("@ss.hasPermi('monitor:job:changeStatus')")
     @Log(title = "定时任务", businessType = BusinessType.UPDATE)

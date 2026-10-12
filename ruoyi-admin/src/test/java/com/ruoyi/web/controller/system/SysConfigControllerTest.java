@@ -72,8 +72,10 @@ public class SysConfigControllerTest {
         SysConfigController controller = new SysConfigController(svc);
 
         AjaxResult r;
-        // 守卫放行后会执行 setUpdateBy(getUsername()) → BaseController.getLoginUser().getUsername()，
-        // 故须桩 getLoginUser()（mockStatic 下默认返回 null 会 NPE），而非从未被调用的 SecurityUtils.getUsername()。
+        // 守卫放行后会执行 setUpdateBy(getUsername()) →
+        // BaseController.getLoginUser().getUsername()，
+        // 故须桩 getLoginUser()（mockStatic 下默认返回 null 会 NPE），而非从未被调用的
+        // SecurityUtils.getUsername()。
         LoginUser loginUser = mock(LoginUser.class);
         when(loginUser.getUsername()).thenReturn("admin");
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {

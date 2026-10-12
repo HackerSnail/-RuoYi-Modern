@@ -15,8 +15,11 @@ import com.ruoyi.common.core.redis.RedisJson;
  * <p>
  * 读路径：L1 命中直接返回 → 未命中查 L2，命中则回填 L1 → 仍未命中回源 DB，同时写 L2 与 L1。
  * 写/失效路径：同时处理两级缓存，并通过 Redis 发布订阅广播 key 失效，使<b>其它节点</b>丢弃其本地 L1，
- * 解决"每台机器各有独立 L1、改一处不影响他处"的一致性难题；本节点 L1 由 {@link #put} 同步更新、由 {@link #evict} 同步失效。
- * 跨节点广播的订阅端注册见 {@code MultiLevelCacheListenerConfig}（{@link #onInvalidateMessage} 由 {@code CacheInvalidateListener} 回调）。
+ * 解决"每台机器各有独立 L1、改一处不影响他处"的一致性难题；本节点 L1 由 {@link #put} 同步更新、由 {@link #evict}
+ * 同步失效。
+ * 跨节点广播的订阅端注册见
+ * {@code MultiLevelCacheListenerConfig}（{@link #onInvalidateMessage} 由
+ * {@code CacheInvalidateListener} 回调）。
  * </p>
  *
  * @author HackerSnail <2306002088@qq.com>

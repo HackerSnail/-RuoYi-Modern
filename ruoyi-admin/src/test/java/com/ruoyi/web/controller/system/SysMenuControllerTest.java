@@ -25,7 +25,8 @@ import com.ruoyi.system.service.ISysMenuService;
  *
  * <p>
  * 菜单权限字符/可见性变化会经 getMenuPermission 逐角色实时查库反映，且不涉及用户角色成员关系，
- * 故本轮在 edit 成功后调用 tokenService.refreshAllOnlineUserPermission（会话保持、不下线）。add 的新菜单
+ * 故本轮在 edit 成功后调用 tokenService.refreshAllOnlineUserPermission（会话保持、不下线）。add
+ * 的新菜单
  * 尚未绑定角色、remove 又被 checkMenuExistRole 禁止删除已分配菜单，二者均可证明为 no-op，故不接线。
  * edit 会调 getUsername，需桩 SecurityUtils.getLoginUser()。
  * </p>

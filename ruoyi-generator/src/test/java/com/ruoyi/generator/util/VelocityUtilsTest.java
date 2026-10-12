@@ -21,7 +21,8 @@ import com.ruoyi.generator.domain.GenTable;
 
 /**
  * {@link VelocityUtils} 健壮性测试：锁死本轮修复的三类崩溃（options 裸解析 NPE、formColNum 拆箱 NPE、
- * genView 拆箱 NPE）、文件名 domain/sub-domain 解耦，以及 getFileName 的路径穿越白名单。纯静态工具，无需 Spring。
+ * genView 拆箱 NPE）、文件名 domain/sub-domain 解耦，以及 getFileName 的路径穿越白名单。纯静态工具，无需
+ * Spring。
  */
 public class VelocityUtilsTest {
 

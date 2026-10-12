@@ -64,8 +64,10 @@ public class ScheduleUtilsTest {
     @Test
     @DisplayName("下沉校验：空/空白 cron 被拒")
     void blankCronRejected() {
-        assertThrows(ServiceException.class, () -> ScheduleUtils.validateJob(job(null, "com.ruoyi.quartz.task.OperLogCleanTask.clean('90')")));
-        assertThrows(ServiceException.class, () -> ScheduleUtils.validateJob(job("  ", "com.ruoyi.quartz.task.OperLogCleanTask.clean('90')")));
+        assertThrows(ServiceException.class,
+                () -> ScheduleUtils.validateJob(job(null, "com.ruoyi.quartz.task.OperLogCleanTask.clean('90')")));
+        assertThrows(ServiceException.class,
+                () -> ScheduleUtils.validateJob(job("  ", "com.ruoyi.quartz.task.OperLogCleanTask.clean('90')")));
     }
 
     @Test

@@ -182,6 +182,18 @@ func Register(s *ghttp.Server) {
 		g.DELETE("/monitor/cache/clearCacheAll", middleware.Permi("monitor:cache:list", controller.ClearCacheAll))
 		// 服务器监控 /monitor/server（对齐 ServerController.getInfo：单接口 GET，权限 monitor:server:list；返回后台预采集最近快照）
 		g.GET("/monitor/server", middleware.Permi("monitor:server:list", controller.ServerGetInfo))
+		// 代码生成 /tool/gen（16-A：元数据 CRUD 全链路，对齐 GenController；权限/[@Log] 逐字收口）。
+		// 静态段 list/db/column/importTable/createTable/synchDb 先于动态 {tableId} 注册（GF 字面量优先于通配）。
+		// preview/download/genCode/batchGenCode 依赖 Velocity 引擎，随 16-B/C 落地。
+		g.GET("/tool/gen/list", middleware.Permi("tool:gen:list", controller.GenList))
+		g.GET("/tool/gen/db/list", middleware.Permi("tool:gen:list", controller.GenDataList))
+		g.GET("/tool/gen/column/{tableId}", middleware.Permi("tool:gen:list", controller.GenColumnList))
+		g.POST("/tool/gen/importTable", middleware.Permi("tool:gen:import", middleware.Log(middleware.OpLog("代码生成", consts.BtImport, "controller.ImportTable"), controller.ImportTable)))
+		g.POST("/tool/gen/createTable", middleware.Permi("tool:gen:create", middleware.Log(middleware.OpLog("创建表", consts.BtOther, "controller.CreateTable"), controller.CreateTable)))
+		g.PUT("/tool/gen", middleware.Permi("tool:gen:edit", middleware.Log(middleware.OpLog("代码生成", consts.BtUpdate, "controller.GenEdit"), controller.GenEdit)))
+		g.GET("/tool/gen/synchDb/{tableName}", middleware.Permi("tool:gen:edit", middleware.Log(middleware.OpLog("代码生成", consts.BtUpdate, "controller.GenSynchDb"), controller.GenSynchDb)))
+		g.DELETE("/tool/gen/{tableIds}", middleware.Permi("tool:gen:remove", middleware.Log(middleware.OpLog("代码生成", consts.BtDelete, "controller.GenRemove"), controller.GenRemove)))
+		g.GET("/tool/gen/{tableId}", middleware.Permi("tool:gen:query", controller.GenGetInfo))
 		// 回收站 /system/recyclebin（对齐 SysRecycleBinController：list/restore/purge 以 {type} 分派）。
 		// 权限须据 {type} 运行时派生、而 Permi 需编译期常量，故不走 Permi，由 handler 内 parseType→程序化判权限（白名单先于权限串）。
 		g.GET("/system/recyclebin/{type}/list", controller.RecycleBinList)

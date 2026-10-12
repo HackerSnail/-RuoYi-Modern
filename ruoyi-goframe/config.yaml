@@ -71,3 +71,12 @@ user:
   password:
     maxRetryCount: 5
     lockTime: 10
+
+# 代码生成配置：对齐 GenConfig @ConfigurationProperties(prefix="gen")，与 Java application.yml 的 gen.* 同源。
+# author 与 packageName 未配置时 GenUtils 会写出空值，故此处显式给默认（与 Java 值逐字一致）。
+gen:
+  author: "HackerSnail <2306002088@qq.com>"
+  packageName: com.ruoyi.system # 默认生成包路径（system/monitor/tool 按需改）
+  autoRemovePre: false          # 是否自动去除表前缀
+  tablePrefix: sys_             # 表前缀（逗号分隔多个，仅 autoRemovePre=true 生效）
+  allowOverwrite: false         # 是否允许 genCode 覆盖写本地（16-C 落盘门控，默认关）

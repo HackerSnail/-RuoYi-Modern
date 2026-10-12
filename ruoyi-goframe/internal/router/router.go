@@ -152,5 +152,7 @@ func Register(s *ghttp.Server) {
 		g.DELETE("/monitor/cache/clearCacheName/{cacheName}", middleware.Permi("monitor:cache:list", controller.ClearCacheName))
 		g.DELETE("/monitor/cache/clearCacheKey/{cacheKey}", middleware.Permi("monitor:cache:list", controller.ClearCacheKey))
 		g.DELETE("/monitor/cache/clearCacheAll", middleware.Permi("monitor:cache:list", controller.ClearCacheAll))
+		// 服务器监控 /monitor/server（对齐 ServerController.getInfo：单接口 GET，权限 monitor:server:list；返回后台预采集最近快照）
+		g.GET("/monitor/server", middleware.Permi("monitor:server:list", controller.ServerGetInfo))
 	})
 }

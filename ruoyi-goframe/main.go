@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"os"
 
 	"github.com/gogf/gf/v2/frame/g"
@@ -14,11 +15,18 @@ import (
 	_ "github.com/gogf/gf/contrib/nosql/redis/v2"
 
 	"ruoyi-goframe/internal/router"
+	"ruoyi-goframe/internal/service"
 )
 
 func main() {
 	// 全局时间固定东八区，对齐 Java jackson time-zone=GMT+8 + date-format=yyyy-MM-dd HH:mm:ss。
 	_ = gtime.SetTimeZone("Asia/Shanghai")
+
+	// 服务器监控后台预采集（对齐 ServerMonitorService）：启动即采一次、其后每 5s 刷新，请求只读最近快照。
+	// s.Run() 阻塞至优雅停返回后再停采集；ctx 的 cancel 由 defer 兜底。
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	service.StartServerMonitor(ctx)
 
 	s := g.Server()
 	// SERVER_ADDRESS 环境变量可临时覆盖监听地址（未设置则用 config.yaml 的 server.address），便于本地与 Java 并存调试。
@@ -27,4 +35,5 @@ func main() {
 	}
 	router.Register(s)
 	s.Run()
+	service.StopServerMonitor()
 }

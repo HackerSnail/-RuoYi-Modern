@@ -293,3 +293,71 @@ type SysLogininfor struct {
 	Msg           string      `json:"msg"`
 	LoginTime     *gtime.Time `json:"loginTime"     orm:"login_time"`
 }
+
+// ---------------- 服务器监控 /monitor/server：对齐 com.ruoyi.framework.web.domain.Server 及其子 DTO ----------------
+// Java 侧在 getter 里做单位换算/百分比（字节→GB/MB、tick→占比、round HALF_UP）；Go 无 getter，
+// 故这些结构体字段直接存【换算后的展示值】，由 service/server.go 在采集时算好再序列化。
+// json tag 严格复刻 Jackson 输出字段名，前端 RuoYi-Vue3 按这些键渲染，一个都不能错位。
+
+// ServerCpu 对齐 Cpu：cpuNum 核心数；total/sys/used/wait/free 均为百分比(保留2位)。
+type ServerCpu struct {
+	CpuNum int     `json:"cpuNum"`
+	Total  float64 `json:"total"`
+	Sys    float64 `json:"sys"`
+	Used   float64 `json:"used"`
+	Wait   float64 `json:"wait"`
+	Free   float64 `json:"free"`
+}
+
+// ServerMem 对齐 Mem：total/used/free 为 GB(保留2位)，usage 为使用率百分比。
+type ServerMem struct {
+	Total float64 `json:"total"`
+	Used  float64 `json:"used"`
+	Free  float64 `json:"free"`
+	Usage float64 `json:"usage"`
+}
+
+// ServerJvm 对齐 Jvm：Go 无 JVM，用本进程运行时近似填充（用户已拍板）。total/max/free/used 为 MB(保留2位)。
+type ServerJvm struct {
+	Total     float64 `json:"total"`
+	Max       float64 `json:"max"`
+	Free      float64 `json:"free"`
+	Used      float64 `json:"used"`
+	Usage     float64 `json:"usage"`
+	Name      string  `json:"name"`
+	Version   string  `json:"version"`
+	Home      string  `json:"home"`
+	StartTime string  `json:"startTime"`
+	RunTime   string  `json:"runTime"`
+	InputArgs string  `json:"inputArgs"`
+}
+
+// ServerSys 对齐 Sys：服务器名/IP/项目路径/操作系统/架构（均为原始字符串）。
+type ServerSys struct {
+	ComputerName string `json:"computerName"`
+	ComputerIp   string `json:"computerIp"`
+	UserDir      string `json:"userDir"`
+	OsName       string `json:"osName"`
+	OsArch       string `json:"osArch"`
+}
+
+// ServerSysFile 对齐 SysFile：total/free/used 为 convertFileSize 格式化字符串("1.5 GB")，usage 为百分比。
+type ServerSysFile struct {
+	DirName     string  `json:"dirName"`
+	SysTypeName string  `json:"sysTypeName"`
+	TypeName    string  `json:"typeName"`
+	Total       string  `json:"total"`
+	Free        string  `json:"free"`
+	Used        string  `json:"used"`
+	Usage       float64 `json:"usage"`
+}
+
+// Server 服务器监控快照根对象，字段名对齐 Server 的 Jackson 输出。
+type Server struct {
+	Cpu       ServerCpu       `json:"cpu"`
+	Mem       ServerMem       `json:"mem"`
+	Jvm       ServerJvm       `json:"jvm"`
+	Sys       ServerSys       `json:"sys"`
+	SysFiles  []ServerSysFile `json:"sysFiles"`
+	Timestamp int64           `json:"timestamp"`
+}

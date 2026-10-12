@@ -1,0 +1,47 @@
+import request from '@/utils/request'
+import type { AjaxResult, TableDataInfo, DemoQueryParams, GenDemo } from '@/types'
+
+// 查询生成演示列表
+export function listDemo(query?: DemoQueryParams): Promise<AjaxResult<GenDemo[]>> {
+  return request({
+    url: '/system/demo/list',
+    method: 'get',
+    params: query
+  })
+}
+
+// 查询生成演示详细
+export function getDemo(deptId: number): Promise<AjaxResult<GenDemo>> {
+  return request({
+    url: '/system/demo/' + deptId,
+    method: 'get'
+  })
+}
+
+// 新增生成演示
+export function addDemo(data: GenDemo): Promise<AjaxResult> {
+  return request({
+    url: '/system/demo',
+    method: 'post',
+    data: data
+  })
+}
+
+// 修改生成演示
+export function updateDemo(data: GenDemo): Promise<AjaxResult> {
+  return request({
+    url: '/system/demo',
+    method: 'put',
+    data: data
+  })
+}
+
+// 删除生成演示
+export function delDemo(deptId: number | number[]): Promise<AjaxResult> {
+  return request({
+    url: '/system/demo/' + deptId,
+    method: 'delete'
+  })
+}
+
+

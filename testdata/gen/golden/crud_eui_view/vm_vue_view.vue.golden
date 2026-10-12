@@ -1,0 +1,83 @@
+<template>
+  <el-drawer title="生成演示详情" :visible.sync="visible" direction="rtl" size="60%" append-to-body :before-close="handleClose" custom-class="detail-drawer">
+    <div v-loading="loading" class="drawer-content">
+      <h4 class="section-header">基本信息</h4>
+      <el-row :gutter="20" class="mb8">
+        <el-col :span="12">
+          <div class="info-item">
+            <label class="info-label">用户名称：</label>
+            <span class="info-value plaintext">
+              {{ info.userName }}
+            </span>
+          </div>
+        </el-col>
+        <el-col :span="12">
+          <div class="info-item">
+            <label class="info-label">计数：</label>
+            <span class="info-value plaintext">
+              {{ info.aCount }}
+            </span>
+          </div>
+        </el-col>
+      </el-row>
+      <el-row :gutter="20" class="mb8">
+        <el-col :span="12">
+          <div class="info-item">
+            <label class="info-label">状态：</label>
+            <span class="info-value plaintext">
+              <dict-tag :options="dict.type.sys_normal_disable" :value="info.status" />
+            </span>
+          </div>
+        </el-col>
+        <el-col :span="12">
+          <div class="info-item">
+            <label class="info-label">价格：</label>
+            <span class="info-value plaintext">
+              {{ info.price }}
+            </span>
+          </div>
+        </el-col>
+      </el-row>
+      <el-row :gutter="20" class="mb8">
+        <el-col :span="12">
+          <div class="info-item">
+            <label class="info-label">出生日期：</label>
+            <span class="info-value plaintext">
+              {{ parseTime(info.birthday, '{y}-{m}-{d}') }}
+            </span>
+          </div>
+        </el-col>
+      </el-row>
+    </div>
+  </el-drawer>
+</template>
+
+<script>
+import { getDemo } from '@/api/system/demo'
+
+export default {
+  name: 'DemoViewDrawer',
+  dicts: ['sys_normal_disable', ],
+  data() {
+    return {
+      visible: false,
+      loading: false,
+      info: {}
+    }
+  },
+  methods: {
+    open(id) {
+      this.visible = true
+      this.loading = true
+      getDemo(id).then(res => {
+        this.info = res.data || {}
+      }).finally(() => {
+        this.loading = false
+      })
+    },
+    handleClose() {
+      this.visible = false
+    }
+  }
+}
+</script>

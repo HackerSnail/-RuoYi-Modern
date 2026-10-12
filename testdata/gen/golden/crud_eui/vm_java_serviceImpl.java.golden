@@ -1,0 +1,93 @@
+package com.ruoyi.system.service.impl;
+
+import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import com.ruoyi.system.mapper.GenDemoMapper;
+import com.ruoyi.system.domain.GenDemo;
+import com.ruoyi.system.service.IGenDemoService;
+
+/**
+ * 生成演示Service业务层处理
+ * 
+ * @author ruoyi
+ * @date 2026-01-01
+ */
+@Service
+public class GenDemoServiceImpl implements IGenDemoService 
+{
+    @Autowired
+    private GenDemoMapper genDemoMapper;
+
+    /**
+     * 查询生成演示
+     * 
+     * @param id 生成演示主键
+     * @return 生成演示
+     */
+    @Override
+    public GenDemo selectGenDemoById(Long id)
+    {
+        return genDemoMapper.selectGenDemoById(id);
+    }
+
+    /**
+     * 查询生成演示列表
+     * 
+     * @param genDemo 生成演示
+     * @return 生成演示
+     */
+    @Override
+    public List<GenDemo> selectGenDemoList(GenDemo genDemo)
+    {
+        return genDemoMapper.selectGenDemoList(genDemo);
+    }
+
+    /**
+     * 新增生成演示
+     * 
+     * @param genDemo 生成演示
+     * @return 结果
+     */
+    @Override
+    public int insertGenDemo(GenDemo genDemo)
+    {
+        return genDemoMapper.insertGenDemo(genDemo);
+    }
+
+    /**
+     * 修改生成演示
+     * 
+     * @param genDemo 生成演示
+     * @return 结果
+     */
+    @Override
+    public int updateGenDemo(GenDemo genDemo)
+    {
+        return genDemoMapper.updateGenDemo(genDemo);
+    }
+
+    /**
+     * 批量删除生成演示
+     * 
+     * @param ids 需要删除的生成演示主键
+     * @return 结果
+     */
+    @Override
+    public int deleteGenDemoByIds(Long[] ids)
+    {
+        return genDemoMapper.deleteGenDemoByIds(ids);
+    }
+
+    /**
+     * 删除生成演示信息
+     * 
+     * @param id 生成演示主键
+     * @return 结果
+     */
+    @Override
+    public int deleteGenDemoById(Long id)
+    {
+        return genDemoMapper.deleteGenDemoById(id);
+    }
+}

@@ -1,0 +1,305 @@
+<template>
+  <div class="app-container">
+    <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="68px">
+      <el-form-item label="订单名称" prop="orderName">
+        <el-input
+          v-model="queryParams.orderName"
+          placeholder="请输入订单名称"
+          clearable
+          @keyup.enter="handleQuery"
+        />
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+        <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+      </el-form-item>
+    </el-form>
+
+    <el-row :gutter="10" class="mb8">
+      <el-col :span="1.5">
+        <el-button
+          type="primary"
+          plain
+          icon="Plus"
+          @click="handleAdd"
+          v-hasPermi="['system:demo:add']"
+        >新增</el-button>
+      </el-col>
+      <el-col :span="1.5">
+        <el-button
+          type="success"
+          plain
+          icon="Edit"
+          :disabled="single"
+          @click="handleUpdate"
+          v-hasPermi="['system:demo:edit']"
+        >修改</el-button>
+      </el-col>
+      <el-col :span="1.5">
+        <el-button
+          type="danger"
+          plain
+          icon="Delete"
+          :disabled="multiple"
+          @click="handleDelete"
+          v-hasPermi="['system:demo:remove']"
+        >删除</el-button>
+      </el-col>
+      <el-col :span="1.5">
+        <el-button
+          type="warning"
+          plain
+          icon="Download"
+          @click="handleExport"
+          v-hasPermi="['system:demo:export']"
+        >导出</el-button>
+      </el-col>
+      <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
+    </el-row>
+
+    <el-table v-loading="loading" :data="demoList" @selection-change="handleSelectionChange">
+      <el-table-column type="selection" width="55" align="center" />
+      <el-table-column label="订单ID" align="center" prop="orderId" />
+      <el-table-column label="订单名称" align="center" prop="orderName" />
+      <el-table-column label="备注" align="center" prop="remark" />
+      <el-table-column label="创建时间" align="center" prop="createTime" width="180">
+        <template #default="scope">
+          <span>{{ parseTime(scope.row.createTime, '{y}-{m}-{d}') }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
+        <template #default="scope">
+          <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['system:demo:edit']">修改</el-button>
+          <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['system:demo:remove']">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+    
+    <pagination
+      v-show="total>0"
+      :total="total"
+      v-model:page="queryParams.pageNum"
+      v-model:limit="queryParams.pageSize"
+      @pagination="getList"
+    />
+
+    <!-- 添加或修改生成演示对话框 -->
+    <el-dialog :title="title" v-model="open" width="500px" append-to-body>
+      <el-form ref="demoRef" :model="form" :rules="rules" label-width="100px">
+        <el-row>
+          <el-col :span="24">
+            <el-form-item label="订单名称" prop="orderName">
+              <el-input v-model="form.orderName" placeholder="请输入订单名称" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label="备注" prop="remark">
+              <el-input v-model="form.remark" type="textarea" placeholder="请输入内容" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-divider content-position="center">生成明细信息</el-divider>
+        <el-row :gutter="10" class="mb8">
+          <el-col :span="1.5">
+            <el-button type="primary" icon="Plus" @click="handleAddGenDemoDetail">添加</el-button>
+          </el-col>
+          <el-col :span="1.5">
+            <el-button type="danger" icon="Delete" @click="handleDeleteGenDemoDetail">删除</el-button>
+          </el-col>
+        </el-row>
+        <el-table :data="genDemoDetailList" @selection-change="handleGenDemoDetailSelectionChange" ref="genDemoDetail">
+          <el-table-column type="selection" width="50" align="center" />
+          <el-table-column label="序号" width="60">
+            <template #default="{ $index }">
+              {{ $index + 1 }}
+            </template>
+          </el-table-column>
+          <el-table-column label="明细名称" prop="detailName" width="150">
+            <template #default="scope">
+              <el-input v-model="scope.row.detailName" placeholder="请输入明细名称" />
+            </template>
+          </el-table-column>
+          <el-table-column label="单项价格" prop="itemPrice" width="150">
+            <template #default="scope">
+              <el-input v-model="scope.row.itemPrice" placeholder="请输入单项价格" />
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button type="primary" @click="submitForm">确 定</el-button>
+          <el-button @click="cancel">取 消</el-button>
+        </div>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<script setup name="Demo">
+import { listDemo, getDemo, delDemo, addDemo, updateDemo } from "@/api/system/demo"
+
+const { proxy } = getCurrentInstance()
+
+const demoList = ref([])
+const genDemoDetailList = ref([])
+const open = ref(false)
+const loading = ref(true)
+const showSearch = ref(true)
+const ids = ref([])
+const checkedGenDemoDetail = ref([])
+const single = ref(true)
+const multiple = ref(true)
+const total = ref(0)
+const title = ref("")
+
+const data = reactive({
+  form: {},
+  queryParams: {
+    pageNum: 1,
+    pageSize: 10,
+    orderName: undefined,
+  },
+  rules: {
+    orderName: [
+      { required: true, message: "订单名称不能为空", trigger: "blur" }
+    ],
+  }
+})
+
+const { queryParams, form, rules } = toRefs(data)
+
+/** 查询生成演示列表 */
+function getList() {
+  loading.value = true
+  listDemo(queryParams.value).then(response => {
+    demoList.value = response.rows
+    total.value = response.total
+    loading.value = false
+  })
+}
+
+/** 取消按钮 */
+function cancel() {
+  open.value = false
+  reset()
+}
+
+/** 表单重置 */
+function reset() {
+  form.value = {
+    orderId: null,
+    orderName: null,
+    remark: null,
+    createTime: null
+  }
+  genDemoDetailList.value = []
+  proxy.resetForm("demoRef")
+}
+
+/** 搜索按钮操作 */
+function handleQuery() {
+  queryParams.value.pageNum = 1
+  getList()
+}
+
+/** 重置按钮操作 */
+function resetQuery() {
+  proxy.resetForm("queryRef")
+  handleQuery()
+}
+
+/** 多选框选中数据 */
+function handleSelectionChange(selection) {
+  ids.value = selection.map(item => item.orderId)
+  single.value = selection.length != 1
+  multiple.value = !selection.length
+}
+
+/** 新增按钮操作 */
+function handleAdd() {
+  reset()
+  open.value = true
+  title.value = "添加生成演示"
+}
+
+/** 修改按钮操作 */
+function handleUpdate(row) {
+  reset()
+  const _orderId = row.orderId || ids.value
+  getDemo(_orderId).then(response => {
+    form.value = response.data
+    genDemoDetailList.value = response.data.genDemoDetailList
+    open.value = true
+    title.value = "修改生成演示"
+  })
+}
+
+/** 提交按钮 */
+function submitForm() {
+  proxy.$refs["demoRef"].validate(valid => {
+    if (valid) {
+      form.value.genDemoDetailList = genDemoDetailList.value
+      if (form.value.orderId != null) {
+        updateDemo(form.value).then(() => {
+          proxy.$modal.msgSuccess("修改成功")
+          open.value = false
+          getList()
+        })
+      } else {
+        addDemo(form.value).then(() => {
+          proxy.$modal.msgSuccess("新增成功")
+          open.value = false
+          getList()
+        })
+      }
+    }
+  })
+}
+
+/** 删除按钮操作 */
+function handleDelete(row) {
+  const _orderIds = row.orderId || ids.value
+  proxy.$modal.confirm('是否确认删除生成演示编号为"' + _orderIds + '"的数据项？').then(function() {
+    return delDemo(_orderIds)
+  }).then(() => {
+    getList()
+    proxy.$modal.msgSuccess("删除成功")
+  }).catch(() => {})
+}
+
+/** 生成明细添加按钮操作 */
+function handleAddGenDemoDetail() {
+  let obj = {}
+  obj.detailName = undefined
+  obj.itemPrice = undefined
+  genDemoDetailList.value.push(obj)
+}
+
+/** 生成明细删除按钮操作 */
+function handleDeleteGenDemoDetail() {
+  if (checkedGenDemoDetail.value.length == 0) {
+    proxy.$modal.msgError("请先选择要删除的生成明细数据")
+  } else {
+    const genDemoDetails = genDemoDetailList.value
+    const checkedGenDemoDetails = checkedGenDemoDetail.value
+    genDemoDetailList.value = genDemoDetails.filter(function(item) {
+      return checkedGenDemoDetails.indexOf(item.index) == -1
+    })
+  }
+}
+
+/** 复选框选中数据 */
+function handleGenDemoDetailSelectionChange(selection) {
+  checkedGenDemoDetail.value = selection.map(item => item.index)
+}
+
+/** 导出按钮操作 */
+function handleExport() {
+  proxy.download('system/demo/export', {
+    ...queryParams.value
+  }, `demo_${new Date().getTime()}.xlsx`)
+}
+
+getList()
+</script>

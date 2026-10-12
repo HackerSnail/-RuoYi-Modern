@@ -1,0 +1,87 @@
+package com.ruoyi.system.mapper;
+
+import java.util.List;
+import com.ruoyi.system.domain.GenDemo;
+import com.ruoyi.system.domain.GenDemoDetail;
+
+/**
+ * 生成演示Mapper接口
+ * 
+ * @author ruoyi
+ * @date 2026-01-01
+ */
+public interface GenDemoMapper 
+{
+    /**
+     * 查询生成演示
+     * 
+     * @param orderId 生成演示主键
+     * @return 生成演示
+     */
+    public GenDemo selectGenDemoByOrderId(Long orderId);
+
+    /**
+     * 查询生成演示列表
+     * 
+     * @param genDemo 生成演示
+     * @return 生成演示集合
+     */
+    public List<GenDemo> selectGenDemoList(GenDemo genDemo);
+
+    /**
+     * 新增生成演示
+     * 
+     * @param genDemo 生成演示
+     * @return 结果
+     */
+    public int insertGenDemo(GenDemo genDemo);
+
+    /**
+     * 修改生成演示
+     * 
+     * @param genDemo 生成演示
+     * @return 结果
+     */
+    public int updateGenDemo(GenDemo genDemo);
+
+    /**
+     * 删除生成演示
+     * 
+     * @param orderId 生成演示主键
+     * @return 结果
+     */
+    public int deleteGenDemoByOrderId(Long orderId);
+
+    /**
+     * 批量删除生成演示
+     * 
+     * @param orderIds 需要删除的数据主键集合
+     * @return 结果
+     */
+    public int deleteGenDemoByOrderIds(Long[] orderIds);
+
+    /**
+     * 批量删除生成明细
+     * 
+     * @param orderIds 需要删除的数据主键集合
+     * @return 结果
+     */
+    public int deleteGenDemoDetailByOrderIds(Long[] orderIds);
+    
+    /**
+     * 批量新增生成明细
+     * 
+     * @param genDemoDetailList 生成明细列表
+     * @return 结果
+     */
+    public int batchGenDemoDetail(List<GenDemoDetail> genDemoDetailList);
+    
+
+    /**
+     * 通过生成演示主键删除生成明细信息
+     * 
+     * @param orderId 生成演示ID
+     * @return 结果
+     */
+    public int deleteGenDemoDetailByOrderId(Long orderId);
+}

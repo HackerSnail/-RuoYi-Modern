@@ -1,0 +1,81 @@
+package com.ruoyi.system.domain;
+
+import java.math.BigDecimal;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
+import com.ruoyi.common.annotation.Excel;
+import com.ruoyi.common.core.domain.BaseEntity;
+
+/**
+ * 生成明细对象 sys_gen_detail
+ * 
+ * @author ruoyi
+ * @date 2026-01-01
+ */
+public class GenDemoDetail extends BaseEntity
+{
+    private static final long serialVersionUID = 1L;
+
+    /** 明细ID */
+    @Excel(name = "明细ID")
+    private Long detailId;
+
+    /** 订单ID */
+    @Excel(name = "订单ID")
+    private Long orderId;
+
+    /** 明细名称 */
+    @Excel(name = "明细名称")
+    private String detailName;
+
+    /** 单项价格（元） */
+    @Excel(name = "单项价格", readConverterExp = "元=")
+    private BigDecimal itemPrice;
+
+    public void setDetailId(Long detailId) 
+    {
+        this.detailId = detailId;
+    }
+
+    public Long getDetailId() 
+    {
+        return detailId;
+    }
+    public void setOrderId(Long orderId) 
+    {
+        this.orderId = orderId;
+    }
+
+    public Long getOrderId() 
+    {
+        return orderId;
+    }
+    public void setDetailName(String detailName) 
+    {
+        this.detailName = detailName;
+    }
+
+    public String getDetailName() 
+    {
+        return detailName;
+    }
+    public void setItemPrice(BigDecimal itemPrice) 
+    {
+        this.itemPrice = itemPrice;
+    }
+
+    public BigDecimal getItemPrice() 
+    {
+        return itemPrice;
+    }
+
+    @Override
+    public String toString() {
+        return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
+            .append("detailId", getDetailId())
+            .append("orderId", getOrderId())
+            .append("detailName", getDetailName())
+            .append("itemPrice", getItemPrice())
+            .toString();
+    }
+}

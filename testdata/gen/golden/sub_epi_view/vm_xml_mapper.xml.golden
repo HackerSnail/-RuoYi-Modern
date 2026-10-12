@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.GenDemoMapper">
+    
+    <resultMap type="GenDemo" id="GenDemoResult">
+        <result property="orderId"    column="order_id"    />
+        <result property="orderName"    column="order_name"    />
+        <result property="remark"    column="remark"    />
+        <result property="createTime"    column="create_time"    />
+    </resultMap>
+
+    <resultMap id="GenDemoGenDemoDetailResult" type="GenDemo" extends="GenDemoResult">
+        <collection property="genDemoDetailList" ofType="GenDemoDetail" column="order_id" select="selectGenDemoDetailList" />
+    </resultMap>
+
+    <resultMap type="GenDemoDetail" id="GenDemoDetailResult">
+        <result property="detailId"    column="detail_id"    />
+        <result property="orderId"    column="order_id"    />
+        <result property="detailName"    column="detail_name"    />
+        <result property="itemPrice"    column="item_price"    />
+    </resultMap>
+
+    <sql id="selectGenDemoVo">
+        select order_id, order_name, remark, create_time from sys_gen_demo
+    </sql>
+
+    <select id="selectGenDemoList" parameterType="GenDemo" resultMap="GenDemoResult">
+        <include refid="selectGenDemoVo"/>
+        <where>  
+            <if test="orderName != null  and orderName != ''"> and order_name like concat('%', #{orderName}, '%')</if>
+        </where>
+    </select>
+    
+    <select id="selectGenDemoByOrderId" parameterType="Long" resultMap="GenDemoGenDemoDetailResult">
+        select order_id, order_name, remark, create_time
+        from sys_gen_demo
+        where order_id = #{orderId}
+    </select>
+
+    <select id="selectGenDemoDetailList" resultMap="GenDemoDetailResult">
+        select detail_id, order_id, detail_name, item_price
+        from sys_gen_detail
+        where order_id = #{order_id}
+    </select>
+
+    <insert id="insertGenDemo" parameterType="GenDemo" useGeneratedKeys="true" keyProperty="orderId">
+        insert into sys_gen_demo
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="orderName != null and orderName != ''">order_name,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createTime != null">create_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="orderName != null and orderName != ''">#{orderName},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createTime != null">#{createTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateGenDemo" parameterType="GenDemo">
+        update sys_gen_demo
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="orderName != null and orderName != ''">order_name = #{orderName},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+        </trim>
+        where order_id = #{orderId}
+    </update>
+
+    <delete id="deleteGenDemoByOrderId" parameterType="Long">
+        delete from sys_gen_demo where order_id = #{orderId}
+    </delete>
+
+    <delete id="deleteGenDemoByOrderIds" parameterType="String">
+        delete from sys_gen_demo where order_id in 
+        <foreach item="orderId" collection="array" open="(" separator="," close=")">
+            #{orderId}
+        </foreach>
+    </delete>
+    
+    <delete id="deleteGenDemoDetailByOrderIds" parameterType="String">
+        delete from sys_gen_detail where order_id in 
+        <foreach item="orderId" collection="array" open="(" separator="," close=")">
+            #{orderId}
+        </foreach>
+    </delete>
+
+    <delete id="deleteGenDemoDetailByOrderId" parameterType="Long">
+        delete from sys_gen_detail where order_id = #{orderId}
+    </delete>
+
+    <insert id="batchGenDemoDetail">
+        insert into sys_gen_detail( detail_id, order_id, detail_name, item_price) values
+        <foreach item="item" index="index" collection="list" separator=",">
+            ( #{item.detailId}, #{item.orderId}, #{item.detailName}, #{item.itemPrice})
+        </foreach>
+    </insert>
+</mapper>

@@ -1,0 +1,44 @@
+import request from '@/utils/request'
+
+// 查询生成演示列表
+export function listDemo(query) {
+  return request({
+    url: '/system/demo/list',
+    method: 'get',
+    params: query
+  })
+}
+
+// 查询生成演示详细
+export function getDemo(deptId) {
+  return request({
+    url: '/system/demo/' + deptId,
+    method: 'get'
+  })
+}
+
+// 新增生成演示
+export function addDemo(data) {
+  return request({
+    url: '/system/demo',
+    method: 'post',
+    data: data
+  })
+}
+
+// 修改生成演示
+export function updateDemo(data) {
+  return request({
+    url: '/system/demo',
+    method: 'put',
+    data: data
+  })
+}
+
+// 删除生成演示
+export function delDemo(deptId) {
+  return request({
+    url: '/system/demo/' + deptId,
+    method: 'delete'
+  })
+}

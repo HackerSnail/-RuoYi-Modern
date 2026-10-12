@@ -30,6 +30,9 @@ func truthy(v interface{}) bool {
 	switch t := v.(type) {
 	case bool:
 		return t
+	case undefinedRef:
+		// Velocity：未定义/ null 引用在布尔条件中一律为 false（如 #if($hasDicts) 中 hasDicts 从未赋值）。
+		return false
 	default:
 		return true
 	}

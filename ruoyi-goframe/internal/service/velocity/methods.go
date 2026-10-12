@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"ruoyi-goframe/internal/model"
 )
 
 // callMethod 复刻模板中出现的 Java 方法调用（按枚举实现，未用到的不做）。
@@ -22,10 +24,59 @@ func callMethod(obj interface{}, name string, args []interface{}) (interface{}, 
 		return callList(o, name, args)
 	case map[string]interface{}:
 		return callMap(o, name, args)
+	case *model.GenTable:
+		return callGenTable(o, name, args)
+	case *model.GenTableColumn:
+		return callGenTableColumn(o, name, args)
 	case nil:
 		return nil, fmt.Errorf("velocity: 对 null 调用方法 %s()", name)
 	}
 	return nil, fmt.Errorf("velocity: 未支持的方法调用目标 %T.%s()", obj, name)
+}
+
+// callGenTable 复刻模板对 GenTable 的方法调用（带参 isSuperColumn(javaField) 等）。
+func callGenTable(t *model.GenTable, name string, args []interface{}) (interface{}, error) {
+	if t == nil {
+		return nil, fmt.Errorf("velocity: 对 null $table 调用 %s()", name)
+	}
+	switch name {
+	case "isSuperColumn":
+		if len(args) < 1 {
+			return nil, fmt.Errorf("velocity: isSuperColumn 需要 javaField 参数")
+		}
+		return t.IsSuperColumn(toDisplay(args[0])), nil
+	case "isSub":
+		return t.IsSub(), nil
+	case "isTree":
+		return t.IsTree(), nil
+	case "isCrud":
+		return t.IsCrud(), nil
+	}
+	return nil, fmt.Errorf("velocity: 未支持的 GenTable 方法 %s()", name)
+}
+
+// callGenTableColumn 复刻模板对 GenTableColumn 的方法调用（无参 readConverterExp() 等）。
+func callGenTableColumn(c *model.GenTableColumn, name string, args []interface{}) (interface{}, error) {
+	if c == nil {
+		return nil, fmt.Errorf("velocity: 对 null $column 调用 %s()", name)
+	}
+	switch name {
+	case "readConverterExp":
+		return c.ReadConverterExp(), nil
+	case "isSuperColumn":
+		if len(args) >= 1 {
+			return model.IsSuperColumnField(toDisplay(args[0])), nil
+		}
+		return c.IsSuperColumn(), nil
+	case "isUsableColumn":
+		if len(args) >= 1 {
+			return model.IsUsableColumnField(toDisplay(args[0])), nil
+		}
+		return c.IsUsableColumn(), nil
+	case "getCapJavaField":
+		return c.GetCapJavaField(), nil
+	}
+	return nil, fmt.Errorf("velocity: 未支持的 GenTableColumn 方法 %s()", name)
 }
 
 func callString(s, name string, args []interface{}) (interface{}, error) {
@@ -93,6 +144,17 @@ func callString(s, name string, args []interface{}) (interface{}, error) {
 		return string(runes[i]), nil
 	case "length":
 		return len(runes), nil
+	case "matches":
+		// Java String.matches：整个串须匹配正则。Go 用 ^(?:...)$ 包裹等价。
+		if len(args) < 1 {
+			return nil, fmt.Errorf("velocity: matches 需要正则参数")
+		}
+		pat := "^(?:" + toDisplay(args[0]) + ")$"
+		re, err := regexp.Compile(pat)
+		if err != nil {
+			return nil, fmt.Errorf("velocity: matches 正则非法 %q: %v", pat, err)
+		}
+		return re.MatchString(s), nil
 	}
 	return nil, fmt.Errorf("velocity: 未支持的 String 方法 %s()", name)
 }

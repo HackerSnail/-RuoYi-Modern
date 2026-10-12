@@ -227,6 +227,23 @@ func GenSynchDb(r *ghttp.Request) {
 	api.Send(r, api.Ok())
 }
 
+// GenPreview GET /tool/gen/preview/{tableId}（tool:gen:preview）：渲染各模板返回「模板路径→生成内容」保序对象。
+// 逐字对齐 Java GenController.preview：dataMap 为 LinkedHashMap，键序 = getTemplateList 顺序。
+func GenPreview(r *ghttp.Request) {
+	ctx := r.Context()
+	id, err := parseInt(r.GetRouter("tableId").String())
+	if err != nil {
+		api.Send(r, api.Err("参数格式有误"))
+		return
+	}
+	result, err := service.PreviewCode(ctx, id)
+	if err != nil {
+		api.Send(r, api.Err(err.Error()))
+		return
+	}
+	api.Send(r, api.OkData(result))
+}
+
 // ---- 辅助 ----
 
 // validateGenEdit 逐字对齐 GenTableEditDTO 的 @NotBlank/@Pattern/@Valid（进 service 前显式收口）。

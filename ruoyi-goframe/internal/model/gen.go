@@ -113,8 +113,11 @@ func (c *GenTableColumn) ReadConverterExp() string {
 	if remarks != "" {
 		for _, value := range strings.Split(remarks, " ") {
 			if value != "" {
-				startStr := value[:1]
-				endStr := value[1:]
+				// 对齐 Java String.substring 的 UTF-16 语义：中文注释里的 BMP 字符（如「元」）
+				// 占 3 字节，按字节切会拆坏；按 rune 切对 BMP 与 Java 一致。
+				vr := []rune(value)
+				startStr := string(vr[:1])
+				endStr := string(vr[1:])
 				sb.WriteString(startStr)
 				sb.WriteString("=")
 				sb.WriteString(endStr)

@@ -1,0 +1,61 @@
+package com.ruoyi.system.mapper;
+
+import java.util.List;
+import com.ruoyi.system.domain.GenDemo;
+
+/**
+ * 生成演示Mapper接口
+ * 
+ * @author ruoyi
+ * @date 2026-01-01
+ */
+public interface GenDemoMapper 
+{
+    /**
+     * 查询生成演示
+     * 
+     * @param deptId 生成演示主键
+     * @return 生成演示
+     */
+    public GenDemo selectGenDemoByDeptId(Long deptId);
+
+    /**
+     * 查询生成演示列表
+     * 
+     * @param genDemo 生成演示
+     * @return 生成演示集合
+     */
+    public List<GenDemo> selectGenDemoList(GenDemo genDemo);
+
+    /**
+     * 新增生成演示
+     * 
+     * @param genDemo 生成演示
+     * @return 结果
+     */
+    public int insertGenDemo(GenDemo genDemo);
+
+    /**
+     * 修改生成演示
+     * 
+     * @param genDemo 生成演示
+     * @return 结果
+     */
+    public int updateGenDemo(GenDemo genDemo);
+
+    /**
+     * 删除生成演示
+     * 
+     * @param deptId 生成演示主键
+     * @return 结果
+     */
+    public int deleteGenDemoByDeptId(Long deptId);
+
+    /**
+     * 批量删除生成演示
+     * 
+     * @param deptIds 需要删除的数据主键集合
+     * @return 结果
+     */
+    public int deleteGenDemoByDeptIds(Long[] deptIds);
+}

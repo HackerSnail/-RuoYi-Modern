@@ -26,9 +26,20 @@ func (s *scope) get(name string) (interface{}, bool) {
 	return nil, false
 }
 
-// set 在当前层写入（对齐 Velocity #set 就近作用域；模板中 #set 均在渲染根或循环体内使用，行为足够）。
+// set 在当前层写入（仅供 foreach 循环变量/$foreach 状态等迭代级绑定使用）。
 func (s *scope) set(name string, v interface{}) {
 	s.vars[name] = v
+}
+
+// setGlobal 对齐 Velocity 的扁平上下文语义：#set 写入顶层根作用域，
+// 因而循环体内的计数变量（如 #set($i = $i + 1）能跨迭代累加、并在循环结束后保留。
+// 循环变量本身（$column）则由子作用域迭代级隔离，与此区分。
+func (s *scope) setGlobal(name string, v interface{}) {
+	root := s
+	for root.parent != nil {
+		root = root.parent
+	}
+	root.vars[name] = v
 }
 
 // loopState 承载 $foreach.* 循环变量。count 1 基，index 0 基。
@@ -645,8 +656,14 @@ func (p *exprScanner) parseReference() (exprNode, error) {
 		if prop == "" {
 			return nil, fmt.Errorf("velocity: 引用链属性名为空 @%d", p.i)
 		}
-		p.skipWS()
-		if p.i < len(p.r) && p.r[p.i] == '(' {
+		// 前瞻：仅当（可含空白后）紧跟 '(' 才判定为方法调用并吞掉该空白；
+		// 否则视为属性访问，绝不吞尾随空白（Velocity：`$foo != null` 中 ` != null` 是字面文本）。
+		k := p.i
+		for k < len(p.r) && (p.r[k] == ' ' || p.r[k] == '\t' || p.r[k] == '\n' || p.r[k] == '\r') {
+			k++
+		}
+		if k < len(p.r) && p.r[k] == '(' {
+			p.i = k // 提交方法调用：吃掉属性与 '(' 之间的空白
 			args, err := p.parseArgs()
 			if err != nil {
 				return nil, err

@@ -1,0 +1,25 @@
+import type { PageDomain, BaseEntity } from "../common";
+
+/** 生成演示配置分页查询参数 */
+export interface DemoQueryParams extends PageDomain {
+  /** 部门名称 */
+  deptName?: string;
+  /** 部门状态（0正常 1停用） */
+  status?: string;
+}
+
+/** 生成演示配置信息 */
+export interface GenDemo extends BaseEntity {
+  /** 部门ID */
+  deptId?: number;
+  /** 父部门ID */
+  parentId?: number;
+  /** 部门名称 */
+  deptName?: string;
+  /** 显示顺序 */
+  orderNum?: number;
+  /** 部门状态（0正常 1停用） */
+  status?: string;
+  /** 创建时间 */
+  createTime?: string;
+}

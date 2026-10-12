@@ -1,0 +1,104 @@
+package com.ruoyi.system.controller;
+
+import java.util.List;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import com.ruoyi.common.annotation.Log;
+import com.ruoyi.common.core.controller.BaseController;
+import com.ruoyi.common.core.domain.AjaxResult;
+import com.ruoyi.common.enums.BusinessType;
+import com.ruoyi.system.domain.GenDemo;
+import com.ruoyi.system.service.IGenDemoService;
+import com.ruoyi.common.utils.poi.ExcelUtil;
+import com.ruoyi.common.core.page.TableDataInfo;
+
+/**
+ * 生成演示Controller
+ * 
+ * @author ruoyi
+ * @date 2026-01-01
+ */
+@RestController
+@RequestMapping("/system/demo")
+public class GenDemoController extends BaseController
+{
+    @Autowired
+    private IGenDemoService genDemoService;
+
+    /**
+     * 查询生成演示列表
+     */
+    @PreAuthorize("@ss.hasPermi('system:demo:list')")
+    @GetMapping("/list")
+    public TableDataInfo list(GenDemo genDemo)
+    {
+        startPage();
+        List<GenDemo> list = genDemoService.selectGenDemoList(genDemo);
+        return getDataTable(list);
+    }
+
+    /**
+     * 导出生成演示列表
+     */
+    @PreAuthorize("@ss.hasPermi('system:demo:export')")
+    @Log(title = "生成演示", businessType = BusinessType.EXPORT)
+    @PostMapping("/export")
+    public void export(HttpServletResponse response, GenDemo genDemo)
+    {
+        List<GenDemo> list = genDemoService.selectGenDemoList(genDemo);
+        ExcelUtil<GenDemo> util = new ExcelUtil<GenDemo>(GenDemo.class);
+        util.exportExcel(response, list, "生成演示数据");
+    }
+
+    /**
+     * 获取生成演示详细信息
+     */
+    @PreAuthorize("@ss.hasPermi('system:demo:query')")
+    @GetMapping(value = "/{id}")
+    public AjaxResult getInfo(@PathVariable("id") Long id)
+    {
+        return success(genDemoService.selectGenDemoById(id));
+    }
+
+    /**
+     * 新增生成演示
+     */
+    @PreAuthorize("@ss.hasPermi('system:demo:add')")
+    @Log(title = "生成演示", businessType = BusinessType.INSERT)
+    @PostMapping
+    public AjaxResult add(@RequestBody GenDemo genDemo)
+    {
+        return toAjax(genDemoService.insertGenDemo(genDemo));
+    }
+
+    /**
+     * 修改生成演示
+     */
+    @PreAuthorize("@ss.hasPermi('system:demo:edit')")
+    @Log(title = "生成演示", businessType = BusinessType.UPDATE)
+    @PutMapping
+    public AjaxResult edit(@RequestBody GenDemo genDemo)
+    {
+        return toAjax(genDemoService.updateGenDemo(genDemo));
+    }
+
+    /**
+     * 删除生成演示
+     */
+    @PreAuthorize("@ss.hasPermi('system:demo:remove')")
+    @Log(title = "生成演示", businessType = BusinessType.DELETE)
+	@DeleteMapping("/{ids}")
+    public AjaxResult remove(@PathVariable Long[] ids)
+    {
+        return toAjax(genDemoService.deleteGenDemoByIds(ids));
+    }
+}

@@ -1,0 +1,133 @@
+package com.ruoyi.system.service.impl;
+
+import java.util.List;
+import com.ruoyi.common.utils.DateUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import java.util.ArrayList;
+import com.ruoyi.common.utils.StringUtils;
+import org.springframework.transaction.annotation.Transactional;
+import com.ruoyi.system.domain.GenDemoDetail;
+import com.ruoyi.system.mapper.GenDemoMapper;
+import com.ruoyi.system.domain.GenDemo;
+import com.ruoyi.system.service.IGenDemoService;
+
+/**
+ * 生成演示Service业务层处理
+ * 
+ * @author ruoyi
+ * @date 2026-01-01
+ */
+@Service
+public class GenDemoServiceImpl implements IGenDemoService 
+{
+    @Autowired
+    private GenDemoMapper genDemoMapper;
+
+    /**
+     * 查询生成演示
+     * 
+     * @param orderId 生成演示主键
+     * @return 生成演示
+     */
+    @Override
+    public GenDemo selectGenDemoByOrderId(Long orderId)
+    {
+        return genDemoMapper.selectGenDemoByOrderId(orderId);
+    }
+
+    /**
+     * 查询生成演示列表
+     * 
+     * @param genDemo 生成演示
+     * @return 生成演示
+     */
+    @Override
+    public List<GenDemo> selectGenDemoList(GenDemo genDemo)
+    {
+        return genDemoMapper.selectGenDemoList(genDemo);
+    }
+
+    /**
+     * 新增生成演示
+     * 
+     * @param genDemo 生成演示
+     * @return 结果
+     */
+    @Transactional
+    @Override
+    public int insertGenDemo(GenDemo genDemo)
+    {
+        genDemo.setCreateTime(DateUtils.getNowDate());
+        int rows = genDemoMapper.insertGenDemo(genDemo);
+        insertGenDemoDetail(genDemo);
+        return rows;
+    }
+
+    /**
+     * 修改生成演示
+     * 
+     * @param genDemo 生成演示
+     * @return 结果
+     */
+    @Transactional
+    @Override
+    public int updateGenDemo(GenDemo genDemo)
+    {
+        genDemoMapper.deleteGenDemoDetailByOrderId(genDemo.getOrderId());
+        insertGenDemoDetail(genDemo);
+        return genDemoMapper.updateGenDemo(genDemo);
+    }
+
+    /**
+     * 批量删除生成演示
+     * 
+     * @param orderIds 需要删除的生成演示主键
+     * @return 结果
+     */
+    @Transactional
+    @Override
+    public int deleteGenDemoByOrderIds(Long[] orderIds)
+    {
+        genDemoMapper.deleteGenDemoDetailByOrderIds(orderIds);
+        return genDemoMapper.deleteGenDemoByOrderIds(orderIds);
+    }
+
+    /**
+     * 删除生成演示信息
+     * 
+     * @param orderId 生成演示主键
+     * @return 结果
+     */
+    @Transactional
+    @Override
+    public int deleteGenDemoByOrderId(Long orderId)
+    {
+        genDemoMapper.deleteGenDemoDetailByOrderId(orderId);
+        return genDemoMapper.deleteGenDemoByOrderId(orderId);
+    }
+
+    /**
+     * 新增生成明细信息
+     * 
+     * @param genDemo 生成演示对象
+     */
+    public void insertGenDemoDetail(GenDemo genDemo)
+    {
+        List<GenDemoDetail> genDemoDetailList = genDemo.getGenDemoDetailList();
+        Long orderId = genDemo.getOrderId();
+        if (StringUtils.isNotNull(genDemoDetailList))
+        {
+            List<GenDemoDetail> list = new ArrayList<GenDemoDetail>();
+            for (GenDemoDetail genDemoDetail : genDemoDetailList)
+            {
+                genDemoDetail.setOrderId(orderId);
+                list.add(genDemoDetail);
+            }
+            if (list.size() > 0)
+            {
+                genDemoMapper.batchGenDemoDetail(list);
+            }
+        }
+    }
+}

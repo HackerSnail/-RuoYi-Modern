@@ -17,6 +17,7 @@ import (
 	"github.com/gogf/gf/v2/frame/g"
 
 	"ruoyi-goframe/internal/model"
+	"ruoyi-goframe/internal/service/velocity"
 )
 
 // sqlKeywordRegex 逐字对齐 SqlUtil.SQL_REGEX（\u000B 即垂直制表符 Go 写作 \v）。
@@ -455,4 +456,118 @@ func jsonBool(m map[string]interface{}, key string) bool {
 		return v
 	}
 	return false
+}
+
+// ---- 代码预览（previewCode，对齐 GenTableServiceImpl.previewCode + GenController.preview）----
+
+// PreviewResult 保序的「模板路径→生成内容」映射，序列化时按插入顺序输出 JSON 对象
+// （逐字对齐 Java LinkedHashMap：键序 = VelocityUtils.getTemplateList 顺序）。
+type PreviewResult struct {
+	keys []string
+	vals map[string]string
+}
+
+func newPreviewResult() *PreviewResult {
+	return &PreviewResult{vals: map[string]string{}}
+}
+
+func (p *PreviewResult) put(key, val string) {
+	if _, ok := p.vals[key]; !ok {
+		p.keys = append(p.keys, key)
+	}
+	p.vals[key] = val
+}
+
+// MarshalJSON 按 keys 顺序输出对象；值用 encoding/json 转义（\r\n、中文、引号等）。
+func (p *PreviewResult) MarshalJSON() ([]byte, error) {
+	var sb strings.Builder
+	sb.WriteByte('{')
+	for i, k := range p.keys {
+		if i > 0 {
+			sb.WriteByte(',')
+		}
+		kb, _ := json.Marshal(k)
+		vb, _ := json.Marshal(p.vals[k])
+		sb.Write(kb)
+		sb.WriteByte(':')
+		sb.Write(vb)
+	}
+	sb.WriteByte('}')
+	return []byte(sb.String()), nil
+}
+
+// SetSubTable 对齐 setSubTable：subTableName 非空则按名反读子表（含列），未导入即抛。
+func SetSubTable(ctx context.Context, table *model.GenTable) error {
+	subTableName := table.SubTableName
+	if subTableName != "" {
+		subTable, err := SelectGenTableByName(ctx, subTableName)
+		if err != nil {
+			return err
+		}
+		if subTable == nil {
+			return fmt.Errorf("关联子表不存在或尚未导入：%s", subTableName)
+		}
+		setTableFromOptions(subTable)
+		table.SubTable = subTable
+	}
+	return nil
+}
+
+// SetPkColumn 对齐 setPkColumn：首个 isPk 列，否则降级取首列；子表同理。文案逐字对齐 Java。
+func SetPkColumn(table *model.GenTable) error {
+	if len(table.Columns) == 0 {
+		return fmt.Errorf("表未配置任何列，无法生成：%s", table.TableName)
+	}
+	table.PkColumn = nil
+	for _, column := range table.Columns {
+		if column.IsPkFlag() {
+			table.PkColumn = column
+			break
+		}
+	}
+	if table.PkColumn == nil {
+		table.PkColumn = table.Columns[0]
+	}
+	if table.TplCategory == model.TplSub {
+		sub := table.SubTable
+		if sub == nil || len(sub.Columns) == 0 {
+			return fmt.Errorf("主子表模板要求子表已导入且含列配置，请检查子表：%s", table.SubTableName)
+		}
+		sub.PkColumn = nil
+		for _, column := range sub.Columns {
+			if column.IsPkFlag() {
+				sub.PkColumn = column
+				break
+			}
+		}
+		if sub.PkColumn == nil {
+			sub.PkColumn = sub.Columns[0]
+		}
+	}
+	return nil
+}
+
+// PreviewCode 逐字对齐 previewCode：查表→装配子表→定主键→prepareContext→getTemplateList→逐模板渲染。
+// 不落盘；datetime 用当日（生产对齐 DateUtils.getDate()，不覆盖）。返回保序结果供 controller 直出。
+func PreviewCode(ctx context.Context, tableId int64) (*PreviewResult, error) {
+	table, err := GetGenTableById(ctx, tableId) // 内含「生成表不存在，ID：x」抛出
+	if err != nil {
+		return nil, err
+	}
+	if err := SetSubTable(ctx, table); err != nil {
+		return nil, err
+	}
+	if err := SetPkColumn(table); err != nil {
+		return nil, err
+	}
+	ctxMap := velocity.PrepareContext(table)
+	res := newPreviewResult()
+	for _, tpl := range velocity.GetTemplateList(table) {
+		content, err := velocity.RenderTemplate(tpl, ctxMap)
+		if err != nil {
+			return nil, err
+		}
+		res.put(tpl, content)
+	}
+	return res, nil
 }

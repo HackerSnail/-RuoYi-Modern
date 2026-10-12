@@ -1,0 +1,27 @@
+import type { PageDomain, BaseEntity } from "../common";
+
+/** 生成演示配置分页查询参数 */
+export interface DemoQueryParams extends PageDomain {
+  /** 用户名称 */
+  userName?: string;
+  /** 状态（0正常 1停用） */
+  status?: string;
+}
+
+/** 生成演示配置信息 */
+export interface GenDemo extends BaseEntity {
+  /** 主键ID */
+  id?: number;
+  /** 用户名称 */
+  userName?: string;
+  /** 计数 */
+  aCount?: number;
+  /** 状态（0正常 1停用） */
+  status?: string;
+  /** 价格（元） */
+  price?: string;
+  /** 出生日期 */
+  birthday?: string;
+  /** 创建者 */
+  createBy?: string;
+}

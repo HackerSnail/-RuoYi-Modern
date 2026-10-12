@@ -1,0 +1,4 @@
+# golden 是 Apache Velocity oracle 逐字节渲染产出的裁判文件：模板经 *.vm -text 保留 CRLF，
+# golden 必须同样关闭 EOL 自动转换，确保「入库字节 == 渲染字节 == 比对字节」跨平台一致（否则
+# core.autocrlf 会把 golden 归一成 LF，而 -text 的模板仍是 CRLF，Linux 检出即失配）。
+*.golden -text

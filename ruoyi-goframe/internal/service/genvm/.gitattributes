@@ -1,0 +1,3 @@
+# 代码生成模板必须逐字节对齐 Java 侧 VelocityEngine 读取的源文件（CRLF）。
+# 关闭 EOL 自动转换，保证 embed 编译时读到的 .vm 字节与 ruoyi-generator/src/main/resources/vm 完全一致。
+*.vm -text

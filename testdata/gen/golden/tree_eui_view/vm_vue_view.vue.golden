@@ -1,0 +1,83 @@
+<template>
+  <el-drawer title="生成演示详情" :visible.sync="visible" direction="rtl" size="60%" append-to-body :before-close="handleClose" custom-class="detail-drawer">
+    <div v-loading="loading" class="drawer-content">
+      <h4 class="section-header">基本信息</h4>
+      <el-row :gutter="20" class="mb8">
+        <el-col :span="12">
+          <div class="info-item">
+            <label class="info-label">父部门ID：</label>
+            <span class="info-value plaintext">
+              {{ info.parentId }}
+            </span>
+          </div>
+        </el-col>
+        <el-col :span="12">
+          <div class="info-item">
+            <label class="info-label">部门名称：</label>
+            <span class="info-value plaintext">
+              {{ info.deptName }}
+            </span>
+          </div>
+        </el-col>
+      </el-row>
+      <el-row :gutter="20" class="mb8">
+        <el-col :span="12">
+          <div class="info-item">
+            <label class="info-label">显示顺序：</label>
+            <span class="info-value plaintext">
+              {{ info.orderNum }}
+            </span>
+          </div>
+        </el-col>
+        <el-col :span="12">
+          <div class="info-item">
+            <label class="info-label">部门状态：</label>
+            <span class="info-value plaintext">
+              <dict-tag :options="dict.type.sys_normal_disable" :value="info.status" />
+            </span>
+          </div>
+        </el-col>
+      </el-row>
+      <el-row :gutter="20" class="mb8">
+        <el-col :span="12">
+          <div class="info-item">
+            <label class="info-label">创建时间：</label>
+            <span class="info-value plaintext">
+              {{ parseTime(info.createTime, '{y}-{m}-{d}') }}
+            </span>
+          </div>
+        </el-col>
+      </el-row>
+    </div>
+  </el-drawer>
+</template>
+
+<script>
+import { getDemo } from '@/api/system/demo'
+
+export default {
+  name: 'DemoViewDrawer',
+  dicts: ['sys_normal_disable', ],
+  data() {
+    return {
+      visible: false,
+      loading: false,
+      info: {}
+    }
+  },
+  methods: {
+    open(deptId) {
+      this.visible = true
+      this.loading = true
+      getDemo(deptId).then(res => {
+        this.info = res.data || {}
+      }).finally(() => {
+        this.loading = false
+      })
+    },
+    handleClose() {
+      this.visible = false
+    }
+  }
+}
+</script>

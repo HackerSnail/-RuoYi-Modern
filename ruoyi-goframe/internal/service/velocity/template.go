@@ -56,7 +56,7 @@ type frame struct {
 	elems    []elem // 当前活跃分支/循环体的 elems
 	branches []ifBranch
 	activeIf *ifBranch // #if/#elseif 当前分支（其 body 即 frame.elems）
-	inElse bool
+	inElse   bool
 	elseBody []elem
 	// foreach
 	fVar string
@@ -84,6 +84,23 @@ func ParseTemplate(tpl string) ([]elem, error) {
 	for p.pos < len(p.src) {
 		c := p.src[p.pos]
 		switch {
+		case c == '#' && p.pos+2 < len(p.src) && p.src[p.pos+1] == '[' && p.src[p.pos+2] == '[':
+			// Velocity 逐字输出块 #[[ ... ]]#：其间内容原样输出、不解析（用于生成 JS 里的字面 $）。
+			j := p.pos + 3
+			found := false
+			for ; j+2 < len(p.src); j++ {
+				if p.src[j] == ']' && p.src[j+1] == ']' && p.src[j+2] == '#' {
+					found = true
+					break
+				}
+			}
+			if found {
+				p.pending.WriteString(string(p.src[p.pos+3 : j]))
+				p.pos = j + 3
+			} else {
+				p.pending.WriteString(string(p.src[p.pos:]))
+				p.pos = len(p.src)
+			}
 		case c == '#' && p.atDirective():
 			start := p.pos
 			dw := p.directiveWord()
@@ -94,11 +111,17 @@ func ParseTemplate(tpl string) ([]elem, error) {
 			sc := &exprScanner{r: p.src, i: p.pos}
 			node, err := sc.parseReference()
 			if err != nil {
-				return nil, err
+				// Velocity：无法解析为引用的 `$` 按字面文本输出（如 JS 里 `$ {`、对象字面量等）。
+				// 退一步：把当前 `$` 当正文吞下，从下一字符继续扫描；golden 比对会兜住任何真实差异。
+				p.pending.WriteRune(c)
+				p.pos++
+				continue
 			}
 			rn, ok := node.(*refNode)
 			if !ok {
-				return nil, fmt.Errorf("velocity: 正文引用解析异常")
+				p.pending.WriteRune(c)
+				p.pos++
+				continue
 			}
 			p.flush()
 			p.top().elems = append(p.top().elems, printElem{e: rn, raw: rn.rawText()})
@@ -472,9 +495,9 @@ func renderElems(elems []elem, sc *scope, out *strings.Builder) (bool, error) {
 				return false, err
 			}
 			if uv, ok := v.(undefinedRef); ok {
-				sc.set(e.name, nilString(uv.raw))
+				sc.setGlobal(e.name, nilString(uv.raw))
 			} else {
-				sc.set(e.name, v)
+				sc.setGlobal(e.name, v)
 			}
 		case ifElem:
 			done := false
@@ -520,7 +543,9 @@ func renderElems(elems []elem, sc *scope, out *strings.Builder) (bool, error) {
 					return false, err
 				}
 				if b {
-					return true, nil
+					// #break 仅终止最近的 #foreach：就地停止迭代、吞掉 break 信号，
+					// 让外层 renderElems 继续渲染 foreach 之后的模板正文（对齐 Velocity）。
+					break
 				}
 			}
 		case breakElem:

@@ -1,0 +1,118 @@
+package com.ruoyi.system.domain;
+
+import java.math.BigDecimal;
+import java.util.Date;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
+import com.ruoyi.common.annotation.Excel;
+import com.ruoyi.common.core.domain.BaseEntity;
+
+/**
+ * 生成演示对象 sys_gen_demo
+ * 
+ * @author ruoyi
+ * @date 2026-01-01
+ */
+public class GenDemo extends BaseEntity
+{
+    private static final long serialVersionUID = 1L;
+
+    /** 主键ID */
+    @Excel(name = "主键ID")
+    private Long id;
+
+    /** 用户名称 */
+    @Excel(name = "用户名称")
+    private String userName;
+
+    /** 计数 */
+    @Excel(name = "计数")
+    private Integer aCount;
+
+    /** 状态（0正常 1停用） */
+    @Excel(name = "状态", readConverterExp = "0=正常,1=停用")
+    private String status;
+
+    /** 价格（元） */
+    @Excel(name = "价格", readConverterExp = "元=")
+    private BigDecimal price;
+
+    /** 出生日期 */
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    @Excel(name = "出生日期", width = 30, dateFormat = "yyyy-MM-dd")
+    private Date birthday;
+
+    public void setId(Long id) 
+    {
+        this.id = id;
+    }
+
+    public Long getId() 
+    {
+        return id;
+    }
+
+    public void setUserName(String userName) 
+    {
+        this.userName = userName;
+    }
+
+    public String getUserName() 
+    {
+        return userName;
+    }
+
+    public void setaCount(Integer aCount) 
+    {
+        this.aCount = aCount;
+    }
+
+    public Integer getaCount() 
+    {
+        return aCount;
+    }
+
+    public void setStatus(String status) 
+    {
+        this.status = status;
+    }
+
+    public String getStatus() 
+    {
+        return status;
+    }
+
+    public void setPrice(BigDecimal price) 
+    {
+        this.price = price;
+    }
+
+    public BigDecimal getPrice() 
+    {
+        return price;
+    }
+
+    public void setBirthday(Date birthday) 
+    {
+        this.birthday = birthday;
+    }
+
+    public Date getBirthday() 
+    {
+        return birthday;
+    }
+
+    @Override
+    public String toString() {
+        return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
+            .append("id", getId())
+            .append("userName", getUserName())
+            .append("aCount", getaCount())
+            .append("status", getStatus())
+            .append("price", getPrice())
+            .append("birthday", getBirthday())
+            .append("createBy", getCreateBy())
+            .toString();
+    }
+}

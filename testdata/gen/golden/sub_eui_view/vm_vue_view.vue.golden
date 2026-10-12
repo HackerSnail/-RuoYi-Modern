@@ -1,0 +1,64 @@
+<template>
+  <el-drawer title="生成演示详情" :visible.sync="visible" direction="rtl" size="60%" append-to-body :before-close="handleClose" custom-class="detail-drawer">
+    <div v-loading="loading" class="drawer-content">
+      <h4 class="section-header">基本信息</h4>
+      <el-row :gutter="20" class="mb8">
+        <el-col :span="12">
+          <div class="info-item">
+            <label class="info-label">订单名称：</label>
+            <span class="info-value plaintext">
+              {{ info.orderName }}
+            </span>
+          </div>
+        </el-col>
+        <el-col :span="12">
+          <div class="info-item">
+            <label class="info-label">备注：</label>
+            <span class="info-value plaintext">
+              {{ info.remark }}
+            </span>
+          </div>
+        </el-col>
+      </el-row>
+      <el-row :gutter="20" class="mb8">
+        <el-col :span="12">
+          <div class="info-item">
+            <label class="info-label">创建时间：</label>
+            <span class="info-value plaintext">
+              {{ parseTime(info.createTime, '{y}-{m}-{d}') }}
+            </span>
+          </div>
+        </el-col>
+      </el-row>
+    </div>
+  </el-drawer>
+</template>
+
+<script>
+import { getDemo } from '@/api/system/demo'
+
+export default {
+  name: 'DemoViewDrawer',
+  data() {
+    return {
+      visible: false,
+      loading: false,
+      info: {}
+    }
+  },
+  methods: {
+    open(orderId) {
+      this.visible = true
+      this.loading = true
+      getDemo(orderId).then(res => {
+        this.info = res.data || {}
+      }).finally(() => {
+        this.loading = false
+      })
+    },
+    handleClose() {
+      this.visible = false
+    }
+  }
+}
+</script>

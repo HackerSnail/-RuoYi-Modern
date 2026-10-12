@@ -1,0 +1,33 @@
+import type { PageDomain, BaseEntity } from "../common";
+
+/** 生成演示配置分页查询参数 */
+export interface DemoQueryParams extends PageDomain {
+  /** 订单名称 */
+  orderName?: string;
+}
+
+/** 生成演示配置信息 */
+export interface GenDemo extends BaseEntity {
+  /** 订单ID */
+  orderId?: number;
+  /** 订单名称 */
+  orderName?: string;
+  /** 备注 */
+  remark?: string;
+  /** 创建时间 */
+  createTime?: string;
+  /** 生成明细信息 */
+  genDemoDetailList?: GenDemoDetail[];
+}
+
+/** 生成明细配置信息 */
+export interface GenDemoDetail extends BaseEntity {
+  /** 明细ID */
+  detailId?: number;
+  /** 订单ID */
+  orderId?: number;
+  /** 明细名称 */
+  detailName?: string;
+  /** 单项价格（元） */
+  itemPrice?: string;
+}

@@ -4,8 +4,28 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gogf/gf/v2/encoding/gjson"
+
 	"ruoyi-goframe/internal/model"
 )
+
+// TestPreviewResultOrder 锁定：*PreviewResult 的保序 MarshalJSON 在被 GoFrame gjson（WriteJson 的编码路径）
+// 包裹于 map[string]interface{} 内时仍按插入顺序输出对象键（对齐 Java LinkedHashMap）。
+func TestPreviewResultOrder(t *testing.T) {
+	p := newPreviewResult()
+	p.put("vm/java/domain.java.vm", "a\r\nb")
+	p.put("vm/java/service.java.vm", "x")
+	body := map[string]interface{}{"code": 200, "data": p}
+	enc, _ := gjson.Encode(body)
+	out := string(enc)
+	// 键序必须 domain 先于 service；且值含 \r\n 转义。
+	if i, j := strings.Index(out, "domain.java.vm"), strings.Index(out, "service.java.vm"); !(i >= 0 && j >= 0 && i < j) {
+		t.Fatalf("键序未保真: %s", out)
+	}
+	if !strings.Contains(out, `a\r\nb`) {
+		t.Fatalf("CRLF 未正确转义: %s", out)
+	}
+}
 
 // TestFilterKeyword 锁定 SqlUtil.filterKeyword 的怪癖行为（不得修正）：
 // 先删净空白 → 带尾空格 token（"select "/"drop " 等）永不命中，仅无空格子集真正生效。

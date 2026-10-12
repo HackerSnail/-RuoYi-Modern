@@ -247,3 +247,13 @@ type SysUserOnline struct {
 	Os            string `json:"os"`
 	LoginTime     int64  `json:"loginTime"`
 }
+
+// SysCache 缓存监控展示行：对齐 com.ruoyi.system.domain.SysCache 的 Jackson 输出。
+// 四字段恒序列化（Java 无 @JsonInclude，默认全出）。getNames 阶段 cacheName 保留尾冒号原样；
+// getValue 阶段经三参构造剥前缀（cacheName 去冒号作分组名、cacheKey 去掉带冒号前缀）。
+type SysCache struct {
+	CacheName  string `json:"cacheName"`
+	CacheKey   string `json:"cacheKey"`
+	CacheValue string `json:"cacheValue"`
+	Remark     string `json:"remark"`
+}

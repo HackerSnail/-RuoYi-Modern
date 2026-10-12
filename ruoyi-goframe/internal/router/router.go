@@ -135,5 +135,13 @@ func Register(s *ghttp.Server) {
 		// 在线用户监控 /monitor/online（对齐 SysUserOnlineController：两接口均带 @PreAuthorize；数据源 Redis 会话，无 DB）
 		g.GET("/monitor/online/list", middleware.Permi("monitor:online:list", controller.OnlineList))
 		g.DELETE("/monitor/online/{tokenId}", middleware.Permi("monitor:online:forceLogout", controller.OnlineForceLogout))
+		// 缓存监控 /monitor/cache（对齐 CacheController：全部 @PreAuthorize monitor:cache:list；数据源 Redis 管理命令，不走 DB）
+		g.GET("/monitor/cache", middleware.Permi("monitor:cache:list", controller.CacheInfo))
+		g.GET("/monitor/cache/getNames", middleware.Permi("monitor:cache:list", controller.CacheNames))
+		g.GET("/monitor/cache/getKeys/{cacheName}", middleware.Permi("monitor:cache:list", controller.CacheKeys))
+		g.GET("/monitor/cache/getValue/{cacheName}/{cacheKey}", middleware.Permi("monitor:cache:list", controller.CacheValue))
+		g.DELETE("/monitor/cache/clearCacheName/{cacheName}", middleware.Permi("monitor:cache:list", controller.ClearCacheName))
+		g.DELETE("/monitor/cache/clearCacheKey/{cacheKey}", middleware.Permi("monitor:cache:list", controller.ClearCacheKey))
+		g.DELETE("/monitor/cache/clearCacheAll", middleware.Permi("monitor:cache:list", controller.ClearCacheAll))
 	})
 }

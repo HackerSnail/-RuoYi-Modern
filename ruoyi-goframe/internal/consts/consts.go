@@ -29,6 +29,8 @@ const (
 	RedisCaptchaCode = "captcha_codes:"
 	RedisSysConfig   = "sys_config:"
 	RedisSysDict     = "sys_dict:"
+	RedisRepeatSubmit = "repeat_submit:"
+	RedisRateLimit    = "rate_limit:"
 	RedisPwdErrCnt   = "pwd_err_cnt:"
 )
 

@@ -26,21 +26,26 @@ const msgBadCred = "用户不存在/密码错误"
 func Login(ctx context.Context, lb model.LoginBody, ip, userAgent string) (string, *model.LoginUser, string) {
 	// 1. 验证码
 	if m := validateCaptcha(ctx, lb.Code, lb.UUID); m != "" {
+		AsyncRecordLogininfor(lb.Username, consts.EvLoginFail, m, ip, userAgent)
 		return "", nil, m
 	}
 	// 2. 前置校验（空 → not.null；长度越界 → 认证文案，同 Java 顺序）
 	if lb.Username == "" || lb.Password == "" {
+		AsyncRecordLogininfor(lb.Username, consts.EvLoginFail, "* 必须填写", ip, userAgent)
 		return "", nil, "* 必须填写"
 	}
 	if len(lb.Password) < 5 || len(lb.Password) > 20 {
+		AsyncRecordLogininfor(lb.Username, consts.EvLoginFail, msgBadCred, ip, userAgent)
 		return "", nil, msgBadCred
 	}
 	if len(lb.Username) < 2 || len(lb.Username) > 20 {
+		AsyncRecordLogininfor(lb.Username, consts.EvLoginFail, msgBadCred, ip, userAgent)
 		return "", nil, msgBadCred
 	}
 	// 3. 认证：加载用户 + 状态 + BCrypt（失败统一 msgBadCred）
 	user := selectUserByUserName(ctx, lb.Username)
 	if user == nil || !checkUserAllowed(ctx, lb.Username, user) || !verifyPassword(ctx, lb.Username, lb.Password, user) {
+		AsyncRecordLogininfor(lb.Username, consts.EvLoginFail, msgBadCred, ip, userAgent)
 		return "", nil, msgBadCred
 	}
 	clearPwdErrCount(ctx, lb.Username)
@@ -62,6 +67,7 @@ func Login(ctx context.Context, lb model.LoginBody, ip, userAgent string) (strin
 		return "", nil, msgBadCred
 	}
 	recordLoginInfo(ctx, user.UserId, ip)
+	AsyncRecordLogininfor(lb.Username, consts.EvLoginSuccess, "登录成功", ip, userAgent)
 	return token, lu, ""
 }
 

@@ -85,6 +85,8 @@ func Logout(r *ghttp.Request) {
 	auth := r.GetHeader(service.TokenHeader(ctx))
 	if lu := service.GetLoginUser(ctx, auth); lu != nil {
 		service.DeleteLoginUser(ctx, lu.Token)
+		// 对齐 Java LogoutSuccessHandlerImpl：仅当取到会话才记 LOGOUT 审计（→status '0'）。
+		service.AsyncRecordLogininfor(lu.Username, consts.EvLogout, "退出成功", r.GetClientIp(), r.GetHeader("User-Agent"))
 	}
 	api.Send(r, api.OkMsg("退出成功"))
 }

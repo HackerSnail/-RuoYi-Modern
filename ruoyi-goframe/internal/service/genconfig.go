@@ -30,3 +30,8 @@ func getGenConfig(ctx context.Context) GenConfig {
 		AllowOverwrite: c.MustGet(ctx, "gen.allowOverwrite", false).Bool(),
 	}
 }
+
+// GetGenConfig 对外导出版访问器：供 controller 侧对齐 GenController.genCode 的 genConfig.isAllowOverwrite() 判据。
+func GetGenConfig(ctx context.Context) GenConfig {
+	return getGenConfig(ctx)
+}

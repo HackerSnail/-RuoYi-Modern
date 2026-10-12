@@ -5,6 +5,7 @@
 package controller
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/gogf/gf/v2/net/ghttp"
@@ -242,6 +243,64 @@ func GenPreview(r *ghttp.Request) {
 		return
 	}
 	api.Send(r, api.OkData(result))
+}
+
+// GenDownload GET /tool/gen/download/{tableName}（tool:gen:code + @Log 代码生成/GENCODE）：
+// 单表打包为 zip 写响应流，逐字对齐 Java download（内部 downloadCode(tableName)→writeZipToResponse）。
+func GenDownload(r *ghttp.Request) {
+	ctx := r.Context()
+	tableName := r.GetRouter("tableName").String()
+	data, err := service.DownloadCode(ctx, []string{tableName})
+	if err != nil {
+		api.Send(r, api.Err(err.Error()))
+		return
+	}
+	writeZipToResponse(r, data)
+}
+
+// GenCode GET /tool/gen/genCode/{tableName}（tool:gen:code + @Log 代码生成/GENCODE）：自定义路径落盘。
+// 对齐 Java genCode：先判 genConfig.isAllowOverwrite()，不允许则直接返回错误文案，不落盘。
+func GenCode(r *ghttp.Request) {
+	ctx := r.Context()
+	if !service.GetGenConfig(ctx).AllowOverwrite {
+		api.Send(r, api.Err("【系统预设】不允许生成文件覆盖到本地"))
+		return
+	}
+	tableName := r.GetRouter("tableName").String()
+	if err := service.GeneratorCodeToDisk(ctx, tableName); err != nil {
+		api.Send(r, api.Err(err.Error()))
+		return
+	}
+	api.Send(r, api.Ok())
+}
+
+// GenBatchGenCode GET /tool/gen/batchGenCode?tables=（tool:gen:code + @Log 代码生成/GENCODE）：
+// 多表合并打包 zip。对齐 Java batchGenCode：tables 拆空即报「请选择要生成的表」（Java 为 ServiceException）。
+func GenBatchGenCode(r *ghttp.Request) {
+	ctx := r.Context()
+	names := toStrArray(r.Get("tables").String())
+	if len(names) == 0 {
+		api.Send(r, api.Err("请选择要生成的表"))
+		return
+	}
+	data, err := service.DownloadCode(ctx, names)
+	if err != nil {
+		api.Send(r, api.Err(err.Error()))
+		return
+	}
+	writeZipToResponse(r, data)
+}
+
+// writeZipToResponse 逐字对齐 Java 同名私有方法：固定文件名 ruoyi.zip（非动态）、跨域暴露头、Content-Length、
+// octet-stream，写 zip 字节到响应流。注意：与文件下载的 RFC6266 双轨头不同，此处 Java 写死字面量，原样复刻。
+func writeZipToResponse(r *ghttp.Request, data []byte) {
+	r.Response.ClearBuffer()
+	r.Response.Header().Set("Access-Control-Allow-Origin", "*")
+	r.Response.Header().Set("Access-Control-Expose-Headers", "Content-Disposition")
+	r.Response.Header().Set("Content-Disposition", "attachment; filename=\"ruoyi.zip\"")
+	r.Response.Header().Set("Content-Length", strconv.Itoa(len(data)))
+	r.Response.Header().Set("Content-Type", "application/octet-stream; charset=UTF-8")
+	r.Response.Write(data)
 }
 
 // ---- 辅助 ----

@@ -119,5 +119,10 @@ func Register(s *ghttp.Server) {
 		g.PUT("/system/notice/repush/{noticeId}", middleware.Permi("system:notice:edit", controller.NoticeRepush))
 		g.GET("/system/notice/{noticeId}", controller.NoticeGetInfo)
 		g.DELETE("/system/notice/{noticeIds}", middleware.Permi("system:notice:remove", controller.NoticeRemove))
+		// 通用文件 /common（对齐 CommonController：均无 @PreAuthorize，仅需登录；下载类接口 Java 为静默 200 语义）
+		g.GET("/common/download/resource", controller.ResourceDownload)
+		g.GET("/common/download", controller.FileDownload)
+		g.POST("/common/upload", controller.FileUpload)
+		g.POST("/common/uploads", controller.FileUploads)
 	})
 }

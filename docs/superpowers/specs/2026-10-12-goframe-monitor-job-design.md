@@ -26,12 +26,16 @@ GoFrame 后端（`ruoyi-goframe`），**真调度**：GoFrame 原生 `gcron` 承
 - **执行落点**：编译期任务注册表 `{beanName.method → Go handler}`，**不做任意类实例化/反射**，天然杜绝 RCE，
   且忠实于「白名单包只有两个清理任务」的现实。未命中注册表的目标在保存期即被拒（等价 Java 白名单）。
 
-### 有意的契约偏差（3 条，须实现与验收时知悉）
+### 有意的契约偏差与增强（3 条，须实现与验收时知悉）
 
 1. **列表默认排序**：Java `SysJobMapper.selectJobList` 无 `ORDER BY`（InnoDB 实际按 PK 返回）；Go 为分页稳定显式
    `order by job_id asc`。观测行为一致。
-2. **misfire 策略列**：内存引擎无持久化 trigger，`misfire_policy`（0/1/2/3）仅原样存储/导出，不参与运行期补偿；
-   停机期间错过的调度重启后不补跑（与 `gcron` 语义一致，近似 Java `DO_NOTHING`/`FireAndProceed` 单发）。
+2. **misfire 策略列 + 开机补跑增强**：`misfire_policy`（0/1/2/3）本身**仅原样存储/导出**，不驱动引擎级补偿
+   （内存引擎无持久化 trigger 时刻历史，做不到 `IGNORE_MISFIRES`「补全部」/集群锁那套完整 JobStore 语义，详见与
+   用户讨论）。**但**（用户拍板 B）新增一个**超出 Java 契约**的轻量增强：`sys_job.last_fire_time` + `StartScheduler`
+   开机**补跑一次**（宕机期间若错过 ≥1 个调度点则触发一次，近似 `FIRE_AND_PROCEED` 单发）。由
+   `job.scheduler.catchUpMissed`（默认 **开**）控制；置 `false` 即回到纯 `gcron` 天然 `DO_NOTHING`（= 与 Java 该
+   种子任务逐字一致）。详见第 3b 节。
 3. **cron 专有 token**：`cronutil` 与 `gcron` 均不支持 Quartz 的 `L W #`；含这些 token 的 cron 在保存期被
    `IsValid` 拒。本 fork 的两个真实任务与种子数据均不触碰，影响面为零。
 
@@ -41,7 +45,8 @@ GoFrame 后端（`ruoyi-goframe`），**真调度**：GoFrame 原生 `gcron` 承
 
 ### 1. 数据模型 `internal/model/entity.go`
 
-新增 `SysJob`，列严格对齐 `selectJobVo`/`SysJobResult`（13 列）：
+新增 `SysJob`，DB 列严格对齐 `selectJobVo`/`SysJobResult`（13 列），另加一个本仓专用的内部列 `last_fire_time`
+（第 3b 节，不参与 API 响应）；`NextValidTime` 为瞬态推算字段。共 15 个 Go 字段：
 
 ```go
 type SysJob struct {
@@ -58,6 +63,9 @@ type SysJob struct {
     UpdateBy       string      `json:"updateBy"       orm:"update_by"`
     UpdateTime     *gtime.Time `json:"updateTime"     orm:"update_time"`
     Remark         string      `json:"remark"`
+    // 本仓增强专用列：上次实际执行完成时刻（含计划触发/run/开机补跑），由 executeJob 统一回写。
+    // json:"-" → 不出现在任何 API 响应（保持与 Java 契约一致），仅供调度器开机补跑判定。
+    LastFireTime   *gtime.Time `json:"-"              orm:"last_fire_time"`
     // 非持久化响应字段：对齐 Java SysJob.getNextValidTime()（瞬态，依 cron 实时推算）。
     NextValidTime  *gtime.Time `json:"nextValidTime"  orm:"-"`
 }
@@ -67,6 +75,8 @@ type SysJob struct {
 - `NextValidTime` 由 service 在 list/getInfo 返回前逐条计算填充；空/非法 cron → `nil`（JSON `null`），
   不阻断整列表（对齐 Java getter 的 try/catch 兜底）。
 - 时间序列化沿用本仓既有 `*gtime.Time` 约定（与 operlog/logininfor 一致，不改）。
+- `LastFireTime` 由第 3b 节新增的 `sys_job.last_fire_time` 列映射；`SelectJobAll`（启动加载）额外 `select` 该列，
+  list/getInfo 用 13 列 vo（该字段留 `nil`，且 `json:"-"` 本就外不出）。
 
 ### 2. 服务层 `internal/service/job.go`（新建）
 
@@ -81,7 +91,9 @@ type SysJob struct {
 - `SelectJobListPaged(ctx, f, p)`：`QueryPaged(..., "job_id asc")`。
 - `SelectJobListLimited(ctx, f, maxRows)`：列表 SQL + `order by job_id asc limit ?`（传 `maxRows+1`），export 护栏。
 - `SelectJobById(ctx, jobId) *model.SysJob`：`GetOne`；未命中回 `nil`。
-- `SelectJobAll(ctx) []model.SysJob`：`selectJobVo` 全量（启动加载）。
+- `SelectJobAll(ctx) []model.SysJob`：`selectJobVo + ", last_fire_time"`（启动加载额外带 `last_fire_time` 供补跑判定）。
+- `UpdateJobLastFireTime(ctx, jobId int64, t *gtime.Time) error`：`update sys_job set last_fire_time=? where job_id=?`
+  （executeJob 每次执行收尾调用，含失败——失败也算「已尝试」，避免下次开机对同一漏点无限重试）。
 - `InsertJob(ctx, *model.SysJob) (int64, error)`：动态列仅非空、`create_time=now`、`useGeneratedKeys` 语义取回自增
   jobId 回填 `JobId`。**入库前 status 置暂停 `"1"`**（对齐 `insertJob`：`job.setStatus(PAUSE)`）；若
   `MisfirePolicy` 空则补 `"0"`、`Concurrent` 空则补 `"0"`（对齐 Java 字段默认 `MISFIRE_DEFAULT`/允许并发，避免
@@ -143,7 +155,35 @@ VALUES(...)`，供调度执行写日志（对齐 `addJobLog`）。
     `job_message = job.JobName + " 总共耗时：" + ms + "毫秒"`（逐字对齐）。
   - 组装 `model.SysJobLog{JobName,JobGroup,InvokeTarget,JobMessage,Status,ExceptionInfo,StartTime,EndTime}` →
     `InsertJobLog`；落库失败仅记日志不外抛（对齐 `after` 全程兜底）。
+  - 收尾（`defer` 内、无论成功/失败）：`UpdateJobLastFireTime(ctx, job.JobId, gtime.Now())`（供第 3b 节开机补跑）。
 - 所有调度器动作「先落库成功、再同步调度器」，与 Java 各 `@Transactional` 方法顺序一致（见第 7 节 controller 编排）。
+
+### 3b. 开机补跑（`last_fire_time` 增强，**超出 Java 契约**）
+
+用户拍板 B 加入。默认开（`job.scheduler.catchUpMissed=true`），关掉即回到纯 `gcron` 天然 `DO_NOTHING`（与 Java 逐字一致）。
+
+`StartScheduler` 在「注册全部任务」之后追加一步补跑扫描（`catchUpMissed` 为真时）：
+
+- 遍历本轮 `SelectJobAll` 结果，**仅 `status=="0"`（正常态）** 参与；暂停态视为用户有意停，不补。
+- `bootNow := gtime.Now()`。
+- 若 `job.LastFireTime == nil`（本仓首次见到该任务，含 Java 侧新建后从没被 Go 跑过的、或列刚加的）：
+  → **只 `UpdateJobLastFireTime(bootNow)` 打基准、本次不补跑**（避免首次部署对历史漏点突然补触发、防意外重复执行）。
+- 否则 `missed := cronutil.Next(job.CronExpression, job.LastFireTime)`：
+  - `missed != nil && missed.Before(bootNow)` → `[LastFireTime, now)` 内本应有一格却没跑（进程当时不在）
+    → `go executeJob(ctx, job)` **补跑一次**（无论错过几格都只补一次，≈`FIRE_AND_PROCEED` 单发；executeJob 收尾刷新
+    `last_fire_time`）。
+  - 否则（下一格在将来）→ 不补。
+
+要点与边界：
+
+- 与正常调度不冲突：`gcron` 已注册任务照常在**未来** tick 触发；补跑只针对**已漏过去**那格。
+- 幂等：补跑也走 `executeJob` → 落 `sys_job_log` + 刷 `last_fire_time`，语义与计划触发一致。
+- 与 Java 共存安全：Java 从不写 `last_fire_time`（其 mapper 不认该列，动态插入/更新不触碰、结果映射忽略），
+  列可空 → 加列对 Java 无感；Java 新建任务 → Go 首次见到按「打基准不补」处理，不会误触发。
+- DDL（一次性，施加于共享库 192.168.25.50/ry-vue）：
+  `ALTER TABLE sys_job ADD COLUMN last_fire_time datetime NULL COMMENT '上次实际执行完成时刻(Go 调度器增强)';`
+  MySQL 无 `ADD COLUMN IF NOT EXISTS`，迁移脚本先查 `information_schema.columns` 判存在再施，保证可重跑。
+- 长耗时/并发：只补一次不叠加；本批 handler 皆幂等清理删除，重复无副作用。
 
 ### 4. 任务注册表 `internal/service/jobtask.go`（新建）
 
@@ -220,7 +260,8 @@ VALUES(...)`，供调度执行写日志（对齐 `addJobLog`）。
 
 - `main.go`：`service.StartServerMonitor(ctx)` 之后加 `service.StartScheduler(ctx)`；`s.Run()` 返回、
   `StopServerMonitor()` 旁加 `service.StopScheduler()`。
-- `config.yaml`：新增顶层 `job: scheduler: enabled: true`。
+- `config.yaml`：新增顶层 `job: scheduler: enabled: true` 与 `job: scheduler: catchUpMissed: true`
+  （后者即第 3b 节开关，置 false 回到纯 Java `DO_NOTHING` 行为）。
 
 ---
 
@@ -244,7 +285,13 @@ VALUES(...)`，供调度执行写日志（对齐 `addJobLog`）。
   6. export：HTTP200 + PK 魔数，`readtool` 反读 sheet 名「定时任务」+ 8 列 + converter（计划策略/并发/状态）+ 任务序号 NUMERIC。
   7. remove：单条/多条 → 200；`sys_job` 与调度器同步摘除；>500 → 拒绝文案。
   8. 清理：删测试期间产生的 `sys_job`/`sys_job_log` sentinel，复原共享库（`sys_job` 仅剩种子 id=4 且保持暂停）。
+- **开机补跑（3b）测试**：
+  - 单测：`cronutil.Next` 判漏点边界（`LastFireTime` 恰在 tick 前/后/恰等）；首见(`nil`)只打基准不补。
+  - 运行期：把某测试任务 `last_fire_time` 手工置为「一个已过期的调度点」+ `status=0` → 重启 Go → `sys_job_log`
+    新增一条补跑记录、`last_fire_time` 刷新；`catchUpMissed=false` 时重启**不**补（回到 DO_NOTHING）。
+  - 加列回归：确认加列后列表/导出/响应契约不变（`last_fire_time` 不出现在响应）。
 - **还原**：config 端口/开关/上限回提交态；`tmp/` 脚手架 `rmdir`；`go mod tidy && go build && go vet` 绿。
+  （测试期给 `sys_job` 加的 `last_fire_time` 列为本批正式迁移，**不删**，仅还原测试数据行。）
 
 ---
 
@@ -254,10 +301,12 @@ VALUES(...)`，供调度执行写日志（对齐 `addJobLog`）。
 2. `cronutil.go` + 单测（先立地基，运行/校验同源）。
 3. `jobtask.go`（注册表 + 解析）+ `operlog/logininfor` 的 `Clean*Before`。
 4. `job.go` service（CRUD/list/export/validateJob/nextValidTime）+ `joblog.go` 的 `InsertJobLog`。
-5. `scheduler.go`（gcron 生命周期 + executeJob）。
-6. `controller/job.go` 8 handler。
-7. `router.go` +8 路由；`main.go` + `config.yaml` 接线。
-8. 编译/vet → 单测 → 运行期集成 → 还原 → commit+push。
+5. `scheduler.go`（gcron 生命周期 + executeJob + 收尾刷 `last_fire_time`）。
+6. **DDL 迁移**：给共享库 `sys_job` 加 `last_fire_time`（查 `information_schema` 保可重跑）；`config.yaml` 加 `catchUpMissed`。
+7. **开机补跑**：`StartScheduler` 追加 `catchUpMissed` 扫描（第 3b 节）。
+8. `controller/job.go` 8 handler。
+9. `router.go` +8 路由；`main.go` + `config.yaml`(`enabled`/`catchUpMissed`) 接线。
+10. 编译/vet → 单测（cronutil/注册表/validateJob/补跑） → 运行期集成（含补跑） → 还原 → commit+push。
 
 ## Assumptions
 
@@ -265,3 +314,5 @@ VALUES(...)`，供调度执行写日志（对齐 `addJobLog`）。
   不实现历史 `ryTask`（Java 侧已移除）。
 - `ruoyi.operLogRetentionDays` 配置项在 Go 侧读得到（若无则默认取合理值，实现时核 `config.yaml`）。
 - `*gtime.Time` 的 JSON 序列化格式与已移植的 operlog/logininfor 保持一致，前端已知可用。
+- 增强所需的 `sys_job.last_fire_time` 为**本仓新增列**、非 Java 契约；施加于共享库对 Java 无感（见 3b 共存安全），
+  且需一次性 DDL 迁移脚本（可重跑）。

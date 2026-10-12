@@ -51,8 +51,21 @@ func assertSafeGenPath(fileName string) error {
 	return nil
 }
 
+// assertSafeGenRoot 校验落盘根目录 genPath 不含路径穿越段（..）。genPath 来自可编辑的 gen_table，
+// spec §315/§353 要求拒绝越出意图根以外的写（如 ../../../../evil）：以「任一目录段等于 ..」为穿越
+// 判据（绝对路径 D:/gen、相对路径 src/gen 均合法放行，仅拦 ../.. 逃逸；'.' 为当前目录、无害不拦）。
+func assertSafeGenRoot(genPath string) error {
+	for _, seg := range strings.FieldsFunc(genPath, func(r rune) bool { return r == '/' || r == '\\' }) {
+		if seg == ".." {
+			return fmt.Errorf("代码生成非法genPath，疑似路径穿越，已拒绝：%s", genPath)
+		}
+	}
+	return nil
+}
+
 // GetGenPath 对齐 static getGenPath：genPath 为 "/"（默认占位）→ 工作目录/src/文件名；否则 genPath/文件名。
 // 文件名取自 velocity.GetFileName（正斜杠路径），经 filepath.FromSlash 转本机分隔后 Join。
+// 落盘前对两段分别收口：文件名段走 assertSafeGenPath，根目录段走 assertSafeGenRoot（spec §315）。
 func GetGenPath(template string, t *model.GenTable) (string, error) {
 	fileName := velocity.GetFileName(template, t)
 	if err := assertSafeGenPath(fileName); err != nil {
@@ -64,6 +77,9 @@ func GetGenPath(template string, t *model.GenTable) (string, error) {
 			return "", err
 		}
 		return filepath.Join(wd, "src", filepath.FromSlash(fileName)), nil
+	}
+	if err := assertSafeGenRoot(t.GenPath); err != nil {
+		return "", err
 	}
 	return filepath.Join(t.GenPath, filepath.FromSlash(fileName)), nil
 }

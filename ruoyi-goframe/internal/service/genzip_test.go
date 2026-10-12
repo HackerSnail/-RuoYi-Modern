@@ -187,6 +187,21 @@ func TestDownloadRejectsPathTraversal(t *testing.T) {
 	}
 }
 
+// TestGetGenPathRejectsGenRootTraversal 验证 genPath 根目录含 .. 逃逸段时被拒（spec §315/§353）。
+func TestGetGenPathRejectsGenRootTraversal(t *testing.T) {
+	table := loadFixture(t, "crud_eui")
+	table.GenPath = "../../../../evil"
+	if _, err := GetGenPath("vm/java/domain.java.vm", table); err == nil ||
+		!strings.Contains(err.Error(), "疑似路径穿越") {
+		t.Fatalf("genPath 穿越应被拒，实得 err=%v", err)
+	}
+	// 反例：合法绝对/相对根应放行（无 .. 段）。
+	table.GenPath = t.TempDir()
+	if _, err := GetGenPath("vm/java/domain.java.vm", table); err != nil {
+		t.Fatalf("合法 genPath 不应被拒，实得 err=%v", err)
+	}
+}
+
 // ---- 测试辅助 ----
 
 func mustZip(t *testing.T, tables ...*model.GenTable) []byte {

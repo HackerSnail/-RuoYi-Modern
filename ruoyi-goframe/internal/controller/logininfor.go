@@ -1,4 +1,4 @@
-// Package controller —— 登录日志 /monitor/logininfor。对齐 SysLogininforController 的 list/remove/clean/unlock（export 顺延）。
+// Package controller —— 登录日志 /monitor/logininfor。对齐 SysLogininforController 的 list/export/remove/clean/unlock。
 // 注意：clean 复用 monitor:logininfor:remove 权限（与 operlog 的独立 clean 权限不同，此为 Java 原样）；unlock 用 monitor:logininfor:unlock。
 package controller
 

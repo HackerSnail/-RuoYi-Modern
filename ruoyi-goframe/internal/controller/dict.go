@@ -1,5 +1,5 @@
 // Package controller —— /system/dict/type 与 /system/dict/data HTTP 处理器，逐条对齐 SysDictTypeController + SysDictDataController。
-// 含公开只读端点 data/type/{dictType}（无 @PreAuthorize，走敏感字典黑名单）；Excel 导出属后续批次。
+// 含公开只读端点 data/type/{dictType}（无 @PreAuthorize，走敏感字典黑名单）；type/data 均含 Excel 导出。
 package controller
 
 import (

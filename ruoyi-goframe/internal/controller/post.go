@@ -1,5 +1,5 @@
 // Package controller —— /system/post 管理端 HTTP 处理器，逐条对齐 SysPostController 的入参/出参/校验顺序/文案。
-// 岗位无数据权限（SysPostMapper 无 ${dataScope}），删除护栏为"已分配用户不可删"；Excel 导出属后续批次。
+// 岗位无数据权限（SysPostMapper 无 ${dataScope}），删除护栏为"已分配用户不可删"；已实现 Excel 导出。
 package controller
 
 import (

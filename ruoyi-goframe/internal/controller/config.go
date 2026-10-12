@@ -1,5 +1,5 @@
 // Package controller —— /system/config 参数配置 HTTP 处理器，逐条对齐 SysConfigController 的入参/出参/校验顺序/文案。
-// 含公开只读端点 configKey/{configKey}（无 @PreAuthorize，走白名单过滤）；Excel 导出属后续批次。
+// 含公开只读端点 configKey/{configKey}（无 @PreAuthorize，走白名单过滤）；已实现 Excel 导出。
 package controller
 
 import (

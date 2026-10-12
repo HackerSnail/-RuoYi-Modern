@@ -1,4 +1,4 @@
-// Package controller —— 操作日志 /monitor/operlog。对齐 SysOperlogController 的 list/remove/clean（export 顺延）。
+// Package controller —— 操作日志 /monitor/operlog。对齐 SysOperlogController 的 list/export/remove/clean。
 // 权限非对称：list→monitor:operlog:list；remove→monitor:operlog:remove；clean→独立 monitor:operlog:clean（全表不可逆，单列授权）。
 package controller
 

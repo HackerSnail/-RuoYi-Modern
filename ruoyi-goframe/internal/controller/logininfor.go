@@ -4,6 +4,7 @@ package controller
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/gogf/gf/v2/net/ghttp"
 
@@ -30,6 +31,28 @@ func LogininforList(r *ghttp.Request) {
 		return
 	}
 	api.Send(r, service.DataTable(total, rows))
+}
+
+// LogininforExport POST /monitor/logininfor/export（monitor:logininfor:export + @Log EXPORT）：同 list 的过滤入参（无 DataScope），过 exportLimit 护栏后写 xlsx。
+func LogininforExport(r *ghttp.Request) {
+	ctx := r.Context()
+	f := service.LogininforListFilter{
+		Ipaddr:    r.Get("ipaddr").String(),
+		Status:    r.Get("status").String(),
+		UserName:  r.Get("userName").String(),
+		BeginTime: paramRange(r, "beginTime"),
+		EndTime:   paramRange(r, "endTime"),
+	}
+	max := service.GetExportMaxRows(ctx)
+	rows, err := service.SelectLogininforListLimited(ctx, f, max)
+	if err != nil {
+		api.Send(r, api.Err("导出失败"))
+		return
+	}
+	if exportOverLimit(r, len(rows), max) {
+		return
+	}
+	writeXlsx(r, func(w io.Writer) error { return service.ExportLogininfor(w, rows) })
 }
 
 // LogininforRemove DELETE /monitor/logininfor/{infoIds} → toAjax(受影响行数)。

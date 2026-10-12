@@ -10,6 +10,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/gogf/gf/v2/database/gdb"
@@ -107,6 +108,62 @@ func SelectOperLogListPaged(ctx context.Context, f OperLogListFilter, p Page) ([
 		return nil, 0, err
 	}
 	return scanOperLogs(res.Rows), res.Total, nil
+}
+
+// SelectOperLogListLimited 对应 exportLimit 包裹的 selectOperLogList（无 DataScope，默认 oper_id desc）：同列表 SQL + 排序 + limit max+1。
+func SelectOperLogListLimited(ctx context.Context, f OperLogListFilter, maxRows int) ([]model.SysOperLog, error) {
+	sql, args := buildOperLogListSQL(f)
+	sql += " order by oper_id desc limit ?"
+	args = append(args, maxRows+1)
+	recs, err := g.DB().GetAll(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	return scanOperLogs(recs), nil
+}
+
+// colOperLog 把「从 *model.SysOperLog 取值」的闭包适配成引擎的 func(any) any。
+func colOperLog(fn func(*model.SysOperLog) any) func(any) any {
+	return func(row any) any {
+		o, ok := row.(*model.SysOperLog)
+		if !ok || o == nil {
+			return nil
+		}
+		return fn(o)
+	}
+}
+
+// operLogExportColumns 操作日志导出列：严格按 SysOperLog 的 @Excel 声明序（businessTypes 数组无 @Excel 不导出）。
+// operId 为 NUMERIC；businessType/operatorType/status 走 readConverterExp；operTime 为日期(width30)；costTime 带 suffix。
+func operLogExportColumns() []ExcelColumn {
+	return []ExcelColumn{
+		{Name: "操作序号", Kind: ExcelKindNumeric, Value: colOperLog(func(o *model.SysOperLog) any { return o.OperId })},
+		{Name: "操作模块", Value: colOperLog(func(o *model.SysOperLog) any { return o.Title })},
+		{Name: "业务类型", Converter: "0=其它,1=新增,2=修改,3=删除,4=授权,5=导出,6=导入,7=强退,8=生成代码,9=清空数据", Value: colOperLog(func(o *model.SysOperLog) any { return o.BusinessType })},
+		{Name: "请求方法", Value: colOperLog(func(o *model.SysOperLog) any { return o.Method })},
+		{Name: "请求方式", Value: colOperLog(func(o *model.SysOperLog) any { return o.RequestMethod })},
+		{Name: "操作类别", Converter: "0=其它,1=后台用户,2=手机端用户", Value: colOperLog(func(o *model.SysOperLog) any { return o.OperatorType })},
+		{Name: "操作人员", Value: colOperLog(func(o *model.SysOperLog) any { return o.OperName })},
+		{Name: "部门名称", Value: colOperLog(func(o *model.SysOperLog) any { return o.DeptName })},
+		{Name: "请求地址", Value: colOperLog(func(o *model.SysOperLog) any { return o.OperUrl })},
+		{Name: "操作地址", Value: colOperLog(func(o *model.SysOperLog) any { return o.OperIp })},
+		{Name: "操作地点", Value: colOperLog(func(o *model.SysOperLog) any { return o.OperLocation })},
+		{Name: "请求参数", Value: colOperLog(func(o *model.SysOperLog) any { return o.OperParam })},
+		{Name: "返回参数", Value: colOperLog(func(o *model.SysOperLog) any { return o.JsonResult })},
+		{Name: "状态", Converter: "0=正常,1=异常", Value: colOperLog(func(o *model.SysOperLog) any { return o.Status })},
+		{Name: "错误消息", Value: colOperLog(func(o *model.SysOperLog) any { return o.ErrorMsg })},
+		{Name: "操作时间", Width: 30, Kind: ExcelKindDate, Layout: "2006-01-02 15:04:05", Value: colOperLog(func(o *model.SysOperLog) any { return o.OperTime })},
+		{Name: "消耗时间", Suffix: "毫秒", Value: colOperLog(func(o *model.SysOperLog) any { return o.CostTime })},
+	}
+}
+
+// ExportOperLog 把操作日志列表写成 xlsx 流：sheet 名 "操作日志"（title 为空）。
+func ExportOperLog(w io.Writer, list []model.SysOperLog) error {
+	rows := make([]any, len(list))
+	for i := range list {
+		rows[i] = &list[i]
+	}
+	return WriteExcel(w, "操作日志", operLogExportColumns(), rows)
 }
 
 // DeleteOperLogByIds 对应 deleteOperLogByIds：空/超限入口即拒（中文文案照 Java ServiceException），底层 DELETE 返受影响行数。

@@ -4,6 +4,7 @@ package controller
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/gogf/gf/v2/net/ghttp"
@@ -48,6 +49,35 @@ func OperLogList(r *ghttp.Request) {
 		return
 	}
 	api.Send(r, service.DataTable(total, rows))
+}
+
+// OperLogExport POST /monitor/operlog/export（monitor:operlog:export + @Log EXPORT）：同 list 的过滤入参（无 DataScope），过 exportLimit 护栏后写 xlsx。
+func OperLogExport(r *ghttp.Request) {
+	ctx := r.Context()
+	btStr := r.Get("businessType").String()
+	stStr := r.Get("status").String()
+	f := service.OperLogListFilter{
+		OperIp:          r.Get("operIp").String(),
+		Title:           r.Get("title").String(),
+		HasBusinessType: btStr != "",
+		BusinessType:    r.Get("businessType").Int(),
+		BusinessTypes:   parseBusinessTypes(r),
+		HasStatus:       stStr != "",
+		Status:          r.Get("status").Int(),
+		OperName:        r.Get("operName").String(),
+		BeginTime:       paramRange(r, "beginTime"),
+		EndTime:         paramRange(r, "endTime"),
+	}
+	max := service.GetExportMaxRows(ctx)
+	rows, err := service.SelectOperLogListLimited(ctx, f, max)
+	if err != nil {
+		api.Send(r, api.Err("导出失败"))
+		return
+	}
+	if exportOverLimit(r, len(rows), max) {
+		return
+	}
+	writeXlsx(r, func(w io.Writer) error { return service.ExportOperLog(w, rows) })
 }
 
 // OperLogRemove DELETE /monitor/operlog/{operIds} → toAjax(受影响行数)。

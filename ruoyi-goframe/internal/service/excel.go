@@ -41,6 +41,7 @@ type ExcelColumn struct {
 	Width     float64           // 列宽，<=0 用默认 16
 	Layout    string            // Kind==Date 时的 Go 时间布局（如 "2006-01-02 15:04:05"）
 	Converter string            // readConverterExp，如 "0=男,1=女,2=未知"；空则不转换
+	Suffix    string            // @Excel suffix，如 "毫秒"；仅纯值(非日期/非转换)分支生效，对齐 Java setCellVo
 	Value     func(row any) any // 从行对象取原始值
 }
 
@@ -92,9 +93,14 @@ func renderCellText(col ExcelColumn, v any) string {
 	}
 	s := gconv.String(v)
 	if col.Converter != "" {
-		s = convertByExp(s, col.Converter)
+		return escapeFormula(convertByExp(s, col.Converter))
 	}
-	return escapeFormula(s)
+	out := escapeFormula(s)
+	// 对齐 Java setCellVo：仅纯 STRING/TEXT 值分支在转义后追加 suffix（date/converter/dict 分支不加）。
+	if col.Suffix != "" {
+		out += col.Suffix
+	}
+	return out
 }
 
 // excelThinBorder 四边细实线，对齐 POI 单元格默认边框。

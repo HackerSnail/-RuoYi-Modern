@@ -10,6 +10,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/gogf/gf/v2/database/gdb"
@@ -84,6 +85,53 @@ func SelectLogininforListPaged(ctx context.Context, f LogininforListFilter, p Pa
 		return nil, 0, err
 	}
 	return scanLogininfors(res.Rows), res.Total, nil
+}
+
+// SelectLogininforListLimited 对应 exportLimit 包裹的 selectLogininforList（无 DataScope，默认 info_id desc）：同列表 SQL + 排序 + limit max+1。
+func SelectLogininforListLimited(ctx context.Context, f LogininforListFilter, maxRows int) ([]model.SysLogininfor, error) {
+	sql, args := buildLogininforListSQL(f)
+	sql += " order by info_id desc limit ?"
+	args = append(args, maxRows+1)
+	recs, err := g.DB().GetAll(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	return scanLogininfors(recs), nil
+}
+
+// colLogininfor 把「从 *model.SysLogininfor 取值」的闭包适配成引擎的 func(any) any。
+func colLogininfor(fn func(*model.SysLogininfor) any) func(any) any {
+	return func(row any) any {
+		o, ok := row.(*model.SysLogininfor)
+		if !ok || o == nil {
+			return nil
+		}
+		return fn(o)
+	}
+}
+
+// logininforExportColumns 登录日志导出列：按 SysLogininfor 的 @Excel 声明序。infoId 为 NUMERIC；status 走 readConverterExp；loginTime 为日期(width30)。
+func logininforExportColumns() []ExcelColumn {
+	return []ExcelColumn{
+		{Name: "序号", Kind: ExcelKindNumeric, Value: colLogininfor(func(o *model.SysLogininfor) any { return o.InfoId })},
+		{Name: "用户账号", Value: colLogininfor(func(o *model.SysLogininfor) any { return o.UserName })},
+		{Name: "登录状态", Converter: "0=成功,1=失败", Value: colLogininfor(func(o *model.SysLogininfor) any { return o.Status })},
+		{Name: "登录地址", Value: colLogininfor(func(o *model.SysLogininfor) any { return o.Ipaddr })},
+		{Name: "登录地点", Value: colLogininfor(func(o *model.SysLogininfor) any { return o.LoginLocation })},
+		{Name: "浏览器", Value: colLogininfor(func(o *model.SysLogininfor) any { return o.Browser })},
+		{Name: "操作系统", Value: colLogininfor(func(o *model.SysLogininfor) any { return o.Os })},
+		{Name: "提示消息", Value: colLogininfor(func(o *model.SysLogininfor) any { return o.Msg })},
+		{Name: "访问时间", Width: 30, Kind: ExcelKindDate, Layout: "2006-01-02 15:04:05", Value: colLogininfor(func(o *model.SysLogininfor) any { return o.LoginTime })},
+	}
+}
+
+// ExportLogininfor 把登录日志列表写成 xlsx 流：sheet 名 "登录日志"（title 为空）。
+func ExportLogininfor(w io.Writer, list []model.SysLogininfor) error {
+	rows := make([]any, len(list))
+	for i := range list {
+		rows[i] = &list[i]
+	}
+	return WriteExcel(w, "登录日志", logininforExportColumns(), rows)
 }
 
 // DeleteLogininforByIds 对应 deleteLogininforByIds：空即拒；实删 0 行抛错（所选可能已被清空）。

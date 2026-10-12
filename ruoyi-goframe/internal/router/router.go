@@ -148,10 +148,12 @@ func Register(s *ghttp.Server) {
 		g.DELETE("/monitor/online/{tokenId}", middleware.Permi("monitor:online:forceLogout", middleware.Log(middleware.OpLog("在线用户", consts.BtForce, "controller.OnlineForceLogout"), controller.OnlineForceLogout)))
 		// 操作日志监控 /monitor/operlog（对齐 SysOperlogController：list/remove/clean；clean 独立权限 monitor:operlog:clean；export 顺延）
 		g.GET("/monitor/operlog/list", middleware.Permi("monitor:operlog:list", controller.OperLogList))
+		g.POST("/monitor/operlog/export", middleware.Permi("monitor:operlog:export", middleware.Log(middleware.OpLog("操作日志", consts.BtExport, "controller.OperLogExport"), controller.OperLogExport)))
 		g.DELETE("/monitor/operlog/clean", middleware.Permi("monitor:operlog:clean", middleware.Log(middleware.OpLog("操作日志", consts.BtClean, "controller.OperLogClean"), controller.OperLogClean)))
 		g.DELETE("/monitor/operlog/{operIds}", middleware.Permi("monitor:operlog:remove", middleware.Log(middleware.OpLog("操作日志", consts.BtDelete, "controller.OperLogRemove"), controller.OperLogRemove)))
 		// 登录日志监控 /monitor/logininfor（对齐 SysLogininforController：list/remove/clean/unlock；clean 复用 remove 权限；export 顺延）
 		g.GET("/monitor/logininfor/list", middleware.Permi("monitor:logininfor:list", controller.LogininforList))
+		g.POST("/monitor/logininfor/export", middleware.Permi("monitor:logininfor:export", middleware.Log(middleware.OpLog("登录日志", consts.BtExport, "controller.LogininforExport"), controller.LogininforExport)))
 		g.GET("/monitor/logininfor/unlock/{userName}", middleware.Permi("monitor:logininfor:unlock", middleware.Log(middleware.OpLog("账户解锁", consts.BtOther, "controller.LogininforUnlock"), controller.LogininforUnlock)))
 		g.DELETE("/monitor/logininfor/clean", middleware.Permi("monitor:logininfor:remove", middleware.Log(middleware.OpLog("登录日志", consts.BtClean, "controller.LogininforClean"), controller.LogininforClean)))
 		g.DELETE("/monitor/logininfor/{infoIds}", middleware.Permi("monitor:logininfor:remove", middleware.Log(middleware.OpLog("登录日志", consts.BtDelete, "controller.LogininforRemove"), controller.LogininforRemove)))

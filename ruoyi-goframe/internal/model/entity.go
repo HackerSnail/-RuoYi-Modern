@@ -257,3 +257,39 @@ type SysCache struct {
 	CacheValue string `json:"cacheValue"`
 	Remark     string `json:"remark"`
 }
+
+// SysOperLog 操作日志 sys_oper_log 列表行：对齐 SysOperLogMapper.xml resultMap 的 17 个域列。
+// 数值列(businessType/operatorType/status/costTime)按 Jackson 以数字出参；operTime 为 LocalDateTime 格式化串。
+type SysOperLog struct {
+	OperId        int64       `json:"operId"        orm:"oper_id"`
+	Title         string      `json:"title"`
+	BusinessType  int         `json:"businessType"  orm:"business_type"`
+	Method        string      `json:"method"`
+	RequestMethod string      `json:"requestMethod" orm:"request_method"`
+	OperatorType  int         `json:"operatorType"  orm:"operator_type"`
+	OperName      string      `json:"operName"      orm:"oper_name"`
+	DeptName      string      `json:"deptName"      orm:"dept_name"`
+	OperUrl       string      `json:"operUrl"       orm:"oper_url"`
+	OperIp        string      `json:"operIp"        orm:"oper_ip"`
+	OperLocation  string      `json:"operLocation"  orm:"oper_location"`
+	OperParam     string      `json:"operParam"     orm:"oper_param"`
+	JsonResult    string      `json:"jsonResult"    orm:"json_result"`
+	Status        int         `json:"status"`
+	ErrorMsg      string      `json:"errorMsg"      orm:"error_msg"`
+	OperTime      *gtime.Time `json:"operTime"      orm:"oper_time"`
+	CostTime      int         `json:"costTime"      orm:"cost_time"`
+}
+
+// SysLogininfor 登录日志 sys_logininfor 列表行：对齐 SysLogininforMapper.xml resultMap 的 9 个域列。
+// status 为字符串(0成功/1失败)；loginTime 为时间列。
+type SysLogininfor struct {
+	InfoId        int64       `json:"infoId"        orm:"info_id"`
+	UserName      string      `json:"userName"      orm:"user_name"`
+	Status        string      `json:"status"`
+	Ipaddr        string      `json:"ipaddr"`
+	LoginLocation string      `json:"loginLocation" orm:"login_location"`
+	Browser       string      `json:"browser"`
+	Os            string      `json:"os"`
+	Msg           string      `json:"msg"`
+	LoginTime     *gtime.Time `json:"loginTime"     orm:"login_time"`
+}

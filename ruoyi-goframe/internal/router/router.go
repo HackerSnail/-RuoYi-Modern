@@ -135,6 +135,15 @@ func Register(s *ghttp.Server) {
 		// 在线用户监控 /monitor/online（对齐 SysUserOnlineController：两接口均带 @PreAuthorize；数据源 Redis 会话，无 DB）
 		g.GET("/monitor/online/list", middleware.Permi("monitor:online:list", controller.OnlineList))
 		g.DELETE("/monitor/online/{tokenId}", middleware.Permi("monitor:online:forceLogout", controller.OnlineForceLogout))
+		// 操作日志监控 /monitor/operlog（对齐 SysOperlogController：list/remove/clean；clean 独立权限 monitor:operlog:clean；export 顺延）
+		g.GET("/monitor/operlog/list", middleware.Permi("monitor:operlog:list", controller.OperLogList))
+		g.DELETE("/monitor/operlog/clean", middleware.Permi("monitor:operlog:clean", controller.OperLogClean))
+		g.DELETE("/monitor/operlog/{operIds}", middleware.Permi("monitor:operlog:remove", controller.OperLogRemove))
+		// 登录日志监控 /monitor/logininfor（对齐 SysLogininforController：list/remove/clean/unlock；clean 复用 remove 权限；export 顺延）
+		g.GET("/monitor/logininfor/list", middleware.Permi("monitor:logininfor:list", controller.LogininforList))
+		g.GET("/monitor/logininfor/unlock/{userName}", middleware.Permi("monitor:logininfor:unlock", controller.LogininforUnlock))
+		g.DELETE("/monitor/logininfor/clean", middleware.Permi("monitor:logininfor:remove", controller.LogininforClean))
+		g.DELETE("/monitor/logininfor/{infoIds}", middleware.Permi("monitor:logininfor:remove", controller.LogininforRemove))
 		// 缓存监控 /monitor/cache（对齐 CacheController：全部 @PreAuthorize monitor:cache:list；数据源 Redis 管理命令，不走 DB）
 		g.GET("/monitor/cache", middleware.Permi("monitor:cache:list", controller.CacheInfo))
 		g.GET("/monitor/cache/getNames", middleware.Permi("monitor:cache:list", controller.CacheNames))

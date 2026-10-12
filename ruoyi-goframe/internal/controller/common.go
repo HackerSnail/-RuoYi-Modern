@@ -7,9 +7,19 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/gogf/gf/v2/net/ghttp"
+
 	"ruoyi-goframe/internal/api"
 	"ruoyi-goframe/internal/consts"
 )
+
+// paramRange 读取 RuoYi 前端日期范围（beginTime/endTime）。
+// 前端把它们放进 params 对象，axios GET 序列化成 URL 编码键 params%5BbeginTime%5D；
+// gf 的 r.Get("params[beginTime]") 读不到（未与编码后的键匹配，实测恒空），
+// 须经 r.URL.Query() 取——其键已被 url 解码为 params[beginTime]（businessTypes 走同径已验证）。
+func paramRange(r *ghttp.Request, key string) string {
+	return r.URL.Query().Get("params[" + key + "]")
+}
 
 // toAjax 对应 BaseController.toAjax(rows)：>0 回 {code:200,"操作成功"}，否则 {code:500,"操作失败"}。
 func toAjax(rows int) api.M {

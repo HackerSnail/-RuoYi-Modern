@@ -294,6 +294,21 @@ type SysLogininfor struct {
 	LoginTime     *gtime.Time `json:"loginTime"     orm:"login_time"`
 }
 
+// SysJobLog 定时任务调度日志 sys_job_log 列表/详情行：对齐 SysJobLogMapper.xml resultMap 的 10 列（含 BaseEntity createTime）。
+// status 为字符串(0正常/1失败)；startTime/endTime/createTime 为时间列（@JsonFormat yyyy-MM-dd HH:mm:ss，gtime 默认同格式序列化）。
+type SysJobLog struct {
+	JobLogId      int64       `json:"jobLogId"      orm:"job_log_id"`
+	JobName       string      `json:"jobName"       orm:"job_name"`
+	JobGroup      string      `json:"jobGroup"      orm:"job_group"`
+	InvokeTarget  string      `json:"invokeTarget"  orm:"invoke_target"`
+	JobMessage    string      `json:"jobMessage"    orm:"job_message"`
+	Status        string      `json:"status"`
+	ExceptionInfo string      `json:"exceptionInfo" orm:"exception_info"`
+	StartTime     *gtime.Time `json:"startTime"     orm:"start_time"`
+	EndTime       *gtime.Time `json:"endTime"       orm:"end_time"`
+	CreateTime    *gtime.Time `json:"createTime"    orm:"create_time"`
+}
+
 // ---------------- 服务器监控 /monitor/server：对齐 com.ruoyi.framework.web.domain.Server 及其子 DTO ----------------
 // Java 侧在 getter 里做单位换算/百分比（字节→GB/MB、tick→占比、round HALF_UP）；Go 无 getter，
 // 故这些结构体字段直接存【换算后的展示值】，由 service/server.go 在采集时算好再序列化。

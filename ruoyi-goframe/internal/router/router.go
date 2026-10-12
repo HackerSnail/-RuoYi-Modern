@@ -157,6 +157,12 @@ func Register(s *ghttp.Server) {
 		g.GET("/monitor/logininfor/unlock/{userName}", middleware.Permi("monitor:logininfor:unlock", middleware.Log(middleware.OpLog("账户解锁", consts.BtOther, "controller.LogininforUnlock"), controller.LogininforUnlock)))
 		g.DELETE("/monitor/logininfor/clean", middleware.Permi("monitor:logininfor:remove", middleware.Log(middleware.OpLog("登录日志", consts.BtClean, "controller.LogininforClean"), controller.LogininforClean)))
 		g.DELETE("/monitor/logininfor/{infoIds}", middleware.Permi("monitor:logininfor:remove", middleware.Log(middleware.OpLog("登录日志", consts.BtDelete, "controller.LogininforRemove"), controller.LogininforRemove)))
+		// 定时任务调度日志 /monitor/jobLog（对齐 SysJobLogController：list/export/getInfo/remove/clean；权限均复用 monitor:job:*，clean 复用 remove 且无二次确认门，Java 原样）。静态 clean 先于 {jobLogIds} 动态。
+		g.GET("/monitor/jobLog/list", middleware.Permi("monitor:job:list", controller.JobLogList))
+		g.POST("/monitor/jobLog/export", middleware.Permi("monitor:job:export", middleware.Log(middleware.OpLog("任务调度日志", consts.BtExport, "controller.JobLogExport"), controller.JobLogExport)))
+		g.DELETE("/monitor/jobLog/clean", middleware.Permi("monitor:job:remove", middleware.Log(middleware.OpLog("调度日志", consts.BtClean, "controller.JobLogClean"), controller.JobLogClean)))
+		g.GET("/monitor/jobLog/{jobLogId}", middleware.Permi("monitor:job:query", controller.JobLogGetInfo))
+		g.DELETE("/monitor/jobLog/{jobLogIds}", middleware.Permi("monitor:job:remove", middleware.Log(middleware.OpLog("定时任务调度日志", consts.BtDelete, "controller.JobLogRemove"), controller.JobLogRemove)))
 		// 缓存监控 /monitor/cache（对齐 CacheController：全部 @PreAuthorize monitor:cache:list；数据源 Redis 管理命令，不走 DB）
 		g.GET("/monitor/cache", middleware.Permi("monitor:cache:list", controller.CacheInfo))
 		g.GET("/monitor/cache/getNames", middleware.Permi("monitor:cache:list", controller.CacheNames))
@@ -172,5 +178,8 @@ func Register(s *ghttp.Server) {
 		g.GET("/system/recyclebin/{type}/list", controller.RecycleBinList)
 		g.PUT("/system/recyclebin/{type}/restore", middleware.Log(middleware.OpLog("回收站", consts.BtUpdate, "controller.RecycleBinRestore"), controller.RecycleBinRestore))
 		g.DELETE("/system/recyclebin/{type}/purge", middleware.Log(middleware.OpLog("回收站", consts.BtDelete, "controller.RecycleBinPurge"), controller.RecycleBinPurge))
+		// 屏幕解锁 /unlockscreen（对齐 SysIndexController：仅登录态、无 @PreAuthorize；@Log(isSaveRequestData=false)，
+		// 故不走 OpLog() 便捷构造（其默认 SaveRequest=true），显式内联 meta 关掉 SaveRequest 以免把明文密码写进 sys_oper_log）。
+		g.POST("/unlockscreen", middleware.Log(middleware.OperLogMeta{Title: "屏幕解锁", BusinessType: consts.BtOther, OperatorType: consts.OpTypeManage, Method: "controller.UnlockScreen", SaveRequest: false, SaveResponse: true}, controller.UnlockScreen))
 	})
 }

@@ -113,3 +113,28 @@ func GetRouters(r *ghttp.Request) {
 	body["data"] = list
 	api.Send(r, body)
 }
+
+// UnlockScreen POST /unlockscreen（仅登录态，对齐 SysIndexController.unlockscreen 无 @PreAuthorize；
+// @Log 屏幕解锁/OTHER/isSaveRequestData=false）：校验当前登录用户密码以解锁。
+// 空密码/用户失效/密码错或锁定各回具体文案（code500→HTTP400）；成功回 "解锁成功"。
+func UnlockScreen(r *ghttp.Request) {
+	ctx := r.Context()
+	var body struct {
+		Password string `json:"password"`
+	}
+	_ = r.Parse(&body)
+	if body.Password == "" {
+		api.Send(r, api.Err("密码不能为空"))
+		return
+	}
+	lu := middleware.CurrentLoginUser(r)
+	if lu == nil {
+		api.Send(r, api.Err("会话已失效，请重新登录"))
+		return
+	}
+	if msg := service.UnlockScreen(ctx, lu.Username, body.Password); msg != "" {
+		api.Send(r, api.Err(msg))
+		return
+	}
+	api.Send(r, api.OkMsg("解锁成功"))
+}

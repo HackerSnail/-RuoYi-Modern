@@ -11,6 +11,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/gogf/gf/v2/frame/g"
 	"github.com/gogf/gf/v2/util/gconv"
@@ -162,6 +163,40 @@ func verifyPassword(ctx context.Context, username, rawPw string, u *model.SysUse
 
 func clearPwdErrCount(ctx context.Context, username string) {
 	_, _ = g.Redis().Del(ctx, consts.RedisPwdErrCnt+username)
+}
+
+// ValidateUnlock 屏幕解锁密码校验，逐字复刻 SysPasswordService.validateUnlock：复用登录的失败计数键
+// (pwd_err_cnt:{username}) 与阈值(maxRetryCount/lockTime)。达上限→锁定文案；BCrypt 不匹配→计数 +1、
+// SETEX lockTime*60 并回错误；匹配→清零。返回 "" 表示通过，否则为对外 ServiceException 文案。
+// 刻意与登录共享同一份密码尝试预算：解锁失败也会锁定登录（防跨接口暴破，同 Java）。
+func ValidateUnlock(ctx context.Context, username, rawPw string, u *model.SysUser) string {
+	key := consts.RedisPwdErrCnt + username
+	maxRetry := g.Cfg().MustGet(ctx, "user.password.maxRetryCount", 5).Int()
+	lockMin := g.Cfg().MustGet(ctx, "user.password.lockTime", 10).Int()
+
+	cnt := 0
+	if v, err := g.Redis().Get(ctx, key); err == nil && v != nil && !v.IsNil() {
+		cnt = v.Int()
+	}
+	if cnt >= maxRetry {
+		return fmt.Sprintf("密码错误次数过多，账号已锁定，请 %d 分钟后再试", lockMin)
+	}
+	if bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(rawPw)) != nil {
+		_, _ = g.Redis().Do(ctx, "SETEX", key, lockMin*60, cnt+1)
+		return "密码错误，请重新输入"
+	}
+	clearPwdErrCount(ctx, username)
+	return ""
+}
+
+// UnlockScreen 复刻 SysIndexController.unlockScreen 的完整校验链：按当前登录用户名取用户（含密文），
+// 不存在→"会话已失效，请重新登录"；否则调 ValidateUnlock。返回 "" 表示解锁成功，否则为对外失败文案。
+func UnlockScreen(ctx context.Context, username, rawPw string) string {
+	user := selectUserByUserName(ctx, username)
+	if user == nil {
+		return "会话已失效，请重新登录"
+	}
+	return ValidateUnlock(ctx, username, rawPw, user)
 }
 
 // recordLoginInfo 更新最后登录 IP 与时间（对齐 SysLoginService.recordLoginInfo）。

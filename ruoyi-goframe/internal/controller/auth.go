@@ -57,6 +57,28 @@ func Login(r *ghttp.Request) {
 	api.Send(r, body)
 }
 
+// Register POST /register（公开）→ 对应 SysRegisterController.register。
+// 先查注册开关（sys.account.registerUser）；未开启直接拒；否则调 service.Register，msg 空即 success。
+func Register(r *ghttp.Request) {
+	ctx := r.Context()
+	if !service.IsRegisterEnabled(ctx) {
+		api.Send(r, api.Err("当前系统没有开启注册功能！"))
+		return
+	}
+	var lb model.LoginBody
+	if err := r.Parse(&lb); err != nil {
+		api.Send(r, api.Err("请求参数有误"))
+		return
+	}
+	ip := r.GetClientIp()
+	ua := r.GetHeader("User-Agent")
+	if msg := service.Register(ctx, lb, ip, ua); msg != "" {
+		api.Send(r, api.Err(msg))
+		return
+	}
+	api.Send(r, api.Ok())
+}
+
 // Logout POST /logout → 尽力删除当前会话，回 "退出成功"。
 func Logout(r *ghttp.Request) {
 	ctx := r.Context()

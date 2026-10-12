@@ -335,6 +335,20 @@ func InsertUser(ctx context.Context, user *model.SysUser, createBy string) (int,
 	return 1, ""
 }
 
+// RegisterUser 对应 registerUser(=userMapper.insertUser 动态列)：仅插 sys_user 主行，不建角色/岗位关联。
+// 入列与 Java 注册链一致：user_name、nick_name(=username)、password(BCrypt)、pwd_update_date、create_time；
+// status/del_flag 依赖 DB 默认 '0'（Java 注册未显式赋值，同样走默认）。返回 (是否成功, DB 错误)。
+func RegisterUser(ctx context.Context, user *model.SysUser) (bool, error) {
+	res, err := g.DB().Exec(ctx,
+		"insert into sys_user(user_name, nick_name, password, pwd_update_date, create_time) values(?, ?, ?, ?, sysdate())",
+		user.UserName, user.NickName, user.Password, gtime.Now())
+	if err != nil {
+		return false, err
+	}
+	affected, _ := res.RowsAffected()
+	return affected > 0, nil
+}
+
 // UpdateUser 对应 updateUser（@Transactional）：先删角色/岗位关联再重建 → 改主行（动态非空列，update_time 刷新）。
 func UpdateUser(ctx context.Context, user *model.SysUser, updateBy string) (int, string) {
 	sets := make([]string, 0, 12)

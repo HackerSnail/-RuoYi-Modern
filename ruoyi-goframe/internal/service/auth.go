@@ -65,6 +65,55 @@ func Login(ctx context.Context, lb model.LoginBody, ip, userAgent string) (strin
 	return token, lu, ""
 }
 
+// Register 执行注册，对应 SysRegisterService.register：严格照其顺序与文案。
+// 返回 "" 表成功；否则为对外失败文案。审计落库异步且与 Java 一一对应：
+//   - 验证码失败：validateCaptcha 内部已记并抛异常 → 此处记一次后即返回（不再走末尾统一审计）；
+//   - 入库 DB 异常（Java catch 后记“注册异常”并重新抛出）：同样记一次后即返回；
+//   - 其余（各校验失败 / 成功）：均走末尾统一审计一次（REGISTER 事件→status '0'，成败由 msg 承载）。
+func Register(ctx context.Context, lb model.LoginBody, ip, userAgent string) string {
+	username, password := lb.Username, lb.Password
+	// 1. 验证码（内含开关）：非空即失败文案（“验证码已失效/错误”），审计一次并早返。
+	if m := validateCaptcha(ctx, lb.Code, lb.UUID); m != "" {
+		AsyncRecordLogininfor(username, consts.EvRegister, m, ip, userAgent)
+		return m
+	}
+	// 2. 前置校验（顺序、文案逐字照 Java）
+	var msg string
+	u := &model.SysUser{UserName: username}
+	switch {
+	case username == "":
+		msg = "用户名不能为空"
+	case password == "":
+		msg = "用户密码不能为空"
+	case len(username) < consts.UserNameMinLen || len(username) > consts.UserNameMaxLen:
+		msg = "账户长度必须在2到20个字符之间"
+	case len(password) < consts.PasswordMinLen || len(password) > consts.PasswordMaxLen:
+		msg = "密码长度必须在5到20个字符之间"
+	case !CheckUserNameUnique(ctx, u):
+		msg = "保存用户'" + username + "'失败，注册账号已存在"
+	default:
+		u.NickName = username
+		u.Password = EncryptPassword(password)
+		ok, err := RegisterUser(ctx, u)
+		if err != nil {
+			// Java：唯一索引并发冲突等 DB 异常→记审计后原样抛出交全局异常处理（回 500）。Go 无异常层，以文案回错。
+			msg = "注册异常：" + err.Error()
+			AsyncRecordLogininfor(username, consts.EvRegister, msg, ip, userAgent)
+			return msg
+		}
+		if !ok {
+			msg = "注册失败,请联系系统管理人员"
+		}
+	}
+	// 3. 统一注册结果审计：成功记“注册成功”，任一校验/入库失败记失败原因。
+	auditMsg := msg
+	if auditMsg == "" {
+		auditMsg = "注册成功"
+	}
+	AsyncRecordLogininfor(username, consts.EvRegister, auditMsg, ip, userAgent)
+	return msg
+}
+
 // selectUserByUserName 按用户名取未删除用户（含密文，供 BCrypt）。对应 del_flag='0' 过滤。
 func selectUserByUserName(ctx context.Context, username string) *model.SysUser {
 	rec, err := g.DB().Model("sys_user").Ctx(ctx).

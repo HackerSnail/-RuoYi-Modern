@@ -131,5 +131,40 @@ const (
 	OpLogErrorMsgLen   = 2000
 )
 
+// 登录/注册事件类型（对应 Constants.LOGIN_SUCCESS/LOGOUT/REGISTER/LOGIN_FAIL）：
+// 作为 recordLogininfor 的 status 实参，仅表事件类型；logininfor 落库状态由它映射（见下）。
+const (
+	EvLoginSuccess = "Success" // LOGIN_SUCCESS
+	EvLogout       = "Logout"  // LOGOUT
+	EvRegister     = "Register" // REGISTER
+	EvLoginFail    = "Error"   // LOGIN_FAIL
+)
+
+// sys_logininfor.status（对应 Constants.SUCCESS/FAIL：0 成功 1 失败）。AsyncFactory.recordLogininfor
+// 把 {LOGIN_SUCCESS,LOGOUT,REGISTER} 恒映射为成功、LOGIN_FAIL 映射为失败（注册无论成败都以 REGISTER 事件记，
+// 故其审计 status 恒为 0，成败由 msg 承载——忠实复刻 Java，勿按 msg 再判）。
+const (
+	LoginStatusSuccess = "0"
+	LoginStatusFail    = "1"
+)
+
+// sys_logininfor 各列宽上限（对齐 AsyncFactory.recordLogininfor 的 cap 纵深防御）。
+const (
+	LfUserNameLen = 50
+	LfIpaddrLen   = 128
+	LfLocationLen = 255
+	LfBrowserLen  = 50
+	LfOsLen       = 50
+	LfMsgLen      = 255
+)
+
+// 用户名/密码长度边界（对应 UserConstants，供 /register 校验文案使用）。
+const (
+	UserNameMinLen = 2
+	UserNameMaxLen = 20
+	PasswordMinLen = 5
+	PasswordMaxLen = 20
+)
+
 // 会话 uuid 长度：与 Java IdUtils.fastUUID 一致用标准 UUID（36 位带 -）。
 // 前端不解析令牌内容，只透传，故形态只需服务端自洽。

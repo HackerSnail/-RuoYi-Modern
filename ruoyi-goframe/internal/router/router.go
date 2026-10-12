@@ -19,6 +19,7 @@ func Register(s *ghttp.Server) {
 	s.BindHandler("GET:/ping", controller.Ping)
 	s.BindHandler("GET:/captchaImage", controller.CaptchaImage)
 	s.BindHandler("POST:/login", controller.Login)
+	s.BindHandler("POST:/register", controller.Register)
 	s.BindHandler("POST:/logout", controller.Logout)
 
 	// 受保护端点：必须携带有效令牌

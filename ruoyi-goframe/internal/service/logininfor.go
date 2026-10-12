@@ -14,6 +14,8 @@ import (
 
 	"github.com/gogf/gf/v2/database/gdb"
 	"github.com/gogf/gf/v2/frame/g"
+	"github.com/gogf/gf/v2/os/gctx"
+	"github.com/gogf/gf/v2/os/glog"
 	"github.com/gogf/gf/v2/util/gconv"
 
 	"ruoyi-goframe/internal/consts"
@@ -123,4 +125,64 @@ func CleanLogininfor(ctx context.Context) (int, error) {
 // ClearLoginRecordCache 对应 SysPasswordService.clearLoginRecordCache：清除该用户密码错误次数缓存，解除锁定。
 func ClearLoginRecordCache(ctx context.Context, userName string) {
 	_, _ = g.Redis().Unlink(ctx, consts.RedisPwdErrCnt+userName)
+}
+
+// insertLogininforSQL 对应 SysLogininforMapper.xml insertLogininfor（8 列 + login_time=sysdate()）。
+const insertLogininforSQL = "insert into sys_logininfor(user_name, status, ipaddr, login_location, browser, os, msg, login_time) " +
+	"values(?, ?, ?, ?, ?, ?, ?, sysdate())"
+
+// InsertLogininfor 对应 insertLogininfor：落一行登录/注册审计。
+func InsertLogininfor(ctx context.Context, o *model.SysLogininfor) error {
+	_, err := g.DB().Exec(ctx, insertLogininforSQL, o.UserName, o.Status, o.Ipaddr, o.LoginLocation, o.Browser, o.Os, o.Msg)
+	return err
+}
+
+// capStr 对应 AsyncFactory.cap：去首尾空白后按列宽截断（按 rune 计，对齐 MySQL 字符列宽语义）。
+func capStr(v string, maxLen int) string {
+	t := strings.TrimSpace(v)
+	if maxLen <= 0 {
+		return t
+	}
+	r := []rune(t)
+	if len(r) <= maxLen {
+		return t
+	}
+	return string(r[:maxLen])
+}
+
+// RecordLogininfor 对应 AsyncFactory.recordLogininfor 的落库实体装配：从 UA 识 browser/os，
+// 按列宽 cap 各串字段，status 由事件类型常量映射（LOGIN_SUCCESS/LOGOUT/REGISTER→成功，LOGIN_FAIL→失败）。
+// login_location 与 operlog 同法留空（不复刻在线 IP→地址查询）。
+func RecordLogininfor(ctx context.Context, username, event, message, ip, userAgent string) error {
+	o := &model.SysLogininfor{
+		UserName:      capStr(username, consts.LfUserNameLen),
+		Ipaddr:        capStr(ip, consts.LfIpaddrLen),
+		LoginLocation: "", // 对齐既有简化：不做在线 IP→地址查询
+		Browser:       capStr(UserAgentBrowser(userAgent), consts.LfBrowserLen),
+		Os:            capStr(UserAgentOS(userAgent), consts.LfOsLen),
+		Msg:           capStr(message, consts.LfMsgLen),
+	}
+	switch event {
+	case consts.EvLoginFail:
+		o.Status = consts.LoginStatusFail
+	default: // LOGIN_SUCCESS / LOGOUT / REGISTER 恒映射为成功（忠实 Java；注册成败由 msg 承载）
+		o.Status = consts.LoginStatusSuccess
+	}
+	return InsertLogininfor(ctx, o)
+}
+
+// AsyncRecordLogininfor 异步写审计行：入参均为已拷贝的基元值（调用方在请求线程提前取 ip/UA），
+// 故不触碰将归还对象池的 Request；用独立 gctx.New()、recover 兜底，失败仅记日志不影响业务响应。
+func AsyncRecordLogininfor(username, event, message, ip, userAgent string) {
+	go func() {
+		defer func() {
+			if e := recover(); e != nil {
+				glog.Errorf(gctx.New(), "recordLogininfor panic: %v", e)
+			}
+		}()
+		ctx := gctx.New()
+		if err := RecordLogininfor(ctx, username, event, message, ip, userAgent); err != nil {
+			glog.Errorf(ctx, "recordLogininfor insert failed user=%s event=%s: %v", username, event, err)
+		}
+	}()
 }

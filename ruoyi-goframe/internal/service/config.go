@@ -35,6 +35,12 @@ func getCaptchaEnabled(ctx context.Context) bool {
 // GetCaptchaEnabled 对外暴露验证码开关（供 /captchaImage 回传 captchaEnabled）。
 func GetCaptchaEnabled(ctx context.Context) bool { return getCaptchaEnabled(ctx) }
 
+// IsRegisterEnabled 对应 SysRegisterController 的注册开关判定：sys.account.registerUser == "true"。
+// 严格区分大小写（照 Java "".equals("true")，不用 EqualFold）；未配置/非 "true" 一律视为关闭。
+func IsRegisterEnabled(ctx context.Context) bool {
+	return selectConfigByKey(ctx, "sys.account.registerUser") == "true"
+}
+
 // getIntConfig 取整型配置，空/非法返回 defaultVal。对应 Convert.toInt 兜底。
 func getIntConfig(ctx context.Context, key string, defaultVal int) int {
 	s := selectConfigByKey(ctx, key)

@@ -17,6 +17,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"ruoyi-goframe/internal/model"
@@ -32,10 +33,31 @@ var genCodeSkipList = []string{
 	"index.vue.vm", "index-tree.vue.vm", "view.vue.vm",
 }
 
+// safeSegRe 复刻 spec 的 assertSafeSegment 段白名单。注：spec 字面写 ^[A-Za-z0-9_.]+$，但它
+// 自己的产物 index-bak.ts 含连字符会被误拒，故实作放宽纳入 '-'（仍无 '/'、''、控制字符，足以拦穿越）。
+var safeSegRe = regexp.MustCompile(`^[A-Za-z0-9_.\-]+$`)
+
+// assertSafeGenPath 落地批次-16 spec 的路径穿越防御（Java 无此加固，Go 侧行为不低于 Java）：
+// 把 velocity.GetFileName 产出的正斜杠相对路径按 '/' 逐段校验 ^[A-Za-z0-9_.]+$，并显式拒 '.'/'..'
+//（二者虽命中白名单却是穿越）。任一段非法即抛「代码生成非法<段>，疑似路径穿越，已拒绝：<段>」。
+// 消费点两处：genCode 落盘（GetGenPath）与 download/batchGenCode 的 ZIP 条目名（renderTableToZip），
+// 二者均源自可编辑的 gen_table（className/packageName/moduleName/businessName/genPath），故须收口。
+func assertSafeGenPath(fileName string) error {
+	for _, seg := range strings.Split(fileName, "/") {
+		if seg == "." || seg == ".." || !safeSegRe.MatchString(seg) {
+			return fmt.Errorf("代码生成非法%s，疑似路径穿越，已拒绝：%s", seg, seg)
+		}
+	}
+	return nil
+}
+
 // GetGenPath 对齐 static getGenPath：genPath 为 "/"（默认占位）→ 工作目录/src/文件名；否则 genPath/文件名。
 // 文件名取自 velocity.GetFileName（正斜杠路径），经 filepath.FromSlash 转本机分隔后 Join。
 func GetGenPath(template string, t *model.GenTable) (string, error) {
 	fileName := velocity.GetFileName(template, t)
+	if err := assertSafeGenPath(fileName); err != nil {
+		return "", err
+	}
 	if t.GenPath == "/" {
 		wd, err := os.Getwd()
 		if err != nil {
@@ -123,6 +145,10 @@ func renderTableToZip(table *model.GenTable, zw *zip.Writer,
 			return err
 		}
 		fileName := velocity.GetFileName(template, table)
+		// 路径穿越防御：ZIP 条目名同样逐段校验，非法即中止整批下载（对齐 spec assertSafeSegment）。
+		if err := assertSafeGenPath(fileName); err != nil {
+			return err
+		}
 		// index-bak.ts：多表共享同一声明文件，首表整份基线、后续表仅追加 export * from 行。
 		if strings.Contains(fileName, "index-bak.ts") {
 			if _, ok := typeFiles[fileName]; !ok {
@@ -182,7 +208,8 @@ func writeTableToDisk(table *model.GenTable) error {
 		}
 		path, err := GetGenPath(template, table)
 		if err != nil {
-			return fmt.Errorf("渲染模板失败，表名：%s", table.TableName)
+			// 取径/穿越错误原样上抛（ServiceException 语义），区别于写盘 IO 失败。
+			return err
 		}
 		if err := writeFileUTF8(path, content); err != nil {
 			return fmt.Errorf("渲染模板失败，表名：%s", table.TableName)

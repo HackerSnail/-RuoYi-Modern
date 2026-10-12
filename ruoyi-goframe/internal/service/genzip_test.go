@@ -166,6 +166,27 @@ func TestDownloadCodeGuardErrors(t *testing.T) {
 	}
 }
 
+// TestGenCodeRejectsPathTraversal 验证 className 派生出 ".." 段时，genCode 落盘被拒（spec assertSafeSegment）。
+func TestGenCodeRejectsPathTraversal(t *testing.T) {
+	table := loadFixture(t, "crud_eui")
+	table.ClassName = "../evil"
+	table.GenPath = t.TempDir()
+	err := writeTableToDisk(table)
+	if err == nil || !strings.Contains(err.Error(), "疑似路径穿越") {
+		t.Fatalf("应因路径穿越被拒，实得 err=%v", err)
+	}
+}
+
+// TestDownloadRejectsPathTraversal 验证 ZIP 条目名同样拒绝穿越段（download/batchGenCode 一并收口）。
+func TestDownloadRejectsPathTraversal(t *testing.T) {
+	table := loadFixture(t, "crud_eui")
+	table.ClassName = "../evil"
+	if _, err := zipTables([]*model.GenTable{table}); err == nil ||
+		!strings.Contains(err.Error(), "疑似路径穿越") {
+		t.Fatalf("download 应因路径穿越被拒，实得 err=%v", err)
+	}
+}
+
 // ---- 测试辅助 ----
 
 func mustZip(t *testing.T, tables ...*model.GenTable) []byte {

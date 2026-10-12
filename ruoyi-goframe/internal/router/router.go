@@ -33,6 +33,9 @@ func Register(s *ghttp.Server) {
 	// 各端点对齐 @PreAuthorize；treeselect 仅需登录态无 permi。GF 路由只接受单个 handler，权限用 Permi 与控制器组合。
 	s.Group("/", func(g *ghttp.RouterGroup) {
 		g.Middleware(middleware.Auth)
+		// 存储型 XSS 请求级净化（对齐 Java XssFilter，urlPatterns=/system/*,/monitor/*,/tool/*）。
+		// 中间件内部按路径前缀门控，故对本组的 /common、/profile、/unlockscreen 自动原样放行。
+		g.Middleware(middleware.Xss)
 		// 菜单 /system/menu
 		g.GET("/system/menu/list", middleware.Permi("system:menu:list", controller.MenuList))
 		g.GET("/system/menu/treeselect", controller.MenuTreeselect)

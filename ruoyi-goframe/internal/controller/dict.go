@@ -27,8 +27,8 @@ func DictTypeList(r *ghttp.Request) {
 		DictName:  r.Get("dictName").String(),
 		DictType:  r.Get("dictType").String(),
 		Status:    r.Get("status").String(),
-		BeginTime: r.Get("params[beginTime]").String(),
-		EndTime:   r.Get("params[endTime]").String(),
+		BeginTime: paramRange(r, "beginTime"),
+		EndTime:   paramRange(r, "endTime"),
 	}
 	rows, total, err := service.SelectDictTypeListPaged(ctx, f, service.ParsePage(r))
 	if err != nil {

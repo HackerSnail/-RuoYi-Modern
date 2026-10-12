@@ -25,8 +25,8 @@ func ConfigList(r *ghttp.Request) {
 		ConfigName: r.Get("configName").String(),
 		ConfigType: r.Get("configType").String(),
 		ConfigKey:  r.Get("configKey").String(),
-		BeginTime:  r.Get("params[beginTime]").String(),
-		EndTime:    r.Get("params[endTime]").String(),
+		BeginTime:  paramRange(r, "beginTime"),
+		EndTime:    paramRange(r, "endTime"),
 	}
 	rows, total, err := service.SelectConfigListPaged(ctx, f, service.ParsePage(r))
 	if err != nil {

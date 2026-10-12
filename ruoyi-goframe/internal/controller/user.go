@@ -38,8 +38,8 @@ func UserList(r *ghttp.Request) {
 		Status:      r.Get("status").String(),
 		Phonenumber: r.Get("phonenumber").String(),
 		DeptId:      r.Get("deptId").Int64(),
-		BeginTime:   r.Get("params[beginTime]").String(),
-		EndTime:     r.Get("params[endTime]").String(),
+		BeginTime:   paramRange(r, "beginTime"),
+		EndTime:     paramRange(r, "endTime"),
 	}
 	rows, total, err := service.SelectUserListPaged(ctx, f, userScope(r, userPermiList), service.ParsePage(r))
 	if err != nil {

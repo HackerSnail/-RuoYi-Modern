@@ -35,8 +35,8 @@ func RoleList(r *ghttp.Request) {
 		RoleName:  r.Get("roleName").String(),
 		Status:    r.Get("status").String(),
 		RoleKey:   r.Get("roleKey").String(),
-		BeginTime: r.Get("params[beginTime]").String(),
-		EndTime:   r.Get("params[endTime]").String(),
+		BeginTime: paramRange(r, "beginTime"),
+		EndTime:   paramRange(r, "endTime"),
 	}
 	rows, total, err := service.SelectRoleListPaged(ctx, f, roleScope(r, rolePermiList), service.ParsePage(r))
 	if err != nil {

@@ -43,6 +43,13 @@ func Login(ctx context.Context, lb model.LoginBody, ip, userAgent string) (strin
 		AsyncRecordLogininfor(lb.Username, consts.EvLoginFail, msgBadCred, ip, userAgent)
 		return "", nil, msgBadCred
 	}
+	// IP 黑名单校验（对齐 Java loginPreCheck 末尾的 sys.login.blackIPList → BlackListException）：
+	// 命中即拒并记登录失败，位置在用户名长度之后、认证之前，文案逐字取 i18n login.blocked。
+	if IsMatchedIp(selectConfigByKey(ctx, "sys.login.blackIPList"), ip) {
+		const msgIPBlocked = "很遗憾，访问IP已被列入系统黑名单"
+		AsyncRecordLogininfor(lb.Username, consts.EvLoginFail, msgIPBlocked, ip, userAgent)
+		return "", nil, msgIPBlocked
+	}
 	// 3. 认证：加载用户 + 状态 + BCrypt（失败统一 msgBadCred）
 	user := selectUserByUserName(ctx, lb.Username)
 	if user == nil || !checkUserAllowed(ctx, lb.Username, user) || !verifyPassword(ctx, lb.Username, lb.Password, user) {

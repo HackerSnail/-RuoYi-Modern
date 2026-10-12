@@ -4,6 +4,7 @@ package controller
 
 import (
 	"context"
+	"io"
 	"regexp"
 
 	"github.com/gogf/gf/v2/frame/g"
@@ -36,6 +37,29 @@ func DictTypeList(r *ghttp.Request) {
 		return
 	}
 	api.Send(r, service.DataTable(total, rows))
+}
+
+// DictTypeExport POST /system/dict/type/export（system:dict:export + @Log EXPORT “字典类型”）：同 list 的过滤入参（字典类型无 DataScope），
+// 过 exportLimit 护栏后写 xlsx。
+func DictTypeExport(r *ghttp.Request) {
+	ctx := r.Context()
+	f := service.DictTypeListFilter{
+		DictName:  r.Get("dictName").String(),
+		DictType:  r.Get("dictType").String(),
+		Status:    r.Get("status").String(),
+		BeginTime: paramRange(r, "beginTime"),
+		EndTime:   paramRange(r, "endTime"),
+	}
+	max := service.GetExportMaxRows(ctx)
+	rows, err := service.SelectDictTypeListLimited(ctx, f, max)
+	if err != nil {
+		api.Send(r, api.Err("导出失败"))
+		return
+	}
+	if exportOverLimit(r, len(rows), max) {
+		return
+	}
+	writeXlsx(r, func(w io.Writer) error { return service.ExportDictType(w, rows) })
 }
 
 // DictTypeGetInfo GET /system/dict/type/{dictId}（system:dict:query）→ data:{dictType}。
@@ -134,6 +158,27 @@ func DictDataList(r *ghttp.Request) {
 		return
 	}
 	api.Send(r, service.DataTable(total, rows))
+}
+
+// DictDataExport POST /system/dict/data/export（system:dict:export + @Log EXPORT “字典数据”）：同 data list 的过滤入参（无 DataScope，默认 dict_sort 升序），
+// 过 exportLimit 护栏后写 xlsx。
+func DictDataExport(r *ghttp.Request) {
+	ctx := r.Context()
+	f := service.DictDataListFilter{
+		DictType:  r.Get("dictType").String(),
+		DictLabel: r.Get("dictLabel").String(),
+		Status:    r.Get("status").String(),
+	}
+	max := service.GetExportMaxRows(ctx)
+	rows, err := service.SelectDictDataListLimited(ctx, f, max)
+	if err != nil {
+		api.Send(r, api.Err("导出失败"))
+		return
+	}
+	if exportOverLimit(r, len(rows), max) {
+		return
+	}
+	writeXlsx(r, func(w io.Writer) error { return service.ExportDictData(w, rows) })
 }
 
 // DictDataGetInfo GET /system/dict/data/{dictCode}（system:dict:query）→ data:{dictData}。

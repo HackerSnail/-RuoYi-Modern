@@ -3,6 +3,9 @@
 package controller
 
 import (
+	"bytes"
+	"fmt"
+	"io"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -27,6 +30,29 @@ func toAjax(rows int) api.M {
 		return api.Ok()
 	}
 	return api.M{"code": consts.CodeError, "msg": "操作失败"}
+}
+
+// exportOverLimit 判定本次取回行数是否超过单次导出上限（Limited 查询取 max+1 行，>max 即超限）。
+// 超限则写回与 Java exportLimit/11-A 同款的 JSON 文案并返回 true（调用方据此直接 return）。
+func exportOverLimit(r *ghttp.Request, n, max int) bool {
+	if n <= max {
+		return false
+	}
+	api.Send(r, api.Err(fmt.Sprintf("导出数据量 %d 条，超过单次导出上限 %d 条，请缩小查询条件后重试", n, max)))
+	return true
+}
+
+// writeXlsx 把 build 生成的 xlsx 写成二进制响应（对齐 Java export：仅设 Content-Type，不写 Content-Disposition，
+// 文件名由前端 download() 生成）；build 报错时回系统错误 JSON。
+func writeXlsx(r *ghttp.Request, build func(io.Writer) error) {
+	var buf bytes.Buffer
+	if err := build(&buf); err != nil {
+		api.SendSystemError(r, "导出失败，请联系系统管理员")
+		return
+	}
+	r.Response.ClearBuffer()
+	r.Response.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	r.Response.Write(buf.Bytes())
 }
 
 // violation 一条字段级校验违规（对齐 buildValidationError 的 {field,message}）。

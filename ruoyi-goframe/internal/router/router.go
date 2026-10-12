@@ -52,6 +52,7 @@ func Register(s *ghttp.Server) {
 		g.DELETE("/system/dept/{deptId}", middleware.Permi("system:dept:remove", middleware.Log(middleware.OpLog("部门管理", consts.BtDelete, "controller.DeptRemove"), controller.DeptRemove)))
 		// 角色 /system/role（CRUD + optionselect + deptTree；authUser 系列随后注册）
 		g.GET("/system/role/list", middleware.Permi("system:role:list", controller.RoleList))
+		g.POST("/system/role/export", middleware.Permi("system:role:export", middleware.Log(middleware.OpLog("角色管理", consts.BtExport, "controller.RoleExport"), controller.RoleExport)))
 		g.GET("/system/role/optionselect", middleware.Permi("system:role:query", controller.RoleOptionSelect))
 		g.GET("/system/role/deptTree/{roleId}", middleware.Permi("system:role:query", controller.RoleDeptTree))
 		g.POST("/system/role", middleware.Permi("system:role:add", middleware.Log(middleware.OpLog("角色管理", consts.BtInsert, "controller.RoleAdd"), controller.RoleAdd)))
@@ -90,6 +91,7 @@ func Register(s *ghttp.Server) {
 		g.POST("/system/user/profile/avatar", middleware.Log(middleware.OpLog("用户头像", consts.BtUpdate, "controller.Avatar"), controller.Avatar))
 		// 岗位 /system/post（optionselect/list 静态先于 {postId} 动态；Java optionselect 无 @PreAuthorize，仅挂 Auth）
 		g.GET("/system/post/list", middleware.Permi("system:post:list", controller.PostList))
+		g.POST("/system/post/export", middleware.Permi("system:post:export", middleware.Log(middleware.OpLog("岗位管理", consts.BtExport, "controller.PostExport"), controller.PostExport)))
 		g.GET("/system/post/optionselect", controller.PostOptionSelect)
 		g.POST("/system/post", middleware.Permi("system:post:add", middleware.Log(middleware.OpLog("岗位管理", consts.BtInsert, "controller.PostAdd"), controller.PostAdd)))
 		g.PUT("/system/post", middleware.Permi("system:post:edit", middleware.Log(middleware.OpLog("岗位管理", consts.BtUpdate, "controller.PostEdit"), controller.PostEdit)))
@@ -97,6 +99,7 @@ func Register(s *ghttp.Server) {
 		g.DELETE("/system/post/{postIds}", middleware.Permi("system:post:remove", middleware.Log(middleware.OpLog("岗位管理", consts.BtDelete, "controller.PostRemove"), controller.PostRemove)))
 		// 参数 /system/config（configKey 公开只读无 permi；refreshCache 静态先于 {configIds} 动态）
 		g.GET("/system/config/list", middleware.Permi("system:config:list", controller.ConfigList))
+		g.POST("/system/config/export", middleware.Permi("system:config:export", middleware.Log(middleware.OpLog("参数管理", consts.BtExport, "controller.ConfigExport"), controller.ConfigExport)))
 		g.GET("/system/config/configKey/{configKey}", controller.ConfigGetKey)
 		g.POST("/system/config", middleware.Permi("system:config:add", middleware.Log(middleware.OpLog("参数管理", consts.BtInsert, "controller.ConfigAdd"), controller.ConfigAdd)))
 		g.PUT("/system/config", middleware.Permi("system:config:edit", middleware.Log(middleware.OpLog("参数管理", consts.BtUpdate, "controller.ConfigEdit"), controller.ConfigEdit)))
@@ -105,6 +108,7 @@ func Register(s *ghttp.Server) {
 		g.DELETE("/system/config/{configIds}", middleware.Permi("system:config:remove", middleware.Log(middleware.OpLog("参数管理", consts.BtDelete, "controller.ConfigRemove"), controller.ConfigRemove)))
 		// 字典类型 /system/dict/type（optionselect/refreshCache 静态先于 {dictId}/{dictIds} 动态；optionselect 无 permi）
 		g.GET("/system/dict/type/list", middleware.Permi("system:dict:list", controller.DictTypeList))
+		g.POST("/system/dict/type/export", middleware.Permi("system:dict:export", middleware.Log(middleware.OpLog("字典类型", consts.BtExport, "controller.DictTypeExport"), controller.DictTypeExport)))
 		g.GET("/system/dict/type/optionselect", controller.DictTypeOptionSelect)
 		g.POST("/system/dict/type", middleware.Permi("system:dict:add", middleware.Log(middleware.OpLog("字典类型", consts.BtInsert, "controller.DictTypeAdd"), controller.DictTypeAdd)))
 		g.PUT("/system/dict/type", middleware.Permi("system:dict:edit", middleware.Log(middleware.OpLog("字典类型", consts.BtUpdate, "controller.DictTypeEdit"), controller.DictTypeEdit)))
@@ -113,6 +117,7 @@ func Register(s *ghttp.Server) {
 		g.DELETE("/system/dict/type/{dictIds}", middleware.Permi("system:dict:remove", middleware.Log(middleware.OpLog("字典类型", consts.BtDelete, "controller.DictTypeRemove"), controller.DictTypeRemove)))
 		// 字典数据 /system/dict/data（list/type 静态先于 {dictCode}/{dictCodes} 动态；data/type/{dictType} 无 permi，走敏感黑名单）
 		g.GET("/system/dict/data/list", middleware.Permi("system:dict:list", controller.DictDataList))
+		g.POST("/system/dict/data/export", middleware.Permi("system:dict:export", middleware.Log(middleware.OpLog("字典数据", consts.BtExport, "controller.DictDataExport"), controller.DictDataExport)))
 		g.GET("/system/dict/data/type/{dictType}", controller.DictDataType)
 		g.POST("/system/dict/data", middleware.Permi("system:dict:add", middleware.Log(middleware.OpLog("字典数据", consts.BtInsert, "controller.DictDataAdd"), controller.DictDataAdd)))
 		g.PUT("/system/dict/data", middleware.Permi("system:dict:edit", middleware.Log(middleware.OpLog("字典数据", consts.BtUpdate, "controller.DictDataEdit"), controller.DictDataEdit)))

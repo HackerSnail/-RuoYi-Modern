@@ -7,6 +7,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/gogf/gf/v2/database/gdb"
@@ -163,6 +164,49 @@ func SelectConfigListPaged(ctx context.Context, f ConfigListFilter, p Page) ([]m
 		return nil, 0, err
 	}
 	return scanConfigs(res.Rows), res.Total, nil
+}
+
+// SelectConfigListLimited 对应 exportLimit 包裹的 selectConfigList（无 DataScope、无默认排序）：同列表 SQL 追加 limit maxRows+1。
+func SelectConfigListLimited(ctx context.Context, f ConfigListFilter, maxRows int) ([]model.SysConfig, error) {
+	sql, args := buildConfigListSQL(f)
+	sql += " limit ?"
+	args = append(args, maxRows+1)
+	recs, err := g.DB().GetAll(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	return scanConfigs(recs), nil
+}
+
+// colConfig 把「从 *model.SysConfig 取值」的闭包适配成引擎的 func(any) any。
+func colConfig(fn func(*model.SysConfig) any) func(any) any {
+	return func(row any) any {
+		c, ok := row.(*model.SysConfig)
+		if !ok || c == nil {
+			return nil
+		}
+		return fn(c)
+	}
+}
+
+// configExportColumns 参数导出列：按 SysConfig 的 @Excel 声明序（仅 configId NUMERIC，configType 走 readConverterExp）。
+func configExportColumns() []ExcelColumn {
+	return []ExcelColumn{
+		{Name: "参数主键", Kind: ExcelKindNumeric, Value: colConfig(func(c *model.SysConfig) any { return c.ConfigId })},
+		{Name: "参数名称", Value: colConfig(func(c *model.SysConfig) any { return c.ConfigName })},
+		{Name: "参数键名", Value: colConfig(func(c *model.SysConfig) any { return c.ConfigKey })},
+		{Name: "参数键值", Value: colConfig(func(c *model.SysConfig) any { return c.ConfigValue })},
+		{Name: "系统内置", Converter: "Y=是,N=否", Value: colConfig(func(c *model.SysConfig) any { return c.ConfigType })},
+	}
+}
+
+// ExportConfig 把参数列表写成 xlsx 流：sheet 名 "参数数据"（title 为空；注意 @Log title 是“参数管理”）。
+func ExportConfig(w io.Writer, list []model.SysConfig) error {
+	rows := make([]any, len(list))
+	for i := range list {
+		rows[i] = &list[i]
+	}
+	return WriteExcel(w, "参数数据", configExportColumns(), rows)
 }
 
 // SelectConfigById 对应 selectConfigById（service 包装：按 config_id 定位）。不存在回 nil。

@@ -7,6 +7,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/gogf/gf/v2/database/gdb"
@@ -92,6 +93,48 @@ func SelectDictTypeListPaged(ctx context.Context, f DictTypeListFilter, p Page) 
 		return nil, 0, err
 	}
 	return scanDictTypes(res.Rows), res.Total, nil
+}
+
+// SelectDictTypeListLimited 对应 exportLimit 包裹的 selectDictTypeList（无 DataScope、无默认排序）：同列表 SQL 追加 limit maxRows+1。
+func SelectDictTypeListLimited(ctx context.Context, f DictTypeListFilter, maxRows int) ([]model.SysDictType, error) {
+	sql, args := buildDictTypeListSQL(f)
+	sql += " limit ?"
+	args = append(args, maxRows+1)
+	recs, err := g.DB().GetAll(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	return scanDictTypes(recs), nil
+}
+
+// colDictType 把「从 *model.SysDictType 取值」的闭包适配成引擎的 func(any) any。
+func colDictType(fn func(*model.SysDictType) any) func(any) any {
+	return func(row any) any {
+		d, ok := row.(*model.SysDictType)
+		if !ok || d == nil {
+			return nil
+		}
+		return fn(d)
+	}
+}
+
+// dictTypeExportColumns 字典类型导出列：按 SysDictType 的 @Excel 声明序（仅 dictId NUMERIC，status 走 readConverterExp）。
+func dictTypeExportColumns() []ExcelColumn {
+	return []ExcelColumn{
+		{Name: "字典主键", Kind: ExcelKindNumeric, Value: colDictType(func(d *model.SysDictType) any { return d.DictId })},
+		{Name: "字典名称", Value: colDictType(func(d *model.SysDictType) any { return d.DictName })},
+		{Name: "字典类型", Value: colDictType(func(d *model.SysDictType) any { return d.DictType })},
+		{Name: "状态", Converter: "0=正常,1=停用", Value: colDictType(func(d *model.SysDictType) any { return d.Status })},
+	}
+}
+
+// ExportDictType 把字典类型列表写成 xlsx 流：sheet 名 "字典类型"（title 为空）。
+func ExportDictType(w io.Writer, list []model.SysDictType) error {
+	rows := make([]any, len(list))
+	for i := range list {
+		rows[i] = &list[i]
+	}
+	return WriteExcel(w, "字典类型", dictTypeExportColumns(), rows)
 }
 
 // SelectDictTypeAll 对应 selectDictTypeAll（optionselect：无过滤全量）。
@@ -343,6 +386,52 @@ func SelectDictDataListPaged(ctx context.Context, f DictDataListFilter, p Page) 
 		return nil, 0, err
 	}
 	return scanDictData(res.Rows), res.Total, nil
+}
+
+// SelectDictDataListLimited 对应 exportLimit 包裹的 selectDictDataList（无 DataScope，默认 dict_sort asc）：同列表 SQL + 排序 + limit maxRows+1。
+func SelectDictDataListLimited(ctx context.Context, f DictDataListFilter, maxRows int) ([]model.SysDictData, error) {
+	sql, args := buildDictDataListSQL(f)
+	sql += " order by dict_sort asc limit ?"
+	args = append(args, maxRows+1)
+	recs, err := g.DB().GetAll(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	return scanDictData(recs), nil
+}
+
+// colDictData 把「从 *model.SysDictData 取值」的闭包适配成引擎的 func(any) any。
+func colDictData(fn func(*model.SysDictData) any) func(any) any {
+	return func(row any) any {
+		d, ok := row.(*model.SysDictData)
+		if !ok || d == nil {
+			return nil
+		}
+		return fn(d)
+	}
+}
+
+// dictDataExportColumns 字典数据导出列：按 SysDictData 的 @Excel 声明序（cssClass/listClass 无 @Excel 不导出）。
+// dictCode/dictSort 为 NUMERIC；isDefault/status 走 readConverterExp。
+func dictDataExportColumns() []ExcelColumn {
+	return []ExcelColumn{
+		{Name: "字典编码", Kind: ExcelKindNumeric, Value: colDictData(func(d *model.SysDictData) any { return d.DictCode })},
+		{Name: "字典排序", Kind: ExcelKindNumeric, Value: colDictData(func(d *model.SysDictData) any { return d.DictSort })},
+		{Name: "字典标签", Value: colDictData(func(d *model.SysDictData) any { return d.DictLabel })},
+		{Name: "字典键值", Value: colDictData(func(d *model.SysDictData) any { return d.DictValue })},
+		{Name: "字典类型", Value: colDictData(func(d *model.SysDictData) any { return d.DictType })},
+		{Name: "是否默认", Converter: "Y=是,N=否", Value: colDictData(func(d *model.SysDictData) any { return d.IsDefault })},
+		{Name: "状态", Converter: "0=正常,1=停用", Value: colDictData(func(d *model.SysDictData) any { return d.Status })},
+	}
+}
+
+// ExportDictData 把字典数据列表写成 xlsx 流：sheet 名 "字典数据"（title 为空）。
+func ExportDictData(w io.Writer, list []model.SysDictData) error {
+	rows := make([]any, len(list))
+	for i := range list {
+		rows[i] = &list[i]
+	}
+	return WriteExcel(w, "字典数据", dictDataExportColumns(), rows)
 }
 
 // SelectDictDataByType 对应 selectDictDataByType：status='0' 且指定类型，按 dict_sort 升序（DB 直连，不走缓存）。

@@ -3,6 +3,7 @@
 package controller
 
 import (
+	"io"
 	"regexp"
 
 	"github.com/gogf/gf/v2/net/ghttp"
@@ -34,6 +35,29 @@ func ConfigList(r *ghttp.Request) {
 		return
 	}
 	api.Send(r, service.DataTable(total, rows))
+}
+
+// ConfigExport POST /system/config/export（system:config:export + @Log EXPORT title “参数管理”）：同 list 的过滤入参（参数无 DataScope），
+// 过 exportLimit 护栏后写 xlsx（sheet 名“参数数据”）。
+func ConfigExport(r *ghttp.Request) {
+	ctx := r.Context()
+	f := service.ConfigListFilter{
+		ConfigName: r.Get("configName").String(),
+		ConfigType: r.Get("configType").String(),
+		ConfigKey:  r.Get("configKey").String(),
+		BeginTime:  paramRange(r, "beginTime"),
+		EndTime:    paramRange(r, "endTime"),
+	}
+	max := service.GetExportMaxRows(ctx)
+	rows, err := service.SelectConfigListLimited(ctx, f, max)
+	if err != nil {
+		api.Send(r, api.Err("导出失败"))
+		return
+	}
+	if exportOverLimit(r, len(rows), max) {
+		return
+	}
+	writeXlsx(r, func(w io.Writer) error { return service.ExportConfig(w, rows) })
 }
 
 // ConfigGetInfo GET /system/config/{configId}（system:config:query）→ data:{config}。

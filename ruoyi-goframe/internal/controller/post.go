@@ -3,6 +3,7 @@
 package controller
 
 import (
+	"io"
 	"regexp"
 
 	"github.com/gogf/gf/v2/net/ghttp"
@@ -33,6 +34,27 @@ func PostList(r *ghttp.Request) {
 		return
 	}
 	api.Send(r, service.DataTable(total, rows))
+}
+
+// PostExport POST /system/post/export（system:post:export + @Log EXPORT）：同 list 的过滤入参（岗位无 DataScope），
+// 过 exportLimit 护栏后写 xlsx。
+func PostExport(r *ghttp.Request) {
+	ctx := r.Context()
+	f := service.PostListFilter{
+		PostCode: r.Get("postCode").String(),
+		Status:   r.Get("status").String(),
+		PostName: r.Get("postName").String(),
+	}
+	max := service.GetExportMaxRows(ctx)
+	rows, err := service.SelectPostListLimited(ctx, f, max)
+	if err != nil {
+		api.Send(r, api.Err("导出失败"))
+		return
+	}
+	if exportOverLimit(r, len(rows), max) {
+		return
+	}
+	writeXlsx(r, func(w io.Writer) error { return service.ExportPost(w, rows) })
 }
 
 // PostGetInfo GET /system/post/{postId}（system:post:query）→ data:{post}。

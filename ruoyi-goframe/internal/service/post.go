@@ -6,6 +6,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/gogf/gf/v2/database/gdb"
 	"github.com/gogf/gf/v2/frame/g"
@@ -106,6 +107,50 @@ func SelectPostListPaged(ctx context.Context, f PostListFilter, p Page) ([]model
 		return nil, 0, err
 	}
 	return scanPosts(res.Rows), res.Total, nil
+}
+
+// SelectPostListLimited 对应 exportLimit 包裹的 selectPostList（无 DataScope、无默认排序，与 Java 一致）：
+// 同列表 SQL 追加 limit maxRows+1。
+func SelectPostListLimited(ctx context.Context, f PostListFilter, maxRows int) ([]model.SysPost, error) {
+	sql, args := buildPostListSQL(f)
+	sql += " limit ?"
+	args = append(args, maxRows+1)
+	recs, err := g.DB().GetAll(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	return scanPosts(recs), nil
+}
+
+// colPost 把「从 *model.SysPost 取值」的闭包适配成引擎的 func(any) any。
+func colPost(fn func(*model.SysPost) any) func(any) any {
+	return func(row any) any {
+		p, ok := row.(*model.SysPost)
+		if !ok || p == nil {
+			return nil
+		}
+		return fn(p)
+	}
+}
+
+// postExportColumns 岗位导出列：按 SysPost 的 @Excel 声明序（仅 postId NUMERIC，status 走 readConverterExp）。
+func postExportColumns() []ExcelColumn {
+	return []ExcelColumn{
+		{Name: "岗位序号", Kind: ExcelKindNumeric, Value: colPost(func(p *model.SysPost) any { return p.PostId })},
+		{Name: "岗位编码", Value: colPost(func(p *model.SysPost) any { return p.PostCode })},
+		{Name: "岗位名称", Value: colPost(func(p *model.SysPost) any { return p.PostName })},
+		{Name: "岗位排序", Value: colPost(func(p *model.SysPost) any { return p.PostSort })},
+		{Name: "状态", Converter: "0=正常,1=停用", Value: colPost(func(p *model.SysPost) any { return p.Status })},
+	}
+}
+
+// ExportPost 把岗位列表写成 xlsx 流：sheet 名 "岗位数据"（title 为空）。
+func ExportPost(w io.Writer, list []model.SysPost) error {
+	rows := make([]any, len(list))
+	for i := range list {
+		rows[i] = &list[i]
+	}
+	return WriteExcel(w, "岗位数据", postExportColumns(), rows)
 }
 
 // SelectPostById 对应 selectPostById：按主键查询单岗位（selectPostVo 不含 update_by/update_time → 保持零值）。不存在回 nil。

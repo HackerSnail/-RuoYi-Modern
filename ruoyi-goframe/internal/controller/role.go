@@ -2,6 +2,7 @@
 package controller
 
 import (
+	"io"
 	"strings"
 
 	"github.com/gogf/gf/v2/net/ghttp"
@@ -44,6 +45,30 @@ func RoleList(r *ghttp.Request) {
 		return
 	}
 	api.Send(r, service.DataTable(total, rows))
+}
+
+// RoleExport POST /system/role/export（system:role:export + @Log EXPORT）：
+// 同 list 的过滤入参与 DataScope（对齐 selectRoleList 的 @DataScope），过 exportLimit 护栏后写 xlsx。
+func RoleExport(r *ghttp.Request) {
+	ctx := r.Context()
+	f := service.RoleListFilter{
+		RoleId:    r.Get("roleId").Int64(),
+		RoleName:  r.Get("roleName").String(),
+		Status:    r.Get("status").String(),
+		RoleKey:   r.Get("roleKey").String(),
+		BeginTime: paramRange(r, "beginTime"),
+		EndTime:   paramRange(r, "endTime"),
+	}
+	max := service.GetExportMaxRows(ctx)
+	rows, err := service.SelectRoleListLimited(ctx, f, roleScope(r, rolePermiList), max)
+	if err != nil {
+		api.Send(r, api.Err("导出失败"))
+		return
+	}
+	if exportOverLimit(r, len(rows), max) {
+		return
+	}
+	writeXlsx(r, func(w io.Writer) error { return service.ExportRole(w, rows) })
 }
 
 // RoleGetInfo GET /system/role/{roleId}（system:role:query）→ data:{role}；数据范围外回 code500 文案。

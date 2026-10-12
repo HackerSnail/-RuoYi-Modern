@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
 
 	"github.com/gogf/gf/v2/database/gdb"
 	"github.com/gogf/gf/v2/frame/g"
@@ -85,6 +86,52 @@ func SelectRoleListPaged(ctx context.Context, f RoleListFilter, dataScope string
 		return nil, 0, err
 	}
 	return scanRoles(res.Rows), res.Total, nil
+}
+
+// SelectRoleListLimited 对应 exportLimit 包裹的 selectRoleList（含 DataScope）：同列表 SQL + role_sort 排序，
+// 追加 limit maxRows+1，供控制器判定是否超过单次导出上限（Java startPage(1, maxRows+1) 的等价）。
+func SelectRoleListLimited(ctx context.Context, f RoleListFilter, dataScope string, maxRows int) ([]model.SysRole, error) {
+	sql, args := buildRoleListSQL(f, dataScope)
+	sql += " order by r.role_sort limit ?"
+	args = append(args, maxRows+1)
+	recs, err := g.DB().GetAll(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	return scanRoles(recs), nil
+}
+
+// colRole 把「从 *model.SysRole 取值」的闭包适配成引擎的 func(any) any（行以 any 传入，非预期类型回 nil）。
+func colRole(fn func(*model.SysRole) any) func(any) any {
+	return func(row any) any {
+		r, ok := row.(*model.SysRole)
+		if !ok || r == nil {
+			return nil
+		}
+		return fn(r)
+	}
+}
+
+// roleExportColumns 角色导出列：严格按 SysRole 的 @Excel 声明序（BaseEntity 无 @Excel 故不含 createTime 等）。
+// 全部 type=ALL 参与导出；仅 roleId 为 NUMERIC，其余默认 STRING；dataScope/status 走 readConverterExp。
+func roleExportColumns() []ExcelColumn {
+	return []ExcelColumn{
+		{Name: "角色序号", Kind: ExcelKindNumeric, Value: colRole(func(r *model.SysRole) any { return r.RoleId })},
+		{Name: "角色名称", Value: colRole(func(r *model.SysRole) any { return r.RoleName })},
+		{Name: "角色权限", Value: colRole(func(r *model.SysRole) any { return r.RoleKey })},
+		{Name: "角色排序", Value: colRole(func(r *model.SysRole) any { return r.RoleSort })},
+		{Name: "数据范围", Converter: "1=所有数据权限,2=自定义数据权限,3=本部门数据权限,4=本部门及以下数据权限,5=仅本人数据权限", Value: colRole(func(r *model.SysRole) any { return r.DataScope })},
+		{Name: "角色状态", Converter: "0=正常,1=停用", Value: colRole(func(r *model.SysRole) any { return r.Status })},
+	}
+}
+
+// ExportRole 把角色列表按 Java 契约写成 xlsx 流：sheet 名 "角色数据"（title 为空，无标题行）。
+func ExportRole(w io.Writer, list []model.SysRole) error {
+	rows := make([]any, len(list))
+	for i := range list {
+		rows[i] = &list[i]
+	}
+	return WriteExcel(w, "角色数据", roleExportColumns(), rows)
 }
 
 func scanRoles(recs gdb.Result) []model.SysRole {

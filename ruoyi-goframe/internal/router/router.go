@@ -154,5 +154,10 @@ func Register(s *ghttp.Server) {
 		g.DELETE("/monitor/cache/clearCacheAll", middleware.Permi("monitor:cache:list", controller.ClearCacheAll))
 		// 服务器监控 /monitor/server（对齐 ServerController.getInfo：单接口 GET，权限 monitor:server:list；返回后台预采集最近快照）
 		g.GET("/monitor/server", middleware.Permi("monitor:server:list", controller.ServerGetInfo))
+		// 回收站 /system/recyclebin（对齐 SysRecycleBinController：list/restore/purge 以 {type} 分派）。
+		// 权限须据 {type} 运行时派生、而 Permi 需编译期常量，故不走 Permi，由 handler 内 parseType→程序化判权限（白名单先于权限串）。
+		g.GET("/system/recyclebin/{type}/list", controller.RecycleBinList)
+		g.PUT("/system/recyclebin/{type}/restore", controller.RecycleBinRestore)
+		g.DELETE("/system/recyclebin/{type}/purge", controller.RecycleBinPurge)
 	})
 }

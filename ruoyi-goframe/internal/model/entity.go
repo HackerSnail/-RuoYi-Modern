@@ -361,3 +361,21 @@ type Server struct {
 	SysFiles  []ServerSysFile `json:"sysFiles"`
 	Timestamp int64           `json:"timestamp"`
 }
+
+// RecycleBinOpItem 回收站批量操作（restore/purge）单项结果，对齐 RecycleBinOpResult.Item 的 Jackson 输出。
+// Status 复刻枚举名（"SUCCESS"/"FAILED"）；Reason 成功时为 null（指针，nil 则 JSON 里键值出 null）。
+type RecycleBinOpItem struct {
+	Id     int64   `json:"id"`
+	Name   *string `json:"name"`
+	Status string  `json:"status"`
+	Reason *string `json:"reason"`
+}
+
+// RecycleBinOpResult 回收站批量操作整体结果：批处理"每项独立、部分成功"，整体恒 200，
+// 成败逐项体现在 Items，对齐 RecycleBinOpResult 的 total/successCount/failCount/items。
+type RecycleBinOpResult struct {
+	Total        int                  `json:"total"`
+	SuccessCount int                  `json:"successCount"`
+	FailCount    int                  `json:"failCount"`
+	Items        []RecycleBinOpItem   `json:"items"`
+}

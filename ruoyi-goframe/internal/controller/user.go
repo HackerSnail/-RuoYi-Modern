@@ -3,6 +3,8 @@
 package controller
 
 import (
+	"bytes"
+	"fmt"
 	"strings"
 
 	"github.com/gogf/gf/v2/net/ghttp"
@@ -47,6 +49,40 @@ func UserList(r *ghttp.Request) {
 		return
 	}
 	api.Send(r, service.DataTable(total, rows))
+}
+
+// UserExport POST /system/user/export（system:user:export）→ 直写 xlsx 二进制流（对齐 SysUserController.export）。
+// 入参同列表过滤条件 + DataScope；exportLimit 护栏：SQL 只拉 maxRows+1 条，超限回 JSON 错（此时未写二进制）。
+func UserExport(r *ghttp.Request) {
+	ctx := r.Context()
+	f := service.UserListFilter{
+		UserId:      r.Get("userId").Int64(),
+		UserName:    r.Get("userName").String(),
+		Status:      r.Get("status").String(),
+		Phonenumber: r.Get("phonenumber").String(),
+		DeptId:      r.Get("deptId").Int64(),
+		BeginTime:   paramRange(r, "beginTime"),
+		EndTime:     paramRange(r, "endTime"),
+	}
+	max := service.GetExportMaxRows(ctx)
+	rows, err := service.SelectUserListLimited(ctx, f, userScope(r, userPermiList), max)
+	if err != nil {
+		api.Send(r, api.Err("导出失败"))
+		return
+	}
+	if len(rows) > max {
+		api.Send(r, api.Err(fmt.Sprintf("导出数据量 %d 条，超过单次导出上限 %d 条，请缩小查询条件后重试", len(rows), max)))
+		return
+	}
+	var buf bytes.Buffer
+	if err := service.ExportUser(&buf, rows); err != nil {
+		api.SendSystemError(r, "导出失败，请联系系统管理员")
+		return
+	}
+	// 对齐 Java：仅设 Content-Type，不写 Content-Disposition（文件名由前端 download() 生成）。
+	r.Response.ClearBuffer()
+	r.Response.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	r.Response.Write(buf.Bytes())
 }
 
 // UserGetInfo GET /system/user/ 与 /system/user/{userId}（system:user:query）。

@@ -41,6 +41,19 @@ func IsRegisterEnabled(ctx context.Context) bool {
 	return selectConfigByKey(ctx, "sys.account.registerUser") == "true"
 }
 
+// defaultExportMaxRows 对齐 RuoYiConfig 的静态默认值（yml 未配置时）。
+const defaultExportMaxRows = 50000
+
+// GetExportMaxRows 对应 RuoYiConfig.getExportMaxRows()：读 ruoyi.exportMaxRows（g.Cfg），
+// 未配置或非法(<=0)回默认 50000。Java 在启动期对 <=0 抛异常，Go 配置为请求期读取，故做防御式兜底。
+func GetExportMaxRows(ctx context.Context) int {
+	n := g.Cfg().MustGet(ctx, "ruoyi.exportMaxRows", defaultExportMaxRows).Int()
+	if n <= 0 {
+		return defaultExportMaxRows
+	}
+	return n
+}
+
 // getIntConfig 取整型配置，空/非法返回 defaultVal。对应 Convert.toInt 兜底。
 func getIntConfig(ctx context.Context, key string, defaultVal int) int {
 	s := selectConfigByKey(ctx, key)

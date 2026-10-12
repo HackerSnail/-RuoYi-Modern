@@ -4,6 +4,7 @@ package service
 
 import (
 	"context"
+	"io"
 
 	"github.com/gogf/gf/v2/database/gdb"
 	"github.com/gogf/gf/v2/frame/g"
@@ -110,6 +111,69 @@ func scanUserListRows(recs gdb.Result) []model.SysUser {
 		out = append(out, u)
 	}
 	return out
+}
+
+// SelectUserListLimited 对应 SysUserController.export 里 BaseController.exportLimit(selectUserList)：
+// SQL 侧限 maxRows+1 条（count=false 语义），把「是否超限」的判定成本压在查询层，避免全表匹配行进内存。
+// 调用方据 len(rows) > maxRows 判超限；因已限流，返回值最多 maxRows+1（与 Java 完全一致）。
+func SelectUserListLimited(ctx context.Context, f UserListFilter, dataScope string, maxRows int) ([]model.SysUser, error) {
+	sql, args := buildUserListSQL(f, dataScope)
+	sql += " limit ?"
+	args = append(args, maxRows+1)
+	recs, err := g.DB().GetAll(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	return scanUserListRows(recs), nil
+}
+
+// colUser 把「从 *model.SysUser 取值」的闭包适配成引擎的 func(any) any（行以 any 传入，非预期类型回 nil）。
+func colUser(fn func(*model.SysUser) any) func(any) any {
+	return func(row any) any {
+		u, ok := row.(*model.SysUser)
+		if !ok || u == nil {
+			return nil
+		}
+		return fn(u)
+	}
+}
+
+// userExportDeptVal 取内嵌部门字段（dept 为 nil 时回空串，对齐 Java targetAttr 走 getter 时空指针返回 null→空）。
+func userExportDeptVal(getter func(*model.SysDept) any) func(*model.SysUser) any {
+	return func(u *model.SysUser) any {
+		if u.Dept == nil {
+			return ""
+		}
+		return getter(u.Dept)
+	}
+}
+
+// userExportColumns 用户导出列，顺序逐字对齐 SysUser 的 @Excel（声明序、全部默认 sort；跳过 IMPORT-only 的 deptId）：
+// 用户序号(NUMERIC) 登录名称 用户名称 用户邮箱 手机号码(TEXT) 用户性别(0=男,1=女,2=未知)
+// 账号状态(0=正常,1=停用) 最后登录IP 最后登录时间(width30, yyyy-MM-dd HH:mm:ss) 部门名称 部门负责人。
+func userExportColumns() []ExcelColumn {
+	return []ExcelColumn{
+		{Name: "用户序号", Kind: ExcelKindNumeric, Value: colUser(func(u *model.SysUser) any { return u.UserId })},
+		{Name: "登录名称", Value: colUser(func(u *model.SysUser) any { return u.UserName })},
+		{Name: "用户名称", Value: colUser(func(u *model.SysUser) any { return u.NickName })},
+		{Name: "用户邮箱", Value: colUser(func(u *model.SysUser) any { return u.Email })},
+		{Name: "手机号码", Kind: ExcelKindText, Value: colUser(func(u *model.SysUser) any { return u.Phonenumber })},
+		{Name: "用户性别", Converter: "0=男,1=女,2=未知", Value: colUser(func(u *model.SysUser) any { return u.Sex })},
+		{Name: "账号状态", Converter: "0=正常,1=停用", Value: colUser(func(u *model.SysUser) any { return u.Status })},
+		{Name: "最后登录IP", Value: colUser(func(u *model.SysUser) any { return u.LoginIp })},
+		{Name: "最后登录时间", Width: 30, Kind: ExcelKindDate, Layout: "2006-01-02 15:04:05", Value: colUser(func(u *model.SysUser) any { return u.LoginDate })},
+		{Name: "部门名称", Value: colUser(userExportDeptVal(func(d *model.SysDept) any { return d.DeptName }))},
+		{Name: "部门负责人", Value: colUser(userExportDeptVal(func(d *model.SysDept) any { return d.Leader }))},
+	}
+}
+
+// ExportUser 把用户列表按 Java 契约写成 xlsx 流：sheet 名 "用户数据"（3 参 exportExcel 的 title 为空，无标题行）。
+func ExportUser(w io.Writer, list []model.SysUser) error {
+	rows := make([]any, len(list))
+	for i := range list {
+		rows[i] = &list[i]
+	}
+	return WriteExcel(w, "用户数据", userExportColumns(), rows)
 }
 
 // SelectUserById 对应 selectUserById：selectUserVo JOIN，折叠多角色到 user.roles，装配内嵌 dept。不存在返回 nil。

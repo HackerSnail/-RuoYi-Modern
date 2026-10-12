@@ -49,6 +49,8 @@ ruoyi:
   addressEnabled: false
   captchaType: "math"
   httpStatusAdvice: true
+  # 单次导出最大条数（对应 ruoyi.exportMaxRows）：超过则拒绝并提示缩小条件，避免超大文件；未配置默认 50000
+  exportMaxRows: 50000
   # 公开只读参数键白名单（对应 ruoyi.publicConfigKeys）：/system/config/configKey/{key} 无鉴权，仅这些键可被任意登录用户读取
   publicConfigKeys: "sys.account.captchaEnabled,sys.account.registerUser"
   # 敏感字典类型黑名单（对应 ruoyi.sensitiveDictTypes）：/system/dict/data/type/{dictType} 无鉴权，命中此列表的类型需 system:dict:list

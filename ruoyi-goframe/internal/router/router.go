@@ -157,7 +157,16 @@ func Register(s *ghttp.Server) {
 		g.GET("/monitor/logininfor/unlock/{userName}", middleware.Permi("monitor:logininfor:unlock", middleware.Log(middleware.OpLog("账户解锁", consts.BtOther, "controller.LogininforUnlock"), controller.LogininforUnlock)))
 		g.DELETE("/monitor/logininfor/clean", middleware.Permi("monitor:logininfor:remove", middleware.Log(middleware.OpLog("登录日志", consts.BtClean, "controller.LogininforClean"), controller.LogininforClean)))
 		g.DELETE("/monitor/logininfor/{infoIds}", middleware.Permi("monitor:logininfor:remove", middleware.Log(middleware.OpLog("登录日志", consts.BtDelete, "controller.LogininforRemove"), controller.LogininforRemove)))
-		// 定时任务调度日志 /monitor/jobLog（对齐 SysJobLogController：list/export/getInfo/remove/clean；权限均复用 monitor:job:*，clean 复用 remove 且无二次确认门，Java 原样）。静态 clean 先于 {jobLogIds} 动态。
+		// 定时任务调度 /monitor/job（对齐 SysJobController：list/export/getInfo/add/edit/changeStatus/run/remove；@Log title=定时任务）。静态 list/export/changeStatus/run 先于动态 {jobId}/{jobIds}。
+		g.GET("/monitor/job/list", middleware.Permi("monitor:job:list", controller.JobList))
+		g.POST("/monitor/job/export", middleware.Permi("monitor:job:export", middleware.Log(middleware.OpLog("定时任务", consts.BtExport, "controller.JobExport"), controller.JobExport)))
+		g.PUT("/monitor/job/changeStatus", middleware.Permi("monitor:job:changeStatus", middleware.Log(middleware.OpLog("定时任务", consts.BtUpdate, "controller.JobChangeStatus"), controller.JobChangeStatus)))
+		g.PUT("/monitor/job/run", middleware.Permi("monitor:job:changeStatus", middleware.Log(middleware.OpLog("定时任务", consts.BtUpdate, "controller.JobRun"), controller.JobRun)))
+		g.POST("/monitor/job", middleware.Permi("monitor:job:add", middleware.Log(middleware.OpLog("定时任务", consts.BtInsert, "controller.JobAdd"), controller.JobAdd)))
+		g.PUT("/monitor/job", middleware.Permi("monitor:job:edit", middleware.Log(middleware.OpLog("定时任务", consts.BtUpdate, "controller.JobEdit"), controller.JobEdit)))
+		g.GET("/monitor/job/{jobId}", middleware.Permi("monitor:job:query", controller.JobGetInfo))
+		g.DELETE("/monitor/job/{jobIds}", middleware.Permi("monitor:job:remove", middleware.Log(middleware.OpLog("定时任务", consts.BtDelete, "controller.JobRemove"), controller.JobRemove)))
+		// 定时任务调度日志 /monitor/jobLog（对齐 SysJobController：list/export/getInfo/remove/clean；权限均复用 monitor:job:*，clean 复用 remove 且无二次确认门，Java 原样）。静态 clean 先于 {jobLogIds} 动态。
 		g.GET("/monitor/jobLog/list", middleware.Permi("monitor:job:list", controller.JobLogList))
 		g.POST("/monitor/jobLog/export", middleware.Permi("monitor:job:export", middleware.Log(middleware.OpLog("任务调度日志", consts.BtExport, "controller.JobLogExport"), controller.JobLogExport)))
 		g.DELETE("/monitor/jobLog/clean", middleware.Permi("monitor:job:remove", middleware.Log(middleware.OpLog("调度日志", consts.BtClean, "controller.JobLogClean"), controller.JobLogClean)))

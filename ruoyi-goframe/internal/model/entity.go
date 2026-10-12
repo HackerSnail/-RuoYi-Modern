@@ -309,6 +309,27 @@ type SysJobLog struct {
 	CreateTime    *gtime.Time `json:"createTime"    orm:"create_time"`
 }
 
+// SysJob 定时任务调度 sys_job：DB 列严格对齐 SysJobMapper.xml resultMap/SysJobResult 的 13 列。
+// LastFireTime 为本仓调度器增强专用列（开机补跑判定），json:"-" 不出现在任何 API 响应（与 Java 契约一致）；
+// NextValidTime 为瞬态推算字段（对齐 Java SysJob.getNextValidTime()），由 service 依 cron 计算后填充、非 DB 列。
+type SysJob struct {
+	JobId          int64       `json:"jobId"          orm:"job_id"`
+	JobName        string      `json:"jobName"        orm:"job_name"`
+	JobGroup       string      `json:"jobGroup"       orm:"job_group"`
+	InvokeTarget   string      `json:"invokeTarget"   orm:"invoke_target"`
+	CronExpression string      `json:"cronExpression" orm:"cron_expression"`
+	MisfirePolicy  string      `json:"misfirePolicy"  orm:"misfire_policy"`
+	Concurrent     string      `json:"concurrent"`
+	Status         string      `json:"status"`
+	CreateBy       string      `json:"createBy"       orm:"create_by"`
+	CreateTime     *gtime.Time `json:"createTime"     orm:"create_time"`
+	UpdateBy       string      `json:"updateBy"       orm:"update_by"`
+	UpdateTime     *gtime.Time `json:"updateTime"     orm:"update_time"`
+	Remark         string      `json:"remark"`
+	LastFireTime   *gtime.Time `json:"-"              orm:"last_fire_time"`
+	NextValidTime  *gtime.Time `json:"nextValidTime"  orm:"-"`
+}
+
 // ---------------- 服务器监控 /monitor/server：对齐 com.ruoyi.framework.web.domain.Server 及其子 DTO ----------------
 // Java 侧在 getter 里做单位换算/百分比（字节→GB/MB、tick→占比、round HALF_UP）；Go 无 getter，
 // 故这些结构体字段直接存【换算后的展示值】，由 service/server.go 在采集时算好再序列化。

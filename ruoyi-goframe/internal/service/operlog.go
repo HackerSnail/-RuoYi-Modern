@@ -12,9 +12,11 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/gogf/gf/v2/database/gdb"
 	"github.com/gogf/gf/v2/frame/g"
+	"github.com/gogf/gf/v2/os/gtime"
 	"github.com/gogf/gf/v2/util/gconv"
 
 	"ruoyi-goframe/internal/model"
@@ -27,6 +29,13 @@ const selectOperLogVo = "select oper_id, title, business_type, method, request_m
 
 // operLogDeleteMaxBatch 批量删除单次上限，对齐 SysOperLogServiceImpl.DELETE_MAX_BATCH。
 const operLogDeleteMaxBatch = 500
+
+// 定期清理分批参数，对齐 SysOperLogServiceImpl 常量：每批 5000、单轮总量上限 100 万、批间让出 IO 100ms。
+const (
+	operLogCleanBatchSize   = 5000
+	operLogCleanMaxTotal    = 1_000_000
+	operLogCleanSleepMillis = 100 * time.Millisecond
+)
 
 // OperLogListFilter 操作日志列表查询条件。HasBusinessType/HasStatus 用 presence 区分"未提交"与"提交 0"。
 type OperLogListFilter struct {
@@ -200,6 +209,34 @@ func CleanOperLog(ctx context.Context) (int, error) {
 		return 0, err
 	}
 	return count, nil
+}
+
+// CleanOperLogBefore 对应 SysOperLogServiceImpl.cleanOperLogBefore：按保留天数分批删过期操作日志（列 oper_time）。
+// 逐字对齐 Java：days<=0 入口即拒；cutoff 一次算定（now-days）不再随批漂移；每批 limit 5000、批间 sleep 100ms；
+// 累计达单轮上限 100 万即提前结束（剩余交下一轮）；循环至某批删 0 为止，返回累计删除行数。
+func CleanOperLogBefore(ctx context.Context, days int) (int, error) {
+	if days <= 0 {
+		return 0, fmt.Errorf("操作日志保留天数必须大于 0，当前值：%d", days)
+	}
+	cutoff := gtime.Now().Add(-time.Duration(days) * 24 * time.Hour).String()
+	total := 0
+	for {
+		res, err := g.DB().Exec(ctx, "delete from sys_oper_log where oper_time < ? limit ?", cutoff, operLogCleanBatchSize)
+		if err != nil {
+			return total, err
+		}
+		batchDeleted, _ := res.RowsAffected()
+		total += int(batchDeleted)
+		if total >= operLogCleanMaxTotal {
+			g.Log().Warningf(ctx, "操作日志定期清理达单轮上限 %d 条，提前结束，剩余交由下一轮定时任务继续", operLogCleanMaxTotal)
+			break
+		}
+		if batchDeleted == 0 {
+			break
+		}
+		time.Sleep(operLogCleanSleepMillis)
+	}
+	return total, nil
 }
 
 // insertOperLogSQL 对应 SysOperLogMapper.xml <insert id="insertOperlog">：16 列、oper_time 走 sysdate()。

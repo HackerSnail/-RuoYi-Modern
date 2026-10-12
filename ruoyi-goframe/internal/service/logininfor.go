@@ -170,6 +170,21 @@ func CleanLogininfor(ctx context.Context) (int, error) {
 	return approx, nil
 }
 
+// CleanLogininforBefore 对应 SysLogininforServiceImpl.cleanLogininforBefore：按保留天数删除过期登录日志（列 login_time）。
+// 逐字对齐 Java：days<=0 入口即拒；登录日志行窄，Java 亦为单条 date_sub(sysdate(), interval ? day) 删除（不分批），
+// 此处同样单条 DELETE，返回受影响行数。
+func CleanLogininforBefore(ctx context.Context, days int) (int, error) {
+	if days <= 0 {
+		return 0, fmt.Errorf("登录日志保留天数必须大于 0，当前值：%d", days)
+	}
+	res, err := g.DB().Exec(ctx, "delete from sys_logininfor where login_time < date_sub(sysdate(), interval ? day)", days)
+	if err != nil {
+		return 0, err
+	}
+	affected, _ := res.RowsAffected()
+	return int(affected), nil
+}
+
 // ClearLoginRecordCache 对应 SysPasswordService.clearLoginRecordCache：清除该用户密码错误次数缓存，解除锁定。
 func ClearLoginRecordCache(ctx context.Context, userName string) {
 	_, _ = g.Redis().Unlink(ctx, consts.RedisPwdErrCnt+userName)

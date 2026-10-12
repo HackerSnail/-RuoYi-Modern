@@ -181,3 +181,44 @@ func CleanJobLog(ctx context.Context) error {
 	_, err := g.DB().Exec(ctx, "truncate table sys_job_log")
 	return err
 }
+
+// InsertJobLog 对应 insertJobLog（addJobLog）：动态列仅非空、create_time=sysdate()。供调度执行体（executeJob）
+// 每次运行后落一行 sys_job_log（成功 status=0、失败 status=1 + exception_info 截断 2000）。
+func InsertJobLog(ctx context.Context, l *model.SysJobLog) error {
+	cols := make([]string, 0, 10)
+	vals := make([]string, 0, 10)
+	args := make([]interface{}, 0, 9)
+	addStr := func(col, v string) {
+		if v != "" {
+			cols = append(cols, col)
+			vals = append(vals, "?")
+			args = append(args, v)
+		}
+	}
+	if l.JobLogId != 0 {
+		cols = append(cols, "job_log_id")
+		vals = append(vals, "?")
+		args = append(args, l.JobLogId)
+	}
+	addStr("job_name", l.JobName)
+	addStr("job_group", l.JobGroup)
+	addStr("invoke_target", l.InvokeTarget)
+	addStr("job_message", l.JobMessage)
+	addStr("status", l.Status)
+	addStr("exception_info", l.ExceptionInfo)
+	if l.StartTime != nil {
+		cols = append(cols, "start_time")
+		vals = append(vals, "?")
+		args = append(args, l.StartTime)
+	}
+	if l.EndTime != nil {
+		cols = append(cols, "end_time")
+		vals = append(vals, "?")
+		args = append(args, l.EndTime)
+	}
+	cols = append(cols, "create_time")
+	vals = append(vals, "sysdate()")
+	sql := "insert into sys_job_log(" + strings.Join(cols, ",") + ") values(" + strings.Join(vals, ",") + ")"
+	_, err := g.DB().Exec(ctx, sql, args...)
+	return err
+}

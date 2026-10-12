@@ -51,11 +51,20 @@ ruoyi:
   httpStatusAdvice: true
   # 单次导出最大条数（对应 ruoyi.exportMaxRows）：超过则拒绝并提示缩小条件，避免超大文件；未配置默认 50000
   exportMaxRows: 50000
+  # 操作日志保留天数（对应 operLogCleanTask 无参调用时的默认阈值）；未配置默认 90
+  operLogRetentionDays: 90
   # 公开只读参数键白名单（对应 ruoyi.publicConfigKeys）：/system/config/configKey/{key} 无鉴权，仅这些键可被任意登录用户读取
   publicConfigKeys: "sys.account.captchaEnabled,sys.account.registerUser"
   # 敏感字典类型黑名单（对应 ruoyi.sensitiveDictTypes）：/system/dict/data/type/{dictType} 无鉴权，命中此列表的类型需 system:dict:list
   # 留空=所有字典开放（与 Java application.yml 默认一致）
   sensitiveDictTypes: ""
+
+# 定时任务调度（对齐 Quartz 生命周期）：enabled=false 时调度器整体不启动、add/edit 仅落库不调度；
+# catchUpMissed=true 时开机扫描 status=正常的任务，上次触发时间已过期则补跑一次（misfire 增强）。
+job:
+  scheduler:
+    enabled: true
+    catchUpMissed: true
 
 # 用户密码策略：对齐 user.password.*
 user:

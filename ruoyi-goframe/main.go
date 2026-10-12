@@ -27,6 +27,9 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	service.StartServerMonitor(ctx)
+	// 定时任务调度器（对齐 Quartz Scheduler 生命周期）：启动即按 sys_job 全量注册 gcron 条目并做 misfire 开机补跑；
+	// job.scheduler.enabled=false 时整体退化为 no-op（仅落库不调度）。
+	service.StartScheduler(ctx)
 
 	s := g.Server()
 	// SERVER_ADDRESS 环境变量可临时覆盖监听地址（未设置则用 config.yaml 的 server.address），便于本地与 Java 并存调试。
@@ -35,5 +38,6 @@ func main() {
 	}
 	router.Register(s)
 	s.Run()
+	service.StopScheduler()
 	service.StopServerMonitor()
 }

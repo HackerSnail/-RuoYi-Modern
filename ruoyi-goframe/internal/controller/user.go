@@ -4,6 +4,7 @@ package controller
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"strings"
 
@@ -23,6 +24,7 @@ const (
 	userPermiEdit     = "system:user:edit"
 	userPermiRemove   = "system:user:remove"
 	userPermiResetPwd = "system:user:resetPwd"
+	userPermiImport   = "system:user:import"
 )
 
 // userScope 计算当前会话对用户查询的数据范围（deptAlias=d、userAlias=u，供 DATA_SCOPE_SELF 兜底；admin 返回空串）。
@@ -83,6 +85,149 @@ func UserExport(r *ghttp.Request) {
 	r.Response.ClearBuffer()
 	r.Response.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	r.Response.Write(buf.Bytes())
+}
+
+// UserImportTemplate POST /system/user/importTemplate（对齐 importTemplate：无 @PreAuthorize、无 @Log）。
+// 写用户导入模板（纯表头行，title 空、IMPORT 型无数据），响应同 export：仅 Content-Type、不写 Content-Disposition。
+func UserImportTemplate(r *ghttp.Request) {
+	var buf bytes.Buffer
+	if err := service.ImportTemplateUser(&buf); err != nil {
+		api.SendSystemError(r, "下载模板失败，请联系系统管理员")
+		return
+	}
+	r.Response.ClearBuffer()
+	r.Response.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	r.Response.Write(buf.Bytes())
+}
+
+// UserImportData POST /system/user/importData（system:user:import + @Log IMPORT）。
+// 对齐 importData：扩展名早拒(xls/xlsx) → 读表 → importUser 逐行导入（非事务，部分成功会落库） → 聚合文案。
+func UserImportData(r *ghttp.Request) {
+	ctx := r.Context()
+	lu := middleware.CurrentLoginUser(r)
+	files := r.GetMultipartFiles("file")
+	if len(files) == 0 || files[0].Size == 0 {
+		api.Send(r, api.Err("导入文件不能为空"))
+		return
+	}
+	fh := files[0]
+	// 前置类型拦截（对齐 getExtension + isAllowedExtension(IMPORT_EXTENSION={xls,xlsx})）：早拒非 Excel，不把任意文件交给解析。
+	ext := fileExtension(fh.Filename)
+	if !isImportExtensionAllowed(ext) {
+		api.Send(r, api.Err(fmt.Sprintf("导入文件类型(%s)非法，仅允许 xls, xlsx 格式", ext)))
+		return
+	}
+	open, err := fh.Open()
+	if err != nil {
+		api.Send(r, api.Err("导入失败，请联系系统管理员"))
+		return
+	}
+	defer open.Close()
+	list, err := service.ReadUserImport(open)
+	if err != nil {
+		// 解析失败（非 xlsx / 旧版 .xls excelize 不支持等），对齐 Java importExcel 抛出→全局异常处理器
+		api.Send(r, api.Err("导入失败，请联系系统管理员"))
+		return
+	}
+	if len(list) == 0 {
+		// 对齐 importUser 首行：空列表立即抛 “导入用户数据不能为空！”
+		api.Send(r, api.Err("导入用户数据不能为空！"))
+		return
+	}
+	updateSupport := r.Get("updateSupport").Bool()
+	msg, failed := importUserRows(ctx, lu, list, updateSupport)
+	if failed {
+		api.Send(r, api.Err(msg))
+		return
+	}
+	api.Send(r, api.OkMsg(msg))
+}
+
+// importUserRows 逐行复刻 SysUserServiceImpl.importUser（无 @Transactional，行级 try/catch 语义）：
+// 返回（聚合文案, 是否有失败）。失败时文案为“很抱歉…”全串（controller 转 code500）；无失败为“恭喜您…”。
+func importUserRows(ctx context.Context, lu *model.LoginUser, list []model.SysUser, updateSupport bool) (string, bool) {
+	operName := ""
+	if lu != nil {
+		operName = lu.Username
+	}
+	encPwd := service.EncryptPassword(service.GetUserInitPassword(ctx))
+	var successNum, failureNum int
+	var successMsg, failureMsg strings.Builder
+	for i := range list {
+		user := list[i]
+		rowErr := ""
+		u := service.FindUserByName(ctx, user.UserName)
+		if u == nil {
+			// 新增分支：校验 → checkDeptDataScope → 加密初始密码 → insertUser（裸 mapper，无角色/岗位）
+			if vs := validateUser(&user); len(vs) > 0 {
+				rowErr = violationsToText(vs)
+			} else if msg := service.CheckDeptDataScope(ctx, lu, userPermiImport, user.DeptId); msg != "" {
+				rowErr = msg
+			} else {
+				user.Password = encPwd
+				if _, msg := service.InsertUser(ctx, &user, operName); msg != "" {
+					rowErr = msg
+				} else {
+					successNum++
+					fmt.Fprintf(&successMsg, "<br/>%d、账号 %s 导入成功", successNum, user.UserName)
+				}
+			}
+		} else if updateSupport {
+			// 更新分支：校验 → checkUserAllowed(u) → checkUserDataScope(u.userId) → checkDeptDataScope(user.deptId)
+			// → 回填 userId/deptId(=u 的) → updateUser 裸 mapper（仅主行，不动角色/岗位）
+			if vs := validateUser(&user); len(vs) > 0 {
+				rowErr = violationsToText(vs)
+			} else if msg := service.CheckUserAllowed(u); msg != "" {
+				rowErr = msg
+			} else if msg := service.CheckUserDataScope(ctx, lu, userPermiImport, u.UserId); msg != "" {
+				rowErr = msg
+			} else if msg := service.CheckDeptDataScope(ctx, lu, userPermiImport, user.DeptId); msg != "" {
+				rowErr = msg
+			} else {
+				user.UserId = u.UserId
+				user.DeptId = u.DeptId
+				if _, msg := service.UpdateUserForImport(ctx, &user, operName); msg != "" {
+					rowErr = msg
+				} else {
+					successNum++
+					fmt.Fprintf(&successMsg, "<br/>%d、账号 %s 更新成功", successNum, user.UserName)
+				}
+			}
+		} else {
+			failureNum++
+			fmt.Fprintf(&failureMsg, "<br/>%d、账号 %s 已存在", failureNum, user.UserName)
+		}
+		if rowErr != "" {
+			failureNum++
+			fmt.Fprintf(&failureMsg, "<br/>%d、账号 %s 导入失败：%s", failureNum, user.UserName, rowErr)
+		}
+	}
+	if failureNum > 0 {
+		return fmt.Sprintf("很抱歉，导入失败！共 %d 条数据格式不正确，错误如下：%s", failureNum, failureMsg.String()), true
+	}
+	return fmt.Sprintf("恭喜您，数据已全部导入成功！共 %d 条，数据如下：%s", successNum, successMsg.String()), false
+}
+
+// violationsToText 把字段级校验违规拼成一行失败文案（对应 Java BeanValidators 抛出的 ConstraintViolationException 消息）。
+func violationsToText(vs []violation) string {
+	msgs := make([]string, 0, len(vs))
+	for _, v := range vs {
+		msgs = append(msgs, v.Message)
+	}
+	return strings.Join(msgs, ",")
+}
+
+// fileExtension 取文件名最后一个 '.' 之后的后缀（无点或点后为空则回空串，对齐 FilenameUtils.getExtension）。
+func fileExtension(name string) string {
+	if i := strings.LastIndexByte(name, '.'); i >= 0 && i < len(name)-1 {
+		return name[i+1:]
+	}
+	return ""
+}
+
+// isImportExtensionAllowed 对齐 MimeTypeUtils.IMPORT_EXTENSION = {"xls","xlsx"}（equalsIgnoreCase）。
+func isImportExtensionAllowed(ext string) bool {
+	return strings.EqualFold(ext, "xls") || strings.EqualFold(ext, "xlsx")
 }
 
 // UserGetInfo GET /system/user/ 与 /system/user/{userId}（system:user:query）。

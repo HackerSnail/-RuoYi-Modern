@@ -176,6 +176,106 @@ func ExportUser(w io.Writer, list []model.SysUser) error {
 	return WriteExcel(w, "用户数据", userExportColumns(), rows)
 }
 
+// FindUserByName 对应 importUser 里的 selectUserByUserName（用户名存在性判定）；转公开已有的小写实现。
+func FindUserByName(ctx context.Context, username string) *model.SysUser {
+	return selectUserByUserName(ctx, username)
+}
+
+// userImportColumns 用户导入列（type∈{ALL,IMPORT}，跳过 EXPORT-only 的 userId/loginIp/loginDate），按表头名定位回写。
+// sex/status 走反向表达式（显示值→键），其余非转换列在引擎内已做数值串归一。
+func userImportColumns() []ExcelImportColumn {
+	return []ExcelImportColumn{
+		{Name: "部门编号", Set: setU(func(u *model.SysUser, t string) { u.DeptId = gconv.Int64(t) })},
+		{Name: "登录名称", Set: setU(func(u *model.SysUser, t string) { u.UserName = t })},
+		{Name: "用户名称", Set: setU(func(u *model.SysUser, t string) { u.NickName = t })},
+		{Name: "用户邮箱", Set: setU(func(u *model.SysUser, t string) { u.Email = t })},
+		{Name: "手机号码", Set: setU(func(u *model.SysUser, t string) { u.Phonenumber = t })},
+		{Name: "用户性别", Converter: "0=男,1=女,2=未知", Set: setU(func(u *model.SysUser, t string) { u.Sex = t })},
+		{Name: "账号状态", Converter: "0=正常,1=停用", Set: setU(func(u *model.SysUser, t string) { u.Status = t })},
+	}
+}
+
+// setU 把「对 *model.SysUser 赋值」适配成引擎的 func(any, string)（非预期类型静默忽略）。
+func setU(fn func(*model.SysUser, string)) func(row any, text string) {
+	return func(row any, text string) {
+		if u, ok := row.(*model.SysUser); ok && u != nil {
+			fn(u, text)
+		}
+	}
+}
+
+// ReadUserImport 从上传流读回用户行（供 controller 逐行导入）。解析失败回 error（如旧版 .xls excelize 不支持）。
+func ReadUserImport(rd io.Reader) ([]model.SysUser, error) {
+	anyRows, err := ReadExcel(rd, userImportColumns(), func() any { return &model.SysUser{} })
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.SysUser, 0, len(anyRows))
+	for _, r := range anyRows {
+		if u, ok := r.(*model.SysUser); ok {
+			out = append(out, *u)
+		}
+	}
+	return out, nil
+}
+
+// userTemplateColumns 用户导入模板表头列（= 导入可读列集，type∈{ALL,IMPORT}）。
+func userTemplateColumns() []ExcelColumn {
+	return []ExcelColumn{
+		{Name: "部门编号"},
+		{Name: "登录名称"},
+		{Name: "用户名称"},
+		{Name: "用户邮箱"},
+		{Name: "手机号码", Kind: ExcelKindText},
+		{Name: "用户性别"},
+		{Name: "账号状态"},
+	}
+}
+
+// ImportTemplateUser 写用户导入模板（纯表头行，对齐 importTemplateExcel：title 空、IMPORT 型不写数据）。
+func ImportTemplateUser(w io.Writer) error {
+	return WriteExcel(w, "用户数据", userTemplateColumns(), nil)
+}
+
+// UpdateUserForImport 复刻 updateUser 裸 mapper（导入更新分支）：仅按非空动态列更新 sys_user 主行 + update_time，
+// 绝不触碰角色/岗位关联（Java importUser 调 userMapper.updateUser，非 service.updateUser）。返回 (影响行, 错误文案)。
+func UpdateUserForImport(ctx context.Context, user *model.SysUser, updateBy string) (int, string) {
+	sets := make([]string, 0, 8)
+	args := make([]interface{}, 0, 8)
+	add := func(clause string, val interface{}) {
+		sets = append(sets, clause)
+		args = append(args, val)
+	}
+	if user.DeptId != 0 {
+		add("dept_id = ?", user.DeptId)
+	}
+	if user.NickName != "" {
+		add("nick_name = ?", user.NickName)
+	}
+	if user.Email != "" {
+		add("email = ?", user.Email)
+	}
+	if user.Phonenumber != "" {
+		add("phonenumber = ?", user.Phonenumber)
+	}
+	if user.Sex != "" {
+		add("sex = ?", user.Sex)
+	}
+	if user.Status != "" {
+		add("status = ?", user.Status)
+	}
+	if updateBy != "" {
+		add("update_by = ?", updateBy)
+	}
+	sets = append(sets, "update_time = ?")
+	args = append(args, gtime.Now())
+	args = append(args, user.UserId)
+	if _, err := g.DB().Exec(ctx, "update sys_user set "+joinStrings(sets, ", ")+" where user_id = ?", args...); err != nil {
+		return 0, "修改用户'" + user.UserName + "'失败，请联系管理员"
+	}
+	return 1, ""
+}
+
 // SelectUserById 对应 selectUserById：selectUserVo JOIN，折叠多角色到 user.roles，装配内嵌 dept。不存在返回 nil。
 func SelectUserById(ctx context.Context, userId int64) *model.SysUser {
 	recs, err := g.DB().GetAll(ctx, selectUserVo+" where u.user_id = ?", userId)

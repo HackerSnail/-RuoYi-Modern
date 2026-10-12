@@ -54,6 +54,13 @@ func GetExportMaxRows(ctx context.Context) int {
 	return n
 }
 
+// GetUserInitPassword 对应 importUser 里的 configService.selectConfigByKey("sys.user.initPassword")：
+// 导入新增用户时使用的初始密码（明文，交由 EncryptPassword 加密后落库）。未配置回空串（与 Java 一致，
+// 由调用方决定加密空串还是报错——忠实 Java 直接 encrypt(可能为空的 initPassword)，此处不额外兜底）。
+func GetUserInitPassword(ctx context.Context) string {
+	return selectConfigByKey(ctx, "sys.user.initPassword")
+}
+
 // getIntConfig 取整型配置，空/非法返回 defaultVal。对应 Convert.toInt 兜底。
 func getIntConfig(ctx context.Context, key string, defaultVal int) int {
 	s := selectConfigByKey(ctx, key)

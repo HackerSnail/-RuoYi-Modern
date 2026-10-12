@@ -12,7 +12,9 @@ package service
 
 import (
 	"bytes"
+	"errors"
 	"io"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -183,4 +185,110 @@ func WriteExcel(w io.Writer, sheetName string, cols []ExcelColumn, rows []any) e
 	}
 	_, err = w.Write(buf.Bytes())
 	return err
+}
+
+// numDotZero 复刻 Java 对字符串列值 ^\d+\.0$ 的判定（POI 数值单元格产物，如 "1.0"）。
+var numDotZero = regexp.MustCompile(`^\d+\.0$`)
+
+// normalizeNumString 复刻 Java 字符串分支：值形如 "123.0" 时去掉尾部 ".0"（excelize 显示值通常已是 "1"，此为守卫）。
+func normalizeNumString(s string) string {
+	if numDotZero.MatchString(s) {
+		return s[:len(s)-2]
+	}
+	return s
+}
+
+// reverseByExp 复刻 ExcelUtil.reverseByExp：把显示值反向映射回键（如 "男"→"0"）。
+// 忠实保留 Java 怪癖：单值无匹配时返回空串（propertyString 未追加，stripEnd("")==""）。
+func reverseByExp(propertyValue, converter, separator string) string {
+	var out strings.Builder
+	for _, item := range strings.Split(converter, ",") { // 表达式固定以逗号分隔（Java SEPARATOR）
+		ia := strings.Split(item, "=")
+		if len(ia) != 2 {
+			continue
+		}
+		if strings.Contains(propertyValue, separator) {
+			for _, v := range strings.Split(propertyValue, separator) {
+				if ia[1] == v {
+					out.WriteString(ia[0])
+					out.WriteString(separator)
+					break
+				}
+			}
+		} else if ia[1] == propertyValue {
+			return ia[0]
+		}
+	}
+	return strings.TrimRight(out.String(), separator)
+}
+
+// ExcelImportColumn 定义从模板/导入表读回的一列：按表头名（非顺序）定位，取值文本经可选反向转换后交给 Set。
+type ExcelImportColumn struct {
+	Name      string               // 表头显示名（对齐 @Excel name）
+	Converter string               // readConverterExp：读取时反向（显示值→键）；空则按数值串归一
+	Set       func(row any, text string) // 把最终文本写回实体字段
+}
+
+// ReadExcel 读回首个 sheet：row0 为表头，row1+ 为数据（逐行经 cols 回填到 newRow()）。忠实 Java importExcel 读取语义。
+func ReadExcel(rd io.Reader, cols []ExcelImportColumn, newRow func() any) ([]any, error) {
+	f, err := excelize.OpenReader(rd)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+	sheets := f.GetSheetList()
+	if len(sheets) == 0 {
+		return nil, errors.New("文件sheet不存在")
+	}
+	rows, err := f.GetRows(sheets[0])
+	if err != nil {
+		return nil, err
+	}
+	if len(rows) <= 1 {
+		return nil, nil // 仅表头或空 → 无数据行（对齐 Java getLastRowNum）
+	}
+	header := rows[0]
+	idx := make(map[string]int, len(header))
+	for c, h := range header {
+		if key := strings.TrimSpace(h); key != "" {
+			idx[key] = c // 同名表头后者覆盖（对齐 Java cellMap.put 的 last-wins）
+		}
+	}
+	out := make([]any, 0, len(rows)-1)
+	for _, row := range rows[1:] {
+		if importRowBlank(row) {
+			continue
+		}
+		e := newRow()
+		for _, col := range cols {
+			ci, ok := idx[col.Name]
+			if !ok {
+				continue
+			}
+			var text string
+			if ci < len(row) {
+				text = strings.TrimSpace(row[ci])
+			}
+			if col.Converter != "" {
+				text = reverseByExp(text, col.Converter, ",")
+			} else {
+				text = normalizeNumString(text)
+			}
+			if col.Set != nil {
+				col.Set(e, text)
+			}
+		}
+		out = append(out, e)
+	}
+	return out, nil
+}
+
+// importRowBlank 复刻 isRowEmpty：整行所有单元格去空白后皆空 → 视为空行跳过。
+func importRowBlank(row []string) bool {
+	for _, c := range row {
+		if strings.TrimSpace(c) != "" {
+			return false
+		}
+	}
+	return true
 }

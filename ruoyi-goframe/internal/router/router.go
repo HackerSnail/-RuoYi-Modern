@@ -69,6 +69,9 @@ func Register(s *ghttp.Server) {
 		// 用户 /system/user（静态路径先于 {userId} 动态路径注册，利用 GF 字面量优先于通配的匹配）
 		g.GET("/system/user/list", middleware.Permi("system:user:list", controller.UserList))
 		g.POST("/system/user/export", middleware.Permi("system:user:export", middleware.Log(middleware.OpLog("用户管理", consts.BtExport, "controller.UserExport"), controller.UserExport)))
+		// 导入（importData 对齐 @PreAuthorize system:user:import + @Log IMPORT；importTemplate 无 @PreAuthorize/无 @Log，仅登录态裸注册）
+		g.POST("/system/user/importData", middleware.Permi("system:user:import", middleware.Log(middleware.OpLog("用户管理", consts.BtImport, "controller.UserImportData"), controller.UserImportData)))
+		g.POST("/system/user/importTemplate", controller.UserImportTemplate)
 		g.GET("/system/user/deptTree", middleware.Permi("system:user:list", controller.UserDeptTree))
 		g.GET("/system/user/authRole/{userId}", middleware.Permi("system:user:query", controller.UserAuthRole))
 		g.GET("/system/user/", middleware.Permi("system:user:query", controller.UserGetInfo))

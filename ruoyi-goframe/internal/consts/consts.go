@@ -90,5 +90,46 @@ const (
 	NotUnique = false
 )
 
+// 操作日志业务类型（对应 com.ruoyi.common.enums.BusinessType.ordinal()，Java 存枚举声明序号而非 code）。
+const (
+	BtOther   = 0 // 其它
+	BtInsert  = 1 // 新增
+	BtUpdate  = 2 // 修改
+	BtDelete  = 3 // 删除
+	BtGrant   = 4 // 授权
+	BtExport  = 5 // 导出
+	BtImport  = 6 // 导入
+	BtForce   = 7 // 强退
+	BtGenCode = 8 // 生成代码
+	BtClean   = 9 // 清空数据
+)
+
+// 操作人类别（对应 OperatorType.ordinal()：OTHER=0 MANAGE=1 MOBILE=2；@Log 默认 MANAGE）。
+const (
+	OpTypeOther  = 0
+	OpTypeManage = 1
+	OpTypeMobile = 2
+)
+
+// 操作状态（对应 BusinessStatus.ordinal()：SUCCESS=0 FAIL=1）。
+const (
+	OpStatusSuccess = 0
+	OpStatusFail    = 1
+)
+
+// sys_oper_log 各列宽上限（对齐 AsyncFactory.recordOper 的纵深防御 cap + LogAspect 截断）。
+const (
+	OpLogTitleLen      = 50
+	OpLogMethodLen     = 200
+	OpLogReqMethodLen  = 10
+	OpLogOperNameLen   = 50
+	OpLogDeptNameLen   = 50
+	OpLogOperIpLen     = 128
+	OpLogOperLocLen    = 255
+	OpLogUrlLen        = 255
+	OpLogParamMaxLen   = 2000 // 对应 LogAspect.PARAM_MAX_LENGTH
+	OpLogErrorMsgLen   = 2000
+)
+
 // 会话 uuid 长度：与 Java IdUtils.fastUUID 一致用标准 UUID（36 位带 -）。
 // 前端不解析令牌内容，只透传，故形态只需服务端自洽。

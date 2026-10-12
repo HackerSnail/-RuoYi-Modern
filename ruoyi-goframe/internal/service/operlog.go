@@ -144,3 +144,20 @@ func CleanOperLog(ctx context.Context) (int, error) {
 	}
 	return count, nil
 }
+
+// insertOperLogSQL 对应 SysOperLogMapper.xml <insert id="insertOperlog">：16 列、oper_time 走 sysdate()。
+// 列顺序与取值须与 Java 逐字对齐（title, business_type, method, request_method, operator_type,
+// oper_name, dept_name, oper_url, oper_ip, oper_location, oper_param, json_result, status, error_msg, cost_time, oper_time）。
+const insertOperLogSQL = "insert into sys_oper_log(title, business_type, method, request_method, operator_type, " +
+	"oper_name, dept_name, oper_url, oper_ip, oper_location, oper_param, json_result, status, error_msg, cost_time, oper_time) " +
+	"values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, sysdate())"
+
+// InsertOperLog 对应 insertOperlog：由 @Log 切面等价的中间件在异步协程中调用，把快照好的操作日志落库。
+// 调用方须已完成各列宽 cap/截断（对齐 AsyncFactory）；此处不再重复裁剪，只做纯插入。
+func InsertOperLog(ctx context.Context, o *model.SysOperLog) error {
+	_, err := g.DB().Exec(ctx, insertOperLogSQL,
+		o.Title, o.BusinessType, o.Method, o.RequestMethod, o.OperatorType,
+		o.OperName, o.DeptName, o.OperUrl, o.OperIp, o.OperLocation,
+		o.OperParam, o.JsonResult, o.Status, o.ErrorMsg, o.CostTime)
+	return err
+}

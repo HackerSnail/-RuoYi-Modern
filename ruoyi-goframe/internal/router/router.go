@@ -76,6 +76,12 @@ func Register(s *ghttp.Server) {
 		g.PUT("/system/user", middleware.Permi("system:user:edit", controller.UserEdit))
 		g.GET("/system/user/{userId}", middleware.Permi("system:user:query", controller.UserGetInfo))
 		g.DELETE("/system/user/{userIds}", middleware.Permi("system:user:remove", controller.UserRemove))
+		// 个人中心 /system/user/profile（对齐 SysProfileController：均无 @PreAuthorize，仅需登录）。
+		// 静态段 profile/updatePwd/avatar 先于 /system/user/{userId} 动态段注册（GF 字面量优先于通配）。
+		g.GET("/system/user/profile", controller.Profile)
+		g.PUT("/system/user/profile/updatePwd", controller.UpdatePwd)
+		g.PUT("/system/user/profile", controller.UpdateProfile)
+		g.POST("/system/user/profile/avatar", controller.Avatar)
 		// 岗位 /system/post（optionselect/list 静态先于 {postId} 动态；Java optionselect 无 @PreAuthorize，仅挂 Auth）
 		g.GET("/system/post/list", middleware.Permi("system:post:list", controller.PostList))
 		g.GET("/system/post/optionselect", controller.PostOptionSelect)
@@ -124,5 +130,7 @@ func Register(s *ghttp.Server) {
 		g.GET("/common/download", controller.FileDownload)
 		g.POST("/common/upload", controller.FileUpload)
 		g.POST("/common/uploads", controller.FileUploads)
+		// 上传目录静态取图 /profile/**：本仓 SecurityConfig 已取消匿名放行，须带令牌（挂 Auth、无 permi）。
+		g.GET("/profile/*", controller.ProfileResource)
 	})
 }

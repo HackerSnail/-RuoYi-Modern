@@ -27,6 +27,7 @@ import (
 
 	"github.com/gogf/gf/v2/frame/g"
 	"github.com/gogf/gf/v2/os/gtime"
+	"github.com/gogf/gf/v2/util/guid"
 )
 
 // resourcePrefix 对应 Constants.RESOURCE_PREFIX，前端访问上传资源的统一虚拟前缀。
@@ -261,6 +262,11 @@ func extractFilename(filename, ext string) string {
 	return fmt.Sprintf("%s/%s_%s.%s", gtime.Now().Format("Y/m/d"), getBaseNameOf(filename), seqId(), ext)
 }
 
+// uuidFilename 对应 FileUploadUtils.uuidFilename：日期目录/fastSimpleUUID.后缀（头像等走唯一命名）。
+func uuidFilename(ext string) string {
+	return fmt.Sprintf("%s/%s.%s", gtime.Now().Format("Y/m/d"), guid.S(), ext)
+}
+
 // getAbsoluteFile 归一后核验目标仍在 baseDir 内，越界拒绝写入；并确保父目录存在。
 func getAbsoluteFile(baseDir, fileName string) (string, error) {
 	dest := filepath.Join(baseDir, filepath.FromSlash(fileName))
@@ -302,9 +308,20 @@ func getPathFileName(ctx context.Context, baseDir, fileName string) string {
 
 func normSlash(s string) string { return strings.ReplaceAll(s, `\`, "/") }
 
-// Upload 保存单个上传文件到 baseDir，做入口校验 + 魔数核验 + 落盘，返回 (虚拟访问路径, 原始文件名, error)。
+// Upload 保存单个上传文件到 baseDir（Seq 命名），做入口校验 + 魔数核验 + 落盘，返回 (虚拟访问路径, 原始文件名, error)。
 // allowed 传 nil 表示不做后缀/魔数校验（本仓 /common 恒传 defaultAllowedExtension）。
 func Upload(ctx context.Context, baseDir string, fh *multipart.FileHeader, allowed []string) (string, string, error) {
+	return uploadFile(ctx, baseDir, fh, allowed, false)
+}
+
+// UploadAvatar 头像等走唯一命名（对齐 FileUploadUtils.upload(..., useCustomNaming=true) → uuidFilename）。
+// 后缀白名单固定为 IMAGE_EXTENSION（bmp/gif/jpg/jpeg/png），魔数核验同此集。
+func UploadAvatar(ctx context.Context, baseDir string, fh *multipart.FileHeader) (string, string, error) {
+	return uploadFile(ctx, baseDir, fh, imageExt, true)
+}
+
+// uploadFile 上传落盘内核：入口校验（文件名长度→大小→后缀白名单→魔数）+ 命名（unique 决定 Seq/UUID）+ 写盘。
+func uploadFile(ctx context.Context, baseDir string, fh *multipart.FileHeader, allowed []string, unique bool) (string, string, error) {
 	if fh == nil {
 		return "", "", errors.New("上传文件不能为空")
 	}
@@ -322,6 +339,9 @@ func Upload(ctx context.Context, baseDir string, fh *multipart.FileHeader, allow
 		return "", "", err
 	}
 	fileName := extractFilename(filename, ext)
+	if unique {
+		fileName = uuidFilename(ext)
+	}
 	absPath, err := getAbsoluteFile(baseDir, fileName)
 	if err != nil {
 		return "", "", err
@@ -427,6 +447,38 @@ func DeleteFileIfExists(absPath string) bool {
 		return false
 	}
 	return os.Remove(absPath) == nil
+}
+
+// ResolveProfileLocalPath 把虚拟 /profile/... 资源路径映射到 profile 根下的本地路径，并做
+// canonical 基目录锚定（防穿越）。ok=false 表示无 /profile 前缀或映射越出根外。
+func ResolveProfileLocalPath(ctx context.Context, resource string) (string, bool) {
+	rel := StripPrefix(resource) // 保留 /profile 之后的前导斜杠，如 "/avatar/2026/..."
+	if rel == "" {
+		return "", false
+	}
+	base := GetProfile(ctx)
+	target := base + rel
+	if ok, err := IsPathUnderBase(base, target); err != nil || !ok {
+		return "", false
+	}
+	return filepath.FromSlash(target), true
+}
+
+// StreamProfileFile 打开并流式本地资源到 w；文件不存在或为目录回 found=false（供上层回 404）。
+func StreamProfileFile(w io.Writer, localPath string) (found bool, err error) {
+	fi, statErr := os.Stat(localPath)
+	if statErr != nil || fi.IsDir() {
+		return false, nil
+	}
+	f, openErr := os.Open(localPath)
+	if openErr != nil {
+		return false, nil
+	}
+	defer f.Close()
+	if _, err := io.Copy(w, f); err != nil {
+		return true, err
+	}
+	return true, nil
 }
 
 // ---- 下载响应头（对应 FileUtils.setAttachmentResponseHeader 的编码部分）----

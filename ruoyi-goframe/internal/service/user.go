@@ -478,6 +478,97 @@ func DeleteUserByIds(ctx context.Context, lu *model.LoginUser, permission string
 	return affected, ""
 }
 
+// ---- 个人中心 /system/user/profile（对齐 SysProfileController + SysUserServiceImpl profile 专法）----
+
+// MatchesPassword BCrypt 比对（对齐 SecurityUtils.matchesPassword）：纯比对，不含登录重试锁定。
+func MatchesPassword(rawPassword, encodedPassword string) bool {
+	return bcrypt.CompareHashAndPassword([]byte(encodedPassword), []byte(rawPassword)) == nil
+}
+
+// SelectUserPasswordById 单取用户密文：model.SysUser.Password 带 json:"-" 不被 gconv 回填，
+// 故像 selectUserByUserName 那样显式查列。不存在返回空串。
+func SelectUserPasswordById(ctx context.Context, userId int64) string {
+	rec, err := g.DB().GetOne(ctx, "select password from sys_user where user_id = ? and del_flag = '0'", userId)
+	if err != nil || rec == nil || rec.IsEmpty() {
+		return ""
+	}
+	return gconv.String(rec.Map()["password"])
+}
+
+// SelectUserRoleGroup 对应 selectUserRoleGroup：该用户名下未删除角色名以 "," 连接（无则空串）。
+func SelectUserRoleGroup(ctx context.Context, userName string) string {
+	recs, err := g.DB().GetAll(ctx,
+		"select r.role_name from sys_role r"+
+			" left join sys_user_role ur on ur.role_id = r.role_id"+
+			" left join sys_user u on u.user_id = ur.user_id"+
+			" where r.del_flag = '0' and u.user_name = ?", userName)
+	if err != nil {
+		return ""
+	}
+	names := make([]string, 0, len(recs))
+	for _, rec := range recs {
+		names = append(names, gconv.String(rec.Map()["role_name"]))
+	}
+	return joinStrings(names, ",")
+}
+
+// SelectUserPostGroup 对应 selectUserPostGroup：该用户名下岗位名以 "," 连接（无则空串）。
+func SelectUserPostGroup(ctx context.Context, userName string) string {
+	recs, err := g.DB().GetAll(ctx,
+		"select p.post_name from sys_post p"+
+			" left join sys_user_post up on up.post_id = p.post_id"+
+			" left join sys_user u on u.user_id = up.user_id"+
+			" where u.user_name = ?", userName)
+	if err != nil {
+		return ""
+	}
+	names := make([]string, 0, len(recs))
+	for _, rec := range recs {
+		names = append(names, gconv.String(rec.Map()["post_name"]))
+	}
+	return joinStrings(names, ",")
+}
+
+// UpdateUserProfile 复刻 updateUser 动态列 mapper 的可观测语义子集：仅落 profile 明确可改的四列 + update_time。
+// 指针 nil 表示请求未含该键（对齐 Java setXxx(null) → mapper `<if xxx != null>` 跳过该列）：
+//   - nick_name/sex：非 nil 且非空串才写（Java 条件 `!= null and != ''`，故无法清空）；
+//   - email/phonenumber：非 nil 即写（Java 条件仅 `!= null`，故可提交空串清空）。
+// 注：Java 会把缓存快照其余非空列（dept_id/avatar/status…）一并回写，但那对同值 DB 是无操作，
+// 且有「用陈旧缓存覆盖管理员后续编辑」隐患，故此处刻意省略——最终库状态一致（update_time 恒变，affected≥1）。
+func UpdateUserProfile(ctx context.Context, userId int64, nickName, email, phonenumber, sex *string) int {
+	sets := make([]string, 0, 5)
+	args := make([]interface{}, 0, 5)
+	if nickName != nil && *nickName != "" {
+		sets, args = append(sets, "nick_name = ?"), append(args, *nickName)
+	}
+	if email != nil {
+		sets, args = append(sets, "email = ?"), append(args, *email)
+	}
+	if phonenumber != nil {
+		sets, args = append(sets, "phonenumber = ?"), append(args, *phonenumber)
+	}
+	if sex != nil && *sex != "" {
+		sets, args = append(sets, "sex = ?"), append(args, *sex)
+	}
+	sets = append(sets, "update_time = ?")
+	args = append(args, gtime.Now())
+	args = append(args, userId)
+	res, err := g.DB().Exec(ctx, "update sys_user set "+joinStrings(sets, ", ")+" where user_id = ?", args...)
+	if err != nil {
+		return 0
+	}
+	return affectedOf(res)
+}
+
+// UpdateUserAvatar 对应 updateUserAvatar：仅回写 avatar + update_time，返回是否更新成功。
+func UpdateUserAvatar(ctx context.Context, userId int64, avatar string) bool {
+	res, err := g.DB().Exec(ctx, "update sys_user set avatar = ?, update_time = sysdate() where user_id = ?", avatar, userId)
+	if err != nil {
+		return false
+	}
+	return affectedOf(res) > 0
+}
+
 // joinStrings 以 sep 连接字符串切片。
 func joinStrings(parts []string, sep string) string {
 	out := ""

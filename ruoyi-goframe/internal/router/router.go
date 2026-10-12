@@ -132,5 +132,8 @@ func Register(s *ghttp.Server) {
 		g.POST("/common/uploads", controller.FileUploads)
 		// 上传目录静态取图 /profile/**：本仓 SecurityConfig 已取消匿名放行，须带令牌（挂 Auth、无 permi）。
 		g.GET("/profile/*", controller.ProfileResource)
+		// 在线用户监控 /monitor/online（对齐 SysUserOnlineController：两接口均带 @PreAuthorize；数据源 Redis 会话，无 DB）
+		g.GET("/monitor/online/list", middleware.Permi("monitor:online:list", controller.OnlineList))
+		g.DELETE("/monitor/online/{tokenId}", middleware.Permi("monitor:online:forceLogout", controller.OnlineForceLogout))
 	})
 }

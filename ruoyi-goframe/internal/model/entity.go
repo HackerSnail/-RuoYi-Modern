@@ -233,3 +233,17 @@ type LoginUser struct {
 	Permissions []string   `json:"permissions"`
 	User        *SysUser   `json:"user"`
 }
+
+// SysUserOnline 在线会话出参：对齐 com.ruoyi.system.domain.SysUserOnline 的 Jackson 输出。
+// tokenId 承载脱敏会话标识（服务端由会话 uuid 单向派生），既非 uuid 也非 JWT，仅供回传定位强退目标。
+// loginTime 为登录时间戳（毫秒，源自 LoginUser.loginTime；Java 原始 long 恒非空）。
+type SysUserOnline struct {
+	TokenId       string `json:"tokenId"`
+	DeptName      string `json:"deptName"`
+	UserName      string `json:"userName"`
+	Ipaddr        string `json:"ipaddr"`
+	LoginLocation string `json:"loginLocation"`
+	Browser       string `json:"browser"`
+	Os            string `json:"os"`
+	LoginTime     int64  `json:"loginTime"`
+}

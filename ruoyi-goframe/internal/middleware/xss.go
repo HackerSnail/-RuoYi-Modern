@@ -1,18 +1,22 @@
-// Package middleware —— 存储型 XSS 请求级净化，复刻 Java XssFilter + XssHttpServletRequestWrapper。
-// 仅挂 /system、/monitor、/tool 三组（对齐 application.yml xss.urlPatterns；不碰 /login /common /profile）。
-// 两条净化通道与 Java 一一对应：
-//  1. JSON 请求体：整段 EscapeUtil.clean（对应 wrapper.getInputStream 里对原始 JSON 串的清洗），
-//     这是公告内容等 @RequestBody 写接口（存储型 XSS 主向量）的收口点；净化后回写 r.SetBody，
-//     下游 r.Parse 拿到的即已清洗的 JSON。
-//  2. query / 表单参数：逐值 clean().trim()（对应 wrapper.getParameter/getParameterValues 家族）。
-//     gf 参数模型与 Servlet 不同，此处按 URL/表单可改写者尽力对齐；RuoYi 写接口均走 JSON 体，
-//     故通道 1 已覆盖真实落库面，通道 2 为纵深补充。
+// Package middleware —— 存储型 XSS 净化（方案 S：按字段/HTML sink 收口）。
+// 复刻 Java XssFilter 的挂载位置（/system、/monitor、/tool 三组，对齐 application.yml
+// xss.urlPatterns；不碰 /login /common /profile /unlockscreen），但把净化范围收敛到
+// "真正承载 HTML 的写字段"：仅对 JSON 请求体里白名单键（当前 noticeContent，公告正文=
+// 存储型 XSS 主向量）做 CleanHTML；其余键（password/remark/SQL 等纯文本）以 json.RawMessage
+// 原样透传，连字节都不改写。
+//
+// 与"整段 body+query 净化"（route B）的取舍：整段净化会把纯文本字段里的 & < > ' 也 HTML 转义
+// （jsoup 与 bluemonday 皆如此），既污染密码（含 ' 或 & 的密码被改写后致 BCrypt 比对失败）、
+// 又损坏 gen 的 SQL 文本（WHERE a<b 被当标签）。方案 S 只在 HTML sink 字段净化，规避这些误伤；
+// RuoYi 其余写值在前端均按文本渲染、非 XSS sink，故按字段净化即可闭合存储型 XSS。HTML sink
+// 清单见 xssJSONFields，后续若新增富文本写入字段须在此登记。query 参数不再净化（搜索词含 & <
+// 时 Java 反会把它转义成实体、扭曲 LIKE 语义，S 明确不再复制该行为）。
 package middleware
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
-	"net/url"
 	"strings"
 
 	"github.com/gogf/gf/v2/net/ghttp"
@@ -20,46 +24,86 @@ import (
 	"ruoyi-goframe/internal/service"
 )
 
-// Xss 请求级 XSS 净化中间件，须在业务 handler 之前、且早于任何触发 gf 请求体缓存的调用执行。
-// gf 会把首次读到的 body 缓存在私有字段且无公开 setter，故这里不碰 r.GetBody()，而是直接从底层
-// r.Body 读出原始 JSON、净化后以新 reader 回填，令下游 r.Parse/GetBody 惰性读到的即已清洗内容。
+// xssJSONFields 承载 HTML 的写字段 JSON 键白名单（存储型 XSS sink）；仅这些键会被净化。
+var xssJSONFields = map[string]struct{}{
+	"noticeContent": {}, // 公告正文：前端以富文本渲染，是本仓唯一确认的 HTML sink
+}
+
+// Xss 请求级 XSS 净化中间件（方案 S）。命中作用域路径时，仅改写 JSON 体里白名单 HTML 字段的值，
+// 其余字节原样透传；非作用域路径或空体一律放行不改。须在业务 handler 之前、早于任何触发 gf
+// 请求体缓存的调用执行——这里直接从底层 r.Body 读出、净化后回填新 reader，令下游 r.Get/r.Parse
+// 惰性读到的即已处理内容（gf 无公开 SetBody，故不能走 r.GetBody 缓存路径）。
 func Xss(r *ghttp.Request) {
 	// 作用域门控：严格对齐 Java xss.urlPatterns=/system/*,/monitor/*,/tool/*。
-	// /common、/profile、/unlockscreen 不在其列——尤其 /unlockscreen 的 {password} 若被净化会破坏
-	// BCrypt 比对（与 Java 排除它的意图一致），故非白名单前缀一律原样放行。
+	// /common、/profile、/unlockscreen 不在其列，一律原样放行。
 	if !inXssScope(r.URL.Path) {
 		r.Middleware.Next()
 		return
 	}
 	contentType := r.Header.Get("Content-Type")
 	if isJSONContentType(contentType) && r.ContentLength != 0 {
-		// 通道 1：整段净化原始 JSON 体（等价 Java 对 getInputStream 的包装）。
 		raw, err := io.ReadAll(r.Body)
 		_ = r.Body.Close()
-		cleaned := raw
+		out := raw
 		if err == nil && len(raw) > 0 {
-			cleaned = []byte(service.CleanHTML(string(raw)))
-		}
-		// 读失败或空体：原样回填，交由下游按既有语义处理（不落净化错误）。
-		r.Body = io.NopCloser(bytes.NewReader(cleaned))
-		r.ContentLength = int64(len(cleaned))
-	}
-
-	// 通道 2：query 参数逐值净化。仅在存在查询串时改写 RawQuery，clean 后重新编码回写。
-	if raw := r.URL.RawQuery; raw != "" {
-		vals, err := url.ParseQuery(raw)
-		if err == nil && hasDirty(vals) {
-			for k, vs := range vals {
-				for i, v := range vs {
-					vs[i] = service.CleanHTML(v)
-				}
-				vals[k] = vs
+			if cleaned, changed, ok := sanitizeJSONFields(raw, xssJSONFields); ok && changed {
+				out = cleaned
 			}
-			r.URL.RawQuery = vals.Encode()
 		}
+		// 无论是否改写都须回填 reader（body 已被读空），令下游正常读取。
+		r.Body = io.NopCloser(bytes.NewReader(out))
+		r.ContentLength = int64(len(out))
 	}
 
 	r.Middleware.Next()
+}
+
+// sanitizeJSONFields 仅净化 obj 中命中 allow 的字符串键值，其余键保留其原始 json.RawMessage 字节
+// （故非白名单字段连编码都不重排）。返回 (改写后的 JSON, 是否发生变化, 是否可安全处理)：
+// 非 JSON 对象体（数组/表单/畸形）第三个返回值为 false，调用方据此原样保留、不改写。
+func sanitizeJSONFields(raw []byte, allow map[string]struct{}) ([]byte, bool, bool) {
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &obj); err != nil {
+		return raw, false, false
+	}
+	changed := false
+	for k, v := range obj {
+		if _, ok := allow[k]; !ok {
+			continue
+		}
+		var s string
+		if err := json.Unmarshal(v, &s); err != nil {
+			continue // 该键非字符串（null/对象/数组等）：不动
+		}
+		if c := service.CleanHTML(s); c != s {
+			if nb := jsonString(c); nb != nil {
+				obj[k] = nb
+				changed = true
+			}
+		}
+	}
+	if !changed {
+		return raw, false, true
+	}
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false) // 不因重编码把已净化内容里的 < > & 再转义回实体（解码语义不变，输出更贴近原文）
+	if err := enc.Encode(obj); err != nil {
+		return raw, false, true
+	}
+	return bytes.TrimRight(buf.Bytes(), "\n"), true, true
+}
+
+// jsonString 以关闭 HTML 转义的方式把字符串编码成 JSON 字面量 RawMessage（保留已净化的 <>&
+// 原样而非退回 \u003c，与整段重编码的 SetEscapeHTML(false) 保持一致）。失败返回 nil。
+func jsonString(v string) json.RawMessage {
+	var b bytes.Buffer
+	enc := json.NewEncoder(&b)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(v); err != nil {
+		return nil
+	}
+	return bytes.TrimRight(b.Bytes(), "\n")
 }
 
 // inXssScope 判定请求路径是否落在 Java xss.urlPatterns 的三个前缀内。
@@ -76,17 +120,4 @@ func isJSONContentType(contentType string) bool {
 		ct = strings.TrimSpace(ct[:i])
 	}
 	return strings.HasSuffix(ct, "/json") || strings.Contains(ct, "+json")
-}
-
-// hasDirty 快速判断查询值里是否含疑似 HTML 构造（'<' 或 '&'），无则跳过整轮 clean/重编码，
-// 避免对纯普通参数无谓地改写编码（如空格变 '+'）。
-func hasDirty(vals url.Values) bool {
-	for _, vs := range vals {
-		for _, v := range vs {
-			if strings.ContainsAny(v, "<&") {
-				return true
-			}
-		}
-	}
-	return false
 }

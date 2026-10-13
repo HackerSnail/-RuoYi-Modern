@@ -1,0 +1,6 @@
+# ruoyi-springboot 工程局部忽略规则
+# 根 .gitignore 的非锚定模式（target/、*.log、node_modules/ 等）在本目录下依旧生效，
+# 这里只补根 .gitignore 中以斜杠锚定到仓库根的 /logs/、/home/：
+# 三工程并列后 Java 运行期以本目录为工作目录，日志/上传目录会落在 ruoyi-springboot/ 下。
+/logs/
+/home/

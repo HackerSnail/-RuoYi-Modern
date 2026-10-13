@@ -28,12 +28,14 @@ func repoRoot(t *testing.T) string {
 	}
 	p := wd
 	for {
-		if isDir(filepath.Join(p, "ruoyi-generator")) && isDir(filepath.Join(p, "ruoyi-goframe")) {
+		// 以 testdata/gen/fixtures（始终位于仓库根、三工程并列重构后仍如此）为锚，
+		// 与模块层级布局解耦：勿再假设根目录直接含 ruoyi-generator（已下沉到 ruoyi-springboot/）。
+		if isDir(filepath.Join(p, "testdata", "gen", "fixtures")) {
 			return p
 		}
 		parent := filepath.Dir(p)
 		if parent == p {
-			t.Fatalf("无法定位仓库根（自 %s 向上）", wd)
+			t.Fatalf("无法定位仓库根（自 %s 向上，未找到 testdata/gen/fixtures）", wd)
 		}
 		p = parent
 	}

@@ -20,6 +20,51 @@
 * 内置强大代码生成器，一键生成前后端代码（java、vue、xml、sql），支持 CRUD 下载。
 * 阿里云折扣场：[点我进入](http://aly.ruoyi.vip)，腾讯云秒杀场：[点我进入](http://txy.ruoyi.vip)&nbsp;&nbsp;
 
+## 仓库结构（三工程并列）
+
+本仓库为**单 git 仓、三工程并列**的 monorepo，前端与两套后端同仓协作：
+
+| 目录 | 说明 | 技术栈 |
+| :--- | :--- | :--- |
+| `ruoyi-springboot/` | Java 后端（上游 RuoYi，安全加固版） | Spring Boot + Spring Security + MyBatis + Redis + JWT |
+| `ruoyi-goframe/` | Go 后端（对 `ruoyi-springboot` 的逐模块移植，同库同契约） | GoFrame v2 + MySQL + Redis |
+| `ruoyi-vue3/` | 前端 | Vue 3 + Element Plus + Vite + Pinia |
+
+仓库根另保留**跨工程共享**内容：`sql/`（建表 + 补丁脚本，两套后端共用同一 schema）、`testdata/`（代码生成器逐字节金标准语料，Java oracle 与 Go 测试共用）、`docs/`（审计/设计/计划文档）、`README.md`、`LICENSE`、`.github/`。
+
+两套后端**读同一个 MySQL（`ry-vue`）+ 同一个 Redis**，返回体 `{code,msg,data}` 与真实 HTTP 状态码契约完全一致，前端 `ruoyi-vue3` 不改动即可分别对接。
+
+## 使用方式
+
+> 前置：JDK 17+、Maven 3.6+、Node 16+、Go（版本见 `ruoyi-goframe/go.mod`），以及可连通的 MySQL（含 `ry-vue` 库）与 Redis；建库脚本见仓库根 `sql/`。
+
+### Java 后端 `ruoyi-springboot/`
+
+```bash
+# 构建（在仓库根执行）
+mvn -f ruoyi-springboot/pom.xml clean package -DskipTests
+# 运行（先改 ruoyi-springboot/ruoyi-admin/src/main/resources/application*.yml 的库/Redis 连接）
+ruoyi-springboot\ry.bat          # 或 java -jar ruoyi-springboot/ruoyi-admin/target/ruoyi-admin.jar
+```
+
+### Go 后端 `ruoyi-goframe/`
+
+```bash
+cd ruoyi-goframe
+go build ./... && go test ./internal/...   # 自检（含与 Java oracle 的逐字节金标准比对）
+go run .                                    # 或 gf run main.go（需 GoFrame CLI）
+```
+
+配置见 `ruoyi-goframe/config.yaml`：监听 `:8080`、`context-path=/`，含库/Redis/Token 密钥等；生产可用环境变量 `MYSQL_LINK` 覆盖数据源、`SERVER_ADDRESS` 覆盖监听地址（便于与 Java 并存调试）。
+
+### 前端 `ruoyi-vue3/`
+
+```bash
+cd ruoyi-vue3
+npm install
+npm run dev          # Vite 开发服务器；/dev-api 代理到后端 :8080（Java 或 Go 皆可）
+```
+
 ## 本仓库特性：安全加固 & 技术债清理
 
 本仓库在上游 RuoYi 基础上累计 **230+ 次提交**，围绕**安全加固**与**技术债清理**做了系统性重构。

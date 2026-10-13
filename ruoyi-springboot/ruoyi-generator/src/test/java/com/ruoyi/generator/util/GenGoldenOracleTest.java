@@ -126,16 +126,21 @@ public class GenGoldenOracleTest {
         return columns.get(0);
     }
 
-    /** 从 user.dir 向上找同时含 ruoyi-generator 与 ruoyi-goframe 的目录（仓库根）。 */
+    /**
+     * 从 user.dir 向上找含 testdata/gen/fixtures 的目录（仓库根）。
+     * 以 testdata 这一实际需要的资源为锚，与模块在仓库中的层级布局解耦
+     * （三工程并列重构后 ruoyi-generator 已下沉到 ruoyi-springboot/ 下，
+     * 不能再假设仓库根直接含 ruoyi-generator 与 ruoyi-goframe）。
+     */
     private static Path findRepoRoot() {
         Path p = new File("").getAbsoluteFile().toPath();
         while (p != null) {
-            if (Files.isDirectory(p.resolve("ruoyi-generator")) && Files.isDirectory(p.resolve("ruoyi-goframe"))) {
+            if (Files.isDirectory(p.resolve("testdata/gen/fixtures"))) {
                 return p;
             }
             p = p.getParent();
         }
-        throw new IllegalStateException("无法定位仓库根（未找到含 ruoyi-generator 与 ruoyi-goframe 的祖先目录）");
+        throw new IllegalStateException("无法定位仓库根（未找到含 testdata/gen/fixtures 的祖先目录）");
     }
 
     private static Path resolve(Path repoRoot, String sysProp, String relDefault) {

@@ -11,7 +11,7 @@ import (
 	"github.com/gogf/gf/v2/frame/g"
 	"github.com/gogf/gf/v2/net/ghttp"
 
-	"ruoyi-goframe/internal/api"
+	"ruoyi-goframe/internal/response"
 	"ruoyi-goframe/internal/service"
 )
 
@@ -31,28 +31,28 @@ func serverURL(r *ghttp.Request) string {
 func FileUpload(r *ghttp.Request) {
 	files := r.GetMultipartFiles("file")
 	if len(files) == 0 {
-		api.Send(r, api.Err("上传文件不能为空"))
+		response.Send(r, response.Err("上传文件不能为空"))
 		return
 	}
 	fileName, originalName, err := service.Upload(r.Context(), service.GetUploadPath(r.Context()), files[0], defaultUploadAllowed())
 	if err != nil {
 		g.Log().Errorf(r.Context(), "通用上传失败: %v", err)
-		api.Send(r, api.Err(err.Error()))
+		response.Send(r, response.Err(err.Error()))
 		return
 	}
-	m := api.Ok()
+	m := response.Ok()
 	m["url"] = serverURL(r) + fileName
 	m["fileName"] = fileName
 	m["newFileName"] = service.GetName(fileName)
 	m["originalFilename"] = originalName
-	api.Send(r, m)
+	response.Send(r, m)
 }
 
 // FileUploads 对应 POST /common/uploads（多文件，参数名 files）；任一文件失败即整体报错（对齐 Java 单 try 包裹循环）。
 func FileUploads(r *ghttp.Request) {
 	files := r.GetMultipartFiles("files")
 	if len(files) == 0 {
-		api.Send(r, api.Err("上传文件不能为空"))
+		response.Send(r, response.Err("上传文件不能为空"))
 		return
 	}
 	baseDir := service.GetUploadPath(r.Context())
@@ -61,7 +61,7 @@ func FileUploads(r *ghttp.Request) {
 		fileName, originalName, err := service.Upload(r.Context(), baseDir, fh, defaultUploadAllowed())
 		if err != nil {
 			g.Log().Errorf(r.Context(), "通用上传失败: %v", err)
-			api.Send(r, api.Err(err.Error()))
+			response.Send(r, response.Err(err.Error()))
 			return
 		}
 		urls = append(urls, serverURL(r)+fileName)
@@ -69,12 +69,12 @@ func FileUploads(r *ghttp.Request) {
 		newFileNames = append(newFileNames, service.GetName(fileName))
 		originalFilenames = append(originalFilenames, originalName)
 	}
-	m := api.Ok()
+	m := response.Ok()
 	m["urls"] = strings.Join(urls, ",")
 	m["fileNames"] = strings.Join(fileNames, ",")
 	m["newFileNames"] = strings.Join(newFileNames, ",")
 	m["originalFilenames"] = strings.Join(originalFilenames, ",")
-	api.Send(r, m)
+	response.Send(r, m)
 }
 
 // FileDownload 对应 GET /common/download（从 downloadPath 取文件，可选删源）。

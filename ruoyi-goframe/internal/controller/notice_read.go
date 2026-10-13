@@ -8,7 +8,7 @@ import (
 
 	"github.com/gogf/gf/v2/net/ghttp"
 
-	"ruoyi-goframe/internal/api"
+	"ruoyi-goframe/internal/response"
 	"ruoyi-goframe/internal/middleware"
 	"ruoyi-goframe/internal/model"
 	"ruoyi-goframe/internal/service"
@@ -54,10 +54,10 @@ func NoticeListTop(r *ghttp.Request) {
 			unread++
 		}
 	}
-	m := api.Ok()
+	m := response.Ok()
 	m["data"] = list
 	m["unreadCount"] = unread
-	api.Send(r, m)
+	response.Send(r, m)
 }
 
 // NoticeMarkRead POST /system/notice/markRead（仅需登录）。noticeId 由前端可控传入：空/非正即拒（早于落库），
@@ -65,11 +65,11 @@ func NoticeListTop(r *ghttp.Request) {
 func NoticeMarkRead(r *ghttp.Request) {
 	v := r.Get("noticeId")
 	if v.IsNil() || v.String() == "" || v.Int64() <= 0 {
-		api.Send(r, api.Err("公告ID非法"))
+		response.Send(r, response.Err("公告ID非法"))
 		return
 	}
 	service.MarkRead(r.Context(), v.Int64(), currentUserId(r))
-	api.Send(r, api.Ok())
+	response.Send(r, response.Ok())
 }
 
 // NoticeMarkReadAll POST /system/notice/markReadAll（仅需登录）。逗号串逐项须为正数：
@@ -77,51 +77,51 @@ func NoticeMarkRead(r *ghttp.Request) {
 func NoticeMarkReadAll(r *ghttp.Request) {
 	idsStr := strings.TrimSpace(r.Get("ids").String())
 	if idsStr == "" {
-		api.Send(r, api.Ok())
+		response.Send(r, response.Ok())
 		return
 	}
 	ids, ok := splitCommaInts(idsStr)
 	if !ok {
-		api.Send(r, api.Err("公告ID非法"))
+		response.Send(r, response.Err("公告ID非法"))
 		return
 	}
 	for _, id := range ids {
 		if id <= 0 {
-			api.Send(r, api.Err("公告ID非法"))
+			response.Send(r, response.Err("公告ID非法"))
 			return
 		}
 	}
 	if len(ids) == 0 {
-		api.Send(r, api.Ok())
+		response.Send(r, response.Ok())
 		return
 	}
 	service.MarkReadBatch(r.Context(), currentUserId(r), ids)
-	api.Send(r, api.Ok())
+	response.Send(r, response.Ok())
 }
 
 // NoticeRepush PUT /system/notice/repush/{noticeId}（system:notice:edit）。清空该公告全部已读记录，使全员回到未读；
 // 无存在性校验，恒回操作成功（对齐 Java）。
 func NoticeRepush(r *ghttp.Request) {
 	service.DeleteNoticeReadByNoticeIds(r.Context(), []int64{r.Get("noticeId").Int64()})
-	api.Send(r, api.Ok())
+	response.Send(r, response.Ok())
 }
 
 // NoticeReadUsersList GET /system/notice/readUsers/list（system:notice:list）→ TableDataInfo（Map 行，order read_time desc）。
 func NoticeReadUsersList(r *ghttp.Request) {
 	rows, total, err := service.SelectReadUsersPaged(r.Context(), service.ParsePage(r), r.Get("noticeId").Int64(), r.Get("searchValue").String())
 	if err != nil {
-		api.Send(r, api.Err("查询失败"))
+		response.Send(r, response.Err("查询失败"))
 		return
 	}
-	api.Send(r, service.DataTable(total, rows))
+	response.Send(r, service.DataTable(total, rows))
 }
 
 // NoticeUnreadUsersList GET /system/notice/unreadUsers/list（system:notice:list）→ TableDataInfo（Map 行，催读，order user_id）。
 func NoticeUnreadUsersList(r *ghttp.Request) {
 	rows, total, err := service.SelectUnreadUsersPaged(r.Context(), service.ParsePage(r), r.Get("noticeId").Int64(), r.Get("searchValue").String())
 	if err != nil {
-		api.Send(r, api.Err("查询失败"))
+		response.Send(r, response.Err("查询失败"))
 		return
 	}
-	api.Send(r, service.DataTable(total, rows))
+	response.Send(r, service.DataTable(total, rows))
 }

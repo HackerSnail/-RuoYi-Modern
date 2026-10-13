@@ -8,7 +8,7 @@ import (
 
 	"github.com/gogf/gf/v2/net/ghttp"
 
-	"ruoyi-goframe/internal/api"
+	"ruoyi-goframe/internal/response"
 	"ruoyi-goframe/internal/consts"
 	"ruoyi-goframe/internal/middleware"
 	"ruoyi-goframe/internal/model"
@@ -31,10 +31,10 @@ func ConfigList(r *ghttp.Request) {
 	}
 	rows, total, err := service.SelectConfigListPaged(ctx, f, service.ParsePage(r))
 	if err != nil {
-		api.Send(r, api.Err("查询失败"))
+		response.Send(r, response.Err("查询失败"))
 		return
 	}
-	api.Send(r, service.DataTable(total, rows))
+	response.Send(r, service.DataTable(total, rows))
 }
 
 // ConfigExport POST /system/config/export（system:config:export + @Log EXPORT title “参数管理”）：同 list 的过滤入参（参数无 DataScope），
@@ -51,7 +51,7 @@ func ConfigExport(r *ghttp.Request) {
 	max := service.GetExportMaxRows(ctx)
 	rows, err := service.SelectConfigListLimited(ctx, f, max)
 	if err != nil {
-		api.Send(r, api.Err("导出失败"))
+		response.Send(r, response.Err("导出失败"))
 		return
 	}
 	if exportOverLimit(r, len(rows), max) {
@@ -62,7 +62,7 @@ func ConfigExport(r *ghttp.Request) {
 
 // ConfigGetInfo GET /system/config/{configId}（system:config:query）→ data:{config}。
 func ConfigGetInfo(r *ghttp.Request) {
-	api.Send(r, api.OkData(service.SelectConfigById(r.Context(), r.Get("configId").Int64())))
+	response.Send(r, response.OkData(service.SelectConfigById(r.Context(), r.Get("configId").Int64())))
 }
 
 // ConfigGetKey GET /system/config/configKey/{configKey}（无 @PreAuthorize，仅需登录态）→ data: 键值字符串。
@@ -70,57 +70,57 @@ func ConfigGetInfo(r *ghttp.Request) {
 func ConfigGetKey(r *ghttp.Request) {
 	value, msg := service.SelectPublicConfigByKey(r.Context(), r.GetRouter("configKey").String())
 	if msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
-	api.Send(r, api.OkData(value))
+	response.Send(r, response.OkData(value))
 }
 
 // ConfigAdd POST /system/config（system:config:add）。@Validated → 键名唯一 → insertConfig。
 func ConfigAdd(r *ghttp.Request) {
 	var config model.SysConfig
 	if err := r.Parse(&config); err != nil {
-		api.Send(r, api.Err("请求参数有误"))
+		response.Send(r, response.Err("请求参数有误"))
 		return
 	}
 	if vs := validateConfig(&config); len(vs) > 0 {
-		api.Send(r, validErrBody(vs))
+		response.Send(r, validErrBody(vs))
 		return
 	}
 	ctx := r.Context()
 	lu := middleware.CurrentLoginUser(r)
 	if !service.CheckConfigKeyUnique(ctx, &config) {
-		api.Send(r, api.Err("新增参数'"+config.ConfigName+"'失败，参数键名已存在"))
+		response.Send(r, response.Err("新增参数'"+config.ConfigName+"'失败，参数键名已存在"))
 		return
 	}
-	api.Send(r, toAjax(service.InsertConfig(ctx, &config, lu.Username)))
+	response.Send(r, toAjax(service.InsertConfig(ctx, &config, lu.Username)))
 }
 
 // ConfigEdit PUT /system/config（system:config:edit）。@Validated → 键名唯一 → 内置参数(库中原值 Y)非超管拒改 → updateConfig。
 func ConfigEdit(r *ghttp.Request) {
 	var config model.SysConfig
 	if err := r.Parse(&config); err != nil {
-		api.Send(r, api.Err("请求参数有误"))
+		response.Send(r, response.Err("请求参数有误"))
 		return
 	}
 	if vs := validateConfig(&config); len(vs) > 0 {
-		api.Send(r, validErrBody(vs))
+		response.Send(r, validErrBody(vs))
 		return
 	}
 	ctx := r.Context()
 	lu := middleware.CurrentLoginUser(r)
 	if !service.CheckConfigKeyUnique(ctx, &config) {
-		api.Send(r, api.Err("修改参数'"+config.ConfigName+"'失败，参数键名已存在"))
+		response.Send(r, response.Err("修改参数'"+config.ConfigName+"'失败，参数键名已存在"))
 		return
 	}
 	// 内置参数以库中原始 configType 判定（请求体可被篡改），仅超管可改。
 	original := service.SelectConfigById(ctx, config.ConfigId)
 	admin := lu != nil && lu.User != nil && service.IsAdmin(lu.User.UserId)
 	if original != nil && original.ConfigType == consts.Yes && !admin {
-		api.Send(r, api.Err("修改参数'"+config.ConfigName+"'失败，内置参数仅超级管理员可修改"))
+		response.Send(r, response.Err("修改参数'"+config.ConfigName+"'失败，内置参数仅超级管理员可修改"))
 		return
 	}
-	api.Send(r, toAjax(service.UpdateConfig(ctx, &config, lu.Username)))
+	response.Send(r, toAjax(service.UpdateConfig(ctx, &config, lu.Username)))
 }
 
 // ConfigRemove DELETE /system/config/{configIds}（system:config:remove）。整批预校验（不存在/内置拒绝）后硬删；成功恒回操作成功。
@@ -128,20 +128,20 @@ func ConfigRemove(r *ghttp.Request) {
 	ctx := r.Context()
 	ids, ok := splitCommaInts(r.Get("configIds").String())
 	if !ok || len(ids) == 0 {
-		api.Send(r, api.Err("参数 ID 非法"))
+		response.Send(r, response.Err("参数 ID 非法"))
 		return
 	}
 	if _, msg := service.DeleteConfigByIds(ctx, ids); msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
-	api.Send(r, api.Ok())
+	response.Send(r, response.Ok())
 }
 
 // ConfigRefreshCache DELETE /system/config/refreshCache（system:config:refresh）。清理 sys_config:* 缓存键后回操作成功。
 func ConfigRefreshCache(r *ghttp.Request) {
 	service.ResetConfigCache(r.Context())
-	api.Send(r, api.Ok())
+	response.Send(r, response.Ok())
 }
 
 // validateConfig 复刻 SysConfig 的 @Validated 约束（名称/键名/键值 NotBlank+Size，configType @Pattern 整串 Y/N）。

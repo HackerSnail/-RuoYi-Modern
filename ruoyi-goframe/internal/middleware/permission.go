@@ -6,7 +6,7 @@ package middleware
 import (
 	"github.com/gogf/gf/v2/net/ghttp"
 
-	"ruoyi-goframe/internal/api"
+	"ruoyi-goframe/internal/response"
 	"ruoyi-goframe/internal/service"
 )
 
@@ -37,12 +37,12 @@ func Permi(permission string, next ghttp.HandlerFunc) ghttp.HandlerFunc {
 func checkPermi(r *ghttp.Request, permission string) bool {
 	lu := CurrentLoginUser(r)
 	if lu == nil {
-		api.SendAuthError(r)
+		response.SendAuthError(r)
 		r.ExitAll()
 		return false
 	}
 	if !service.HasPermission(lu.Permissions, permission) {
-		api.SendForbidden(r, "没有权限，请联系管理员授权")
+		response.SendForbidden(r, "没有权限，请联系管理员授权")
 		r.ExitAll()
 		return false
 	}

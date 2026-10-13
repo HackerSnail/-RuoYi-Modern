@@ -9,7 +9,7 @@ import (
 	"github.com/gogf/gf/v2/frame/g"
 	"github.com/gogf/gf/v2/net/ghttp"
 
-	"ruoyi-goframe/internal/api"
+	"ruoyi-goframe/internal/response"
 	"ruoyi-goframe/internal/consts"
 	"ruoyi-goframe/internal/middleware"
 	"ruoyi-goframe/internal/model"
@@ -34,23 +34,23 @@ var cacheNames = []model.SysCache{
 // CacheInfo GET /monitor/cache → data:{info, dbSize, commandStats}。
 func CacheInfo(r *ghttp.Request) {
 	ctx := r.Context()
-	data := api.M{
+	data := response.M{
 		"info":         service.RedisInfoMap(ctx),
 		"dbSize":       service.DBSize(ctx),
 		"commandStats": service.CommandStatsPie(ctx),
 	}
-	api.Send(r, api.OkData(data))
+	response.Send(r, response.OkData(data))
 }
 
 // CacheNames GET /monitor/cache/getNames → data:[SysCache×7]（cacheName 含尾冒号，cacheKey/value 空）。
 func CacheNames(r *ghttp.Request) {
-	api.Send(r, api.OkData(cacheNames))
+	response.Send(r, response.OkData(cacheNames))
 }
 
 // CacheKeys GET /monitor/cache/getKeys/{cacheName} → data:[升序键]。pattern = cacheName + "*"（cacheName 带尾冒号）。
 func CacheKeys(r *ghttp.Request) {
 	cacheName := r.GetRouter("cacheName").String()
-	api.Send(r, api.OkData(service.ScanKeysByPattern(r.Context(), cacheName+"*")))
+	response.Send(r, response.OkData(service.ScanKeysByPattern(r.Context(), cacheName+"*")))
 }
 
 // CacheValue GET /monitor/cache/getValue/{cacheName}/{cacheKey} → data:SysCache（三参构造剥前缀）。
@@ -65,20 +65,20 @@ func CacheValue(r *ghttp.Request) {
 		CacheKey:   strings.ReplaceAll(cacheKey, cacheName, ""),
 		CacheValue: raw,
 	}
-	api.Send(r, api.OkData(row))
+	response.Send(r, response.OkData(row))
 }
 
 // ClearCacheName DELETE /monitor/cache/clearCacheName/{cacheName} → 清该前缀全部键，回"已清理 N 个键"。
 func ClearCacheName(r *ghttp.Request) {
 	cacheName := r.GetRouter("cacheName").String()
 	removed := service.DeleteKeysByPattern(r.Context(), cacheName+"*")
-	api.Send(r, api.OkMsg(fmt.Sprintf("已清理 %d 个键", removed)))
+	response.Send(r, response.OkMsg(fmt.Sprintf("已清理 %d 个键", removed)))
 }
 
 // ClearCacheKey DELETE /monitor/cache/clearCacheKey/{cacheKey} → 单键 UNLINK（Java 忽略结果，恒成功）。
 func ClearCacheKey(r *ghttp.Request) {
 	service.UnlinkKey(r.Context(), r.GetRouter("cacheKey").String())
-	api.Send(r, api.Ok())
+	response.Send(r, response.Ok())
 }
 
 // ClearCacheAll DELETE /monitor/cache/clearCacheAll?confirm= → 三重护栏后才清全部（高危、不可逆）。
@@ -86,15 +86,15 @@ func ClearCacheKey(r *ghttp.Request) {
 func ClearCacheAll(r *ghttp.Request) {
 	ctx := r.Context()
 	if r.Get("confirm").String() != clearAllConfirmToken {
-		api.Send(r, api.Err("二次确认口令错误，已拒绝清空全部缓存"))
+		response.Send(r, response.Err("二次确认口令错误，已拒绝清空全部缓存"))
 		return
 	}
 	lu := middleware.CurrentLoginUser(r)
 	if lu == nil || !service.IsAdmin(lu.UserId) {
-		api.Send(r, api.Err("清空全部缓存仅限超级管理员操作"))
+		response.Send(r, response.Err("清空全部缓存仅限超级管理员操作"))
 		return
 	}
 	removed := service.DeleteKeysByPattern(ctx, "*")
 	g.Log().Warningf(ctx, "【高危】用户[%s]清空了全部缓存，共删除 %d 个键", lu.Username, removed)
-	api.Send(r, api.OkMsg(fmt.Sprintf("已清理 %d 个键", removed)))
+	response.Send(r, response.OkMsg(fmt.Sprintf("已清理 %d 个键", removed)))
 }

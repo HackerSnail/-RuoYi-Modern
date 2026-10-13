@@ -5,11 +5,11 @@ package controller
 import (
 	"github.com/gogf/gf/v2/net/ghttp"
 
-	"ruoyi-goframe/internal/api"
+	"ruoyi-goframe/internal/response"
 	"ruoyi-goframe/internal/service"
 )
 
 // ServerGetInfo GET /monitor/server → data:{cpu,mem,jvm,sys,sysFiles,timestamp}（最近快照）。
 func ServerGetInfo(r *ghttp.Request) {
-	api.Send(r, api.OkData(service.GetServerSnapshot()))
+	response.Send(r, response.OkData(service.GetServerSnapshot()))
 }

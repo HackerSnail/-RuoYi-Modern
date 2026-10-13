@@ -4,7 +4,7 @@ package controller
 import (
 	"github.com/gogf/gf/v2/net/ghttp"
 
-	"ruoyi-goframe/internal/api"
+	"ruoyi-goframe/internal/response"
 	"ruoyi-goframe/internal/consts"
 	"ruoyi-goframe/internal/middleware"
 	"ruoyi-goframe/internal/model"
@@ -27,20 +27,20 @@ func MenuList(r *ghttp.Request) {
 	if list == nil {
 		list = []*model.SysMenu{}
 	}
-	api.Send(r, api.OkData(list))
+	response.Send(r, response.OkData(list))
 }
 
 // MenuGetInfo GET /system/menu/{menuId}（system:menu:query）→ data:{menu}（不存在则 data 省略）。
 func MenuGetInfo(r *ghttp.Request) {
 	menuId := r.Get("menuId").Int64()
-	api.Send(r, api.OkData(service.SelectMenuById(r.Context(), menuId)))
+	response.Send(r, response.OkData(service.SelectMenuById(r.Context(), menuId)))
 }
 
 // MenuTreeselect GET /system/menu/treeselect（仅登录，无 permi）→ data:[TreeSelect...]。
 func MenuTreeselect(r *ghttp.Request) {
 	userId := middleware.CurrentLoginUser(r).UserId
 	list := service.SelectMenuList(r.Context(), menuFilter(r), userId)
-	api.Send(r, api.OkData(service.BuildMenuTreeSelect(list)))
+	response.Send(r, response.OkData(service.BuildMenuTreeSelect(list)))
 }
 
 // RoleMenuTreeselect GET /system/menu/roleMenuTreeselect/{roleId}（system:role:query）
@@ -50,82 +50,82 @@ func RoleMenuTreeselect(r *ghttp.Request) {
 	userId := middleware.CurrentLoginUser(r).UserId
 	// Java 此处 selectMenuList(getUserId()) 无过滤
 	list := service.SelectMenuList(r.Context(), service.MenuListFilter{}, userId)
-	body := api.Ok()
+	body := response.Ok()
 	body["checkedKeys"] = service.SelectMenuListByRoleId(r.Context(), roleId)
 	body["menus"] = service.BuildMenuTreeSelect(list)
-	api.Send(r, body)
+	response.Send(r, body)
 }
 
 // MenuAdd POST /system/menu（system:menu:add）。校验顺序：@Validated → 名称唯一 → 外链须 http → 路由唯一 → 服务纵深。
 func MenuAdd(r *ghttp.Request) {
 	var menu model.SysMenu
 	if err := r.Parse(&menu); err != nil {
-		api.Send(r, api.Err("请求参数有误"))
+		response.Send(r, response.Err("请求参数有误"))
 		return
 	}
 	if vs := validateMenu(&menu); len(vs) > 0 {
-		api.Send(r, validErrBody(vs))
+		response.Send(r, validErrBody(vs))
 		return
 	}
 	ctx := r.Context()
 	lu := middleware.CurrentLoginUser(r)
 	if !service.CheckMenuNameUnique(ctx, &menu) {
-		api.Send(r, api.Err("新增菜单'"+menu.MenuName+"'失败，菜单名称已存在"))
+		response.Send(r, response.Err("新增菜单'"+menu.MenuName+"'失败，菜单名称已存在"))
 		return
 	}
 	if menu.IsFrame == consts.YesFrame && !isHTTP(menu.Path) {
-		api.Send(r, api.Err("新增菜单'"+menu.MenuName+"'失败，地址必须以http(s)://开头"))
+		response.Send(r, response.Err("新增菜单'"+menu.MenuName+"'失败，地址必须以http(s)://开头"))
 		return
 	}
 	if !service.CheckRouteConfigUnique(ctx, &menu) {
-		api.Send(r, api.Err("新增菜单'"+menu.MenuName+"'失败，路由名称或地址已存在"))
+		response.Send(r, response.Err("新增菜单'"+menu.MenuName+"'失败，路由名称或地址已存在"))
 		return
 	}
 	rows, msg := service.InsertMenu(ctx, &menu, lu.Username)
 	if msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
-	api.Send(r, toAjax(rows))
+	response.Send(r, toAjax(rows))
 }
 
 // MenuEdit PUT /system/menu（system:menu:edit）。校验顺序：@Validated → 名称唯一 → 外链 http → 自父 → 路由唯一 → 服务纵深。
 func MenuEdit(r *ghttp.Request) {
 	var menu model.SysMenu
 	if err := r.Parse(&menu); err != nil {
-		api.Send(r, api.Err("请求参数有误"))
+		response.Send(r, response.Err("请求参数有误"))
 		return
 	}
 	if vs := validateMenu(&menu); len(vs) > 0 {
-		api.Send(r, validErrBody(vs))
+		response.Send(r, validErrBody(vs))
 		return
 	}
 	ctx := r.Context()
 	lu := middleware.CurrentLoginUser(r)
 	if !service.CheckMenuNameUnique(ctx, &menu) {
-		api.Send(r, api.Err("修改菜单'"+menu.MenuName+"'失败，菜单名称已存在"))
+		response.Send(r, response.Err("修改菜单'"+menu.MenuName+"'失败，菜单名称已存在"))
 		return
 	}
 	if menu.IsFrame == consts.YesFrame && !isHTTP(menu.Path) {
-		api.Send(r, api.Err("修改菜单'"+menu.MenuName+"'失败，地址必须以http(s)://开头"))
+		response.Send(r, response.Err("修改菜单'"+menu.MenuName+"'失败，地址必须以http(s)://开头"))
 		return
 	}
 	if menu.MenuId == menu.ParentId {
-		api.Send(r, api.Err("修改菜单'"+menu.MenuName+"'失败，上级菜单不能选择自己"))
+		response.Send(r, response.Err("修改菜单'"+menu.MenuName+"'失败，上级菜单不能选择自己"))
 		return
 	}
 	if !service.CheckRouteConfigUnique(ctx, &menu) {
-		api.Send(r, api.Err("修改菜单'"+menu.MenuName+"'失败，路由名称或地址已存在"))
+		response.Send(r, response.Err("修改菜单'"+menu.MenuName+"'失败，路由名称或地址已存在"))
 		return
 	}
 	rows, msg := service.UpdateMenu(ctx, &menu, lu.Username)
 	if msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
 	// 注：Java 在 edit 成功后刷新全部在线用户权限（refreshAllOnlineUserPermission）。
 	// P1a 单后端 + admin 通配权场景下为 no-op，非 admin 在线权限刷新随用户/角色模块(P1b)一并接入。
-	api.Send(r, toAjax(rows))
+	response.Send(r, toAjax(rows))
 }
 
 // MenuUpdateSort PUT /system/menu/updateSort（system:menu:edit）。入参 {menuIds,orderNums} 逗号串。
@@ -133,13 +133,13 @@ func MenuUpdateSort(r *ghttp.Request) {
 	menuIdsStr := r.Get("menuIds").String()
 	orderNumsStr := r.Get("orderNums").String()
 	if menuIdsStr == "" || orderNumsStr == "" {
-		api.Send(r, api.Err("排序参数不能为空"))
+		response.Send(r, response.Err("排序参数不能为空"))
 		return
 	}
 	menuIds := splitCommas(menuIdsStr)
 	orderNums := splitCommas(orderNumsStr)
 	if len(menuIds) != len(orderNums) {
-		api.Send(r, api.Err("菜单数量与排序号数量不一致"))
+		response.Send(r, response.Err("菜单数量与排序号数量不一致"))
 		return
 	}
 	ids := make([]int64, 0, len(menuIds))
@@ -147,19 +147,19 @@ func MenuUpdateSort(r *ghttp.Request) {
 	for i := range menuIds {
 		id, err := parseInt(menuIds[i])
 		if err != nil || id <= 0 {
-			api.Send(r, api.Err("非法的菜单ID："+menuIds[i]))
+			response.Send(r, response.Err("非法的菜单ID："+menuIds[i]))
 			return
 		}
 		on, err := parseInt(orderNums[i])
 		if err != nil || on < 0 {
-			api.Send(r, api.Err("非法的排序号："+orderNums[i]))
+			response.Send(r, response.Err("非法的排序号："+orderNums[i]))
 			return
 		}
 		ids = append(ids, id)
 		orders = append(orders, int(on))
 	}
 	service.UpdateMenuSort(r.Context(), ids, orders)
-	api.Send(r, api.Ok())
+	response.Send(r, response.Ok())
 }
 
 // MenuRemove DELETE /system/menu/{menuId}（system:menu:remove）。有子菜单/已分配 → warn(601)。
@@ -167,14 +167,14 @@ func MenuRemove(r *ghttp.Request) {
 	ctx := r.Context()
 	menuId := r.Get("menuId").Int64()
 	if service.HasChildByMenuId(ctx, menuId) {
-		api.Send(r, api.Warn("存在子菜单,不允许删除"))
+		response.Send(r, response.Warn("存在子菜单,不允许删除"))
 		return
 	}
 	if service.CheckMenuExistRole(ctx, menuId) {
-		api.Send(r, api.Warn("菜单已分配,不允许删除"))
+		response.Send(r, response.Warn("菜单已分配,不允许删除"))
 		return
 	}
-	api.Send(r, toAjax(service.DeleteMenuById(ctx, menuId)))
+	response.Send(r, toAjax(service.DeleteMenuById(ctx, menuId)))
 }
 
 // validateMenu 复刻 SysMenu 的 @Validated 字段约束（NotBlank/Size），返回违规列表。

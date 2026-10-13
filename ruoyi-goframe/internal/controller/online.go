@@ -5,7 +5,7 @@ package controller
 import (
 	"github.com/gogf/gf/v2/net/ghttp"
 
-	"ruoyi-goframe/internal/api"
+	"ruoyi-goframe/internal/response"
 	"ruoyi-goframe/internal/service"
 )
 
@@ -14,7 +14,7 @@ import (
 func OnlineList(r *ghttp.Request) {
 	ctx := r.Context()
 	rows := service.ListOnline(ctx, r.Get("ipaddr").String(), r.Get("userName").String())
-	api.Send(r, service.DataTable(int64(len(rows)), rows))
+	response.Send(r, service.DataTable(int64(len(rows)), rows))
 }
 
 // OnlineForceLogout DELETE /monitor/online/{tokenId}（monitor:online:forceLogout）→ toAjax(count)。
@@ -24,12 +24,12 @@ func OnlineForceLogout(r *ghttp.Request) {
 	ctx := r.Context()
 	count, err := service.DelLoginUserByHandle(ctx, r.GetRouter("tokenId").String())
 	if err != nil {
-		api.Send(r, api.Err(err.Error()))
+		response.Send(r, response.Err(err.Error()))
 		return
 	}
 	if count > 0 {
-		api.Send(r, api.Ok())
+		response.Send(r, response.Ok())
 		return
 	}
-	api.Send(r, api.Err("操作失败"))
+	response.Send(r, response.Err("操作失败"))
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/gogf/gf/v2/net/ghttp"
 	"github.com/gogf/gf/v2/util/gconv"
 
-	"ruoyi-goframe/internal/api"
+	"ruoyi-goframe/internal/response"
 	"ruoyi-goframe/internal/middleware"
 	"ruoyi-goframe/internal/model"
 	"ruoyi-goframe/internal/service"
@@ -47,10 +47,10 @@ func UserList(r *ghttp.Request) {
 	}
 	rows, total, err := service.SelectUserListPaged(ctx, f, userScope(r, userPermiList), service.ParsePage(r))
 	if err != nil {
-		api.Send(r, api.Err("查询失败"))
+		response.Send(r, response.Err("查询失败"))
 		return
 	}
-	api.Send(r, service.DataTable(total, rows))
+	response.Send(r, service.DataTable(total, rows))
 }
 
 // UserExport POST /system/user/export（system:user:export）→ 直写 xlsx 二进制流（对齐 SysUserController.export）。
@@ -69,16 +69,16 @@ func UserExport(r *ghttp.Request) {
 	max := service.GetExportMaxRows(ctx)
 	rows, err := service.SelectUserListLimited(ctx, f, userScope(r, userPermiList), max)
 	if err != nil {
-		api.Send(r, api.Err("导出失败"))
+		response.Send(r, response.Err("导出失败"))
 		return
 	}
 	if len(rows) > max {
-		api.Send(r, api.Err(fmt.Sprintf("导出数据量 %d 条，超过单次导出上限 %d 条，请缩小查询条件后重试", len(rows), max)))
+		response.Send(r, response.Err(fmt.Sprintf("导出数据量 %d 条，超过单次导出上限 %d 条，请缩小查询条件后重试", len(rows), max)))
 		return
 	}
 	var buf bytes.Buffer
 	if err := service.ExportUser(&buf, rows); err != nil {
-		api.SendSystemError(r, "导出失败，请联系系统管理员")
+		response.SendSystemError(r, "导出失败，请联系系统管理员")
 		return
 	}
 	// 对齐 Java：仅设 Content-Type，不写 Content-Disposition（文件名由前端 download() 生成）。
@@ -92,7 +92,7 @@ func UserExport(r *ghttp.Request) {
 func UserImportTemplate(r *ghttp.Request) {
 	var buf bytes.Buffer
 	if err := service.ImportTemplateUser(&buf); err != nil {
-		api.SendSystemError(r, "下载模板失败，请联系系统管理员")
+		response.SendSystemError(r, "下载模板失败，请联系系统管理员")
 		return
 	}
 	r.Response.ClearBuffer()
@@ -107,40 +107,40 @@ func UserImportData(r *ghttp.Request) {
 	lu := middleware.CurrentLoginUser(r)
 	files := r.GetMultipartFiles("file")
 	if len(files) == 0 || files[0].Size == 0 {
-		api.Send(r, api.Err("导入文件不能为空"))
+		response.Send(r, response.Err("导入文件不能为空"))
 		return
 	}
 	fh := files[0]
 	// 前置类型拦截（对齐 getExtension + isAllowedExtension(IMPORT_EXTENSION={xls,xlsx})）：早拒非 Excel，不把任意文件交给解析。
 	ext := fileExtension(fh.Filename)
 	if !isImportExtensionAllowed(ext) {
-		api.Send(r, api.Err(fmt.Sprintf("导入文件类型(%s)非法，仅允许 xls, xlsx 格式", ext)))
+		response.Send(r, response.Err(fmt.Sprintf("导入文件类型(%s)非法，仅允许 xls, xlsx 格式", ext)))
 		return
 	}
 	open, err := fh.Open()
 	if err != nil {
-		api.Send(r, api.Err("导入失败，请联系系统管理员"))
+		response.Send(r, response.Err("导入失败，请联系系统管理员"))
 		return
 	}
 	defer open.Close()
 	list, err := service.ReadUserImport(open)
 	if err != nil {
 		// 解析失败（非 xlsx / 旧版 .xls excelize 不支持等），对齐 Java importExcel 抛出→全局异常处理器
-		api.Send(r, api.Err("导入失败，请联系系统管理员"))
+		response.Send(r, response.Err("导入失败，请联系系统管理员"))
 		return
 	}
 	if len(list) == 0 {
 		// 对齐 importUser 首行：空列表立即抛 “导入用户数据不能为空！”
-		api.Send(r, api.Err("导入用户数据不能为空！"))
+		response.Send(r, response.Err("导入用户数据不能为空！"))
 		return
 	}
 	updateSupport := r.Get("updateSupport").Bool()
 	msg, failed := importUserRows(ctx, lu, list, updateSupport)
 	if failed {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
-	api.Send(r, api.OkMsg(msg))
+	response.Send(r, response.OkMsg(msg))
 }
 
 // importUserRows 逐行复刻 SysUserServiceImpl.importUser（无 @Transactional，行级 try/catch 语义）：
@@ -238,10 +238,10 @@ func UserGetInfo(r *ghttp.Request) {
 	userIdStr := r.GetRouter("userId").String()
 	hasId := userIdStr != ""
 	userId := gconv.Int64(userIdStr)
-	body := api.Ok()
+	body := response.Ok()
 	if hasId {
 		if msg := service.CheckUserDataScope(ctx, lu, userPermiQuery, userId); msg != "" {
-			api.Send(r, api.Err(msg))
+			response.Send(r, response.Err(msg))
 			return
 		}
 		sysUser := service.SelectUserById(ctx, userId)
@@ -258,94 +258,94 @@ func UserGetInfo(r *ghttp.Request) {
 	roles := filterAdminRoles(service.SelectRoleAll(ctx, lu, userPermiQuery), service.IsAdmin(userId))
 	body["roles"] = roles
 	body["posts"] = service.SelectPostAll(ctx)
-	api.Send(r, body)
+	response.Send(r, body)
 }
 
 // UserAdd POST /system/user（system:user:add）。校验顺序对齐 Java：部门/角色数据范围 → 唯一性 → 落库。
 func UserAdd(r *ghttp.Request) {
 	user, err := parseUserBody(r)
 	if err != nil {
-		api.Send(r, api.Err("请求参数有误"))
+		response.Send(r, response.Err("请求参数有误"))
 		return
 	}
 	if vs := validateUserHttp(&user); len(vs) > 0 {
-		api.Send(r, validErrBody(vs))
+		response.Send(r, validErrBody(vs))
 		return
 	}
 	ctx := r.Context()
 	lu := middleware.CurrentLoginUser(r)
 	if msg := service.CheckDeptDataScope(ctx, lu, userPermiAdd, user.DeptId); msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
 	if msg := service.CheckRoleDataScope(ctx, lu, userPermiAdd, user.RoleIds...); msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
 	if !service.CheckUserNameUnique(ctx, &user) {
-		api.Send(r, api.Err("新增用户'"+user.UserName+"'失败，登录账号已存在"))
+		response.Send(r, response.Err("新增用户'"+user.UserName+"'失败，登录账号已存在"))
 		return
 	} else if user.Phonenumber != "" && !service.CheckPhoneUnique(ctx, &user) {
-		api.Send(r, api.Err("新增用户'"+user.UserName+"'失败，手机号码已存在"))
+		response.Send(r, response.Err("新增用户'"+user.UserName+"'失败，手机号码已存在"))
 		return
 	} else if user.Email != "" && !service.CheckEmailUnique(ctx, &user) {
-		api.Send(r, api.Err("新增用户'"+user.UserName+"'失败，邮箱账号已存在"))
+		response.Send(r, response.Err("新增用户'"+user.UserName+"'失败，邮箱账号已存在"))
 		return
 	}
 	user.Password = service.EncryptPassword(user.Password)
 	rows, msg := service.InsertUser(ctx, &user, lu.Username)
 	if msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
-	api.Send(r, toAjax(rows))
+	response.Send(r, toAjax(rows))
 }
 
 // UserEdit PUT /system/user（system:user:edit）。超管/数据范围 → 部门/角色数据范围 → 唯一性 → 落库。
 func UserEdit(r *ghttp.Request) {
 	user, err := parseUserBody(r)
 	if err != nil {
-		api.Send(r, api.Err("请求参数有误"))
+		response.Send(r, response.Err("请求参数有误"))
 		return
 	}
 	if vs := validateUserHttp(&user); len(vs) > 0 {
-		api.Send(r, validErrBody(vs))
+		response.Send(r, validErrBody(vs))
 		return
 	}
 	ctx := r.Context()
 	lu := middleware.CurrentLoginUser(r)
 	if msg := service.CheckUserAllowed(&user); msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
 	if msg := service.CheckUserDataScope(ctx, lu, userPermiEdit, user.UserId); msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
 	if msg := service.CheckDeptDataScope(ctx, lu, userPermiEdit, user.DeptId); msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
 	if msg := service.CheckRoleDataScope(ctx, lu, userPermiEdit, user.RoleIds...); msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
 	if !service.CheckUserNameUnique(ctx, &user) {
-		api.Send(r, api.Err("修改用户'"+user.UserName+"'失败，登录账号已存在"))
+		response.Send(r, response.Err("修改用户'"+user.UserName+"'失败，登录账号已存在"))
 		return
 	} else if user.Phonenumber != "" && !service.CheckPhoneUnique(ctx, &user) {
-		api.Send(r, api.Err("修改用户'"+user.UserName+"'失败，手机号码已存在"))
+		response.Send(r, response.Err("修改用户'"+user.UserName+"'失败，手机号码已存在"))
 		return
 	} else if user.Email != "" && !service.CheckEmailUnique(ctx, &user) {
-		api.Send(r, api.Err("修改用户'"+user.UserName+"'失败，邮箱账号已存在"))
+		response.Send(r, response.Err("修改用户'"+user.UserName+"'失败，邮箱账号已存在"))
 		return
 	}
 	rows, msg := service.UpdateUser(ctx, &user, lu.Username)
 	if msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
-	api.Send(r, toAjax(rows))
+	response.Send(r, toAjax(rows))
 }
 
 // UserRemove DELETE /system/user/{userIds}（system:user:remove）。拦截删自己 → 逐个超管/数据范围校验 → 软删。
@@ -354,62 +354,62 @@ func UserRemove(r *ghttp.Request) {
 	lu := middleware.CurrentLoginUser(r)
 	ids, ok := splitCommaInts(r.Get("userIds").String())
 	if !ok || len(ids) == 0 {
-		api.Send(r, api.Err("用户 ID 非法"))
+		response.Send(r, response.Err("用户 ID 非法"))
 		return
 	}
 	if lu != nil && containsInt64(ids, lu.UserId) {
-		api.Send(r, api.Err("当前用户不能删除"))
+		response.Send(r, response.Err("当前用户不能删除"))
 		return
 	}
 	rows, msg := service.DeleteUserByIds(ctx, lu, userPermiRemove, ids)
 	if msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
-	api.Send(r, toAjax(rows))
+	response.Send(r, toAjax(rows))
 }
 
 // UserResetPwd PUT /system/user/resetPwd（system:user:resetPwd）。超管/数据范围 → BCrypt → 改密。
 func UserResetPwd(r *ghttp.Request) {
 	user, err := parseUserBody(r)
 	if err != nil {
-		api.Send(r, api.Err("请求参数有误"))
+		response.Send(r, response.Err("请求参数有误"))
 		return
 	}
 	ctx := r.Context()
 	lu := middleware.CurrentLoginUser(r)
 	if msg := service.CheckUserAllowed(&user); msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
 	if msg := service.CheckUserDataScope(ctx, lu, userPermiResetPwd, user.UserId); msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
 	user.Password = service.EncryptPassword(user.Password)
 	rows, _ := service.ResetPwd(ctx, &user)
-	api.Send(r, toAjax(rows))
+	response.Send(r, toAjax(rows))
 }
 
 // UserChangeStatus PUT /system/user/changeStatus（system:user:edit）。超管/数据范围 → 改状态。
 func UserChangeStatus(r *ghttp.Request) {
 	user, err := parseUserBody(r)
 	if err != nil {
-		api.Send(r, api.Err("请求参数有误"))
+		response.Send(r, response.Err("请求参数有误"))
 		return
 	}
 	ctx := r.Context()
 	lu := middleware.CurrentLoginUser(r)
 	if msg := service.CheckUserAllowed(&user); msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
 	if msg := service.CheckUserDataScope(ctx, lu, userPermiEdit, user.UserId); msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
 	rows, _ := service.UpdateUserStatus(ctx, &user)
-	api.Send(r, toAjax(rows))
+	response.Send(r, toAjax(rows))
 }
 
 // UserAuthRole GET /system/user/authRole/{userId}（system:user:query）。回 user + roles（非管理员过滤超管角色，含 flag 回显）。
@@ -419,10 +419,10 @@ func UserAuthRole(r *ghttp.Request) {
 	userId := r.Get("userId").Int64()
 	user := service.SelectUserById(ctx, userId)
 	roles := filterAdminRoles(service.SelectRolesByUserId(ctx, lu, userPermiQuery, userId), service.IsAdmin(userId))
-	body := api.Ok()
+	body := response.Ok()
 	body["user"] = user
 	body["roles"] = roles
-	api.Send(r, body)
+	response.Send(r, body)
 }
 
 // UserInsertAuthRole PUT /system/user/authRole（system:user:edit）。数据范围校验 → 重绑角色 → 强制该用户重登。
@@ -432,16 +432,16 @@ func UserInsertAuthRole(r *ghttp.Request) {
 	userId := r.Get("userId").Int64()
 	roleIds := parseIdList(r, "roleIds")
 	if msg := service.CheckUserDataScope(ctx, lu, userPermiEdit, userId); msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
 	if msg := service.CheckRoleDataScope(ctx, lu, userPermiEdit, roleIds...); msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
 	service.InsertUserAuth(ctx, userId, roleIds)
 	service.DelLoginUsers(ctx, userId)
-	api.Send(r, api.Ok())
+	response.Send(r, response.Ok())
 }
 
 // UserDeptTree GET /system/user/deptTree（system:user:list）→ data:[TreeSelect...]（含 DataScope）。
@@ -450,7 +450,7 @@ func UserDeptTree(r *ghttp.Request) {
 	lu := middleware.CurrentLoginUser(r)
 	f := service.DeptListFilter{DeptName: r.Get("deptName").String(), Status: r.Get("status").String()}
 	list := service.SelectDeptList(ctx, f, service.BuildDataScope(ctx, lu, userPermiList, "d", "dept_id", "", ""))
-	api.Send(r, api.OkData(service.BuildDeptTreeSelect(list)))
+	response.Send(r, response.OkData(service.BuildDeptTreeSelect(list)))
 }
 
 // parseUserBody 解析 JSON body 到 SysUser，并单独读取 password（Password 为 json:"-"，Parse 不填充）。

@@ -9,7 +9,7 @@ import (
 
 	"github.com/gogf/gf/v2/net/ghttp"
 
-	"ruoyi-goframe/internal/api"
+	"ruoyi-goframe/internal/response"
 	"ruoyi-goframe/internal/service"
 )
 
@@ -45,10 +45,10 @@ func OperLogList(r *ghttp.Request) {
 	}
 	rows, total, err := service.SelectOperLogListPaged(ctx, f, service.ParsePage(r))
 	if err != nil {
-		api.Send(r, api.Err("查询失败"))
+		response.Send(r, response.Err("查询失败"))
 		return
 	}
-	api.Send(r, service.DataTable(total, rows))
+	response.Send(r, service.DataTable(total, rows))
 }
 
 // OperLogExport POST /monitor/operlog/export（monitor:operlog:export + @Log EXPORT）：同 list 的过滤入参（无 DataScope），过 exportLimit 护栏后写 xlsx。
@@ -71,7 +71,7 @@ func OperLogExport(r *ghttp.Request) {
 	max := service.GetExportMaxRows(ctx)
 	rows, err := service.SelectOperLogListLimited(ctx, f, max)
 	if err != nil {
-		api.Send(r, api.Err("导出失败"))
+		response.Send(r, response.Err("导出失败"))
 		return
 	}
 	if exportOverLimit(r, len(rows), max) {
@@ -85,32 +85,32 @@ func OperLogRemove(r *ghttp.Request) {
 	ctx := r.Context()
 	ids, ok := splitCommaInts(r.GetRouter("operIds").String())
 	if !ok {
-		api.Send(r, api.Err("参数格式有误"))
+		response.Send(r, response.Err("参数格式有误"))
 		return
 	}
 	rows, err := service.DeleteOperLogByIds(ctx, ids)
 	if err != nil {
-		api.Send(r, api.Err(err.Error()))
+		response.Send(r, response.Err(err.Error()))
 		return
 	}
 	if rows > 0 {
-		api.Send(r, api.Ok())
+		response.Send(r, response.Ok())
 		return
 	}
-	api.Send(r, api.Err("操作失败"))
+	response.Send(r, response.Err("操作失败"))
 }
 
 // OperLogClean DELETE /monitor/operlog/clean?confirm= → 二次确认口令强校验后 truncate，回"已清空 N 条操作日志"。
 func OperLogClean(r *ghttp.Request) {
 	ctx := r.Context()
 	if r.Get("confirm").String() != operLogCleanConfirmToken {
-		api.Send(r, api.Err("清空操作日志需要二次确认，已拒绝执行"))
+		response.Send(r, response.Err("清空操作日志需要二次确认，已拒绝执行"))
 		return
 	}
 	rows, err := service.CleanOperLog(ctx)
 	if err != nil {
-		api.Send(r, api.Err("清空失败"))
+		response.Send(r, response.Err("清空失败"))
 		return
 	}
-	api.Send(r, api.OkMsg(fmt.Sprintf("已清空 %d 条操作日志", rows)))
+	response.Send(r, response.OkMsg(fmt.Sprintf("已清空 %d 条操作日志", rows)))
 }

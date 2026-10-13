@@ -7,7 +7,7 @@ import (
 
 	"github.com/gogf/gf/v2/net/ghttp"
 
-	"ruoyi-goframe/internal/api"
+	"ruoyi-goframe/internal/response"
 	"ruoyi-goframe/internal/service"
 )
 
@@ -24,10 +24,10 @@ func JobLogList(r *ghttp.Request) {
 	}
 	rows, total, err := service.SelectJobLogListPaged(ctx, f, service.ParsePage(r))
 	if err != nil {
-		api.Send(r, api.Err("查询失败"))
+		response.Send(r, response.Err("查询失败"))
 		return
 	}
-	api.Send(r, service.DataTable(total, rows))
+	response.Send(r, service.DataTable(total, rows))
 }
 
 // JobLogExport POST /monitor/jobLog/export（monitor:job:export + @Log EXPORT）：同 list 的过滤入参（无 DataScope），过 exportLimit 护栏后写 xlsx。
@@ -44,7 +44,7 @@ func JobLogExport(r *ghttp.Request) {
 	max := service.GetExportMaxRows(ctx)
 	rows, err := service.SelectJobLogListLimited(ctx, f, max)
 	if err != nil {
-		api.Send(r, api.Err("导出失败"))
+		response.Send(r, response.Err("导出失败"))
 		return
 	}
 	if exportOverLimit(r, len(rows), max) {
@@ -58,15 +58,15 @@ func JobLogGetInfo(r *ghttp.Request) {
 	ctx := r.Context()
 	id, err := parseInt(r.GetRouter("jobLogId").String())
 	if err != nil {
-		api.Send(r, api.Err("参数格式有误"))
+		response.Send(r, response.Err("参数格式有误"))
 		return
 	}
 	jobLog := service.SelectJobLogById(ctx, id)
 	if jobLog == nil {
-		api.Send(r, api.Err("调度日志不存在："+r.GetRouter("jobLogId").String()))
+		response.Send(r, response.Err("调度日志不存在："+r.GetRouter("jobLogId").String()))
 		return
 	}
-	api.Send(r, api.OkData(jobLog))
+	response.Send(r, response.OkData(jobLog))
 }
 
 // JobLogRemove DELETE /monitor/jobLog/{jobLogIds} → toAjax(受影响行数)。空选/超上限守卫收口于 service。
@@ -74,23 +74,23 @@ func JobLogRemove(r *ghttp.Request) {
 	ctx := r.Context()
 	ids, ok := splitCommaInts(r.GetRouter("jobLogIds").String())
 	if !ok {
-		api.Send(r, api.Err("参数格式有误"))
+		response.Send(r, response.Err("参数格式有误"))
 		return
 	}
 	rows, err := service.DeleteJobLogByIds(ctx, ids)
 	if err != nil {
-		api.Send(r, api.Err(err.Error()))
+		response.Send(r, response.Err(err.Error()))
 		return
 	}
-	api.Send(r, toAjax(rows))
+	response.Send(r, toAjax(rows))
 }
 
 // JobLogClean DELETE /monitor/jobLog/clean → truncate 后 success()（Java 无二次确认门、不回数）。
 func JobLogClean(r *ghttp.Request) {
 	ctx := r.Context()
 	if err := service.CleanJobLog(ctx); err != nil {
-		api.Send(r, api.Err("清空失败"))
+		response.Send(r, response.Err("清空失败"))
 		return
 	}
-	api.Send(r, api.Ok())
+	response.Send(r, response.Ok())
 }

@@ -9,7 +9,7 @@ package controller
 import (
 	"github.com/gogf/gf/v2/net/ghttp"
 
-	"ruoyi-goframe/internal/api"
+	"ruoyi-goframe/internal/response"
 	"ruoyi-goframe/internal/middleware"
 	"ruoyi-goframe/internal/model"
 	"ruoyi-goframe/internal/service"
@@ -27,13 +27,13 @@ type recycleBinBatchReq struct {
 func rbResolveType(r *ghttp.Request) (service.RecycleBinType, *model.LoginUser, bool) {
 	lu := middleware.CurrentLoginUser(r)
 	if lu == nil {
-		api.SendAuthError(r)
+		response.SendAuthError(r)
 		return service.RecycleBinType{}, nil, false
 	}
 	typeStr := r.GetRouter("type").String()
 	t, ok := service.ParseRecycleBinType(typeStr)
 	if !ok {
-		api.Send(r, api.Err("非法的回收站类型："+typeStr))
+		response.Send(r, response.Err("非法的回收站类型："+typeStr))
 		return service.RecycleBinType{}, nil, false
 	}
 	return t, lu, true
@@ -42,7 +42,7 @@ func rbResolveType(r *ghttp.Request) (service.RecycleBinType, *model.LoginUser, 
 // rbDeny 判当前会话是否具备 permission；不足写 403 并回 false。
 func rbDeny(r *ghttp.Request, lu *model.LoginUser, permission string) bool {
 	if !service.HasPermission(lu.Permissions, permission) {
-		api.SendForbidden(r, "没有权限，请联系管理员授权")
+		response.SendForbidden(r, "没有权限，请联系管理员授权")
 		return false
 	}
 	return true
@@ -74,14 +74,14 @@ func RecycleBinList(r *ghttp.Request) {
 		rows, total, err = service.SelectDeletedDeptListPaged(ctx, service.DeptListFilter{DeptName: keyword},
 			service.BuildDataScope(ctx, lu, listPermi, "d", "dept_id", "", ""), p)
 	default:
-		api.Send(r, api.Err("不支持的回收站类型："+t.Code()))
+		response.Send(r, response.Err("不支持的回收站类型："+t.Code()))
 		return
 	}
 	if err != nil {
-		api.Send(r, api.Err("查询失败"))
+		response.Send(r, response.Err("查询失败"))
 		return
 	}
-	api.Send(r, service.DataTable(total, rows))
+	response.Send(r, service.DataTable(total, rows))
 }
 
 // RecycleBinRestore PUT /system/recyclebin/{type}/restore body{ids} → AjaxResult(success=RecycleBinOpResult)。
@@ -97,11 +97,11 @@ func RecycleBinRestore(r *ghttp.Request) {
 	}
 	var req recycleBinBatchReq
 	if err := r.Parse(&req); err != nil {
-		api.Send(r, api.Err("请求参数有误"))
+		response.Send(r, response.Err("请求参数有误"))
 		return
 	}
 	result := service.Restore(ctx, lu, t, perm, req.Ids)
-	api.Send(r, api.OkData(result))
+	response.Send(r, response.OkData(result))
 }
 
 // RecycleBinPurge DELETE /system/recyclebin/{type}/purge body{ids,confirm} → AjaxResult(success=RecycleBinOpResult)。
@@ -118,14 +118,14 @@ func RecycleBinPurge(r *ghttp.Request) {
 	}
 	var req recycleBinBatchReq
 	if err := r.Parse(&req); err != nil {
-		api.Send(r, api.Err("请求参数有误"))
+		response.Send(r, response.Err("请求参数有误"))
 		return
 	}
 	confirm := req.Confirm != nil && *req.Confirm
 	result, errMsg := service.Purge(ctx, lu, t, perm, req.Ids, confirm)
 	if errMsg != "" {
-		api.Send(r, api.Err(errMsg))
+		response.Send(r, response.Err(errMsg))
 		return
 	}
-	api.Send(r, api.OkData(result))
+	response.Send(r, response.OkData(result))
 }

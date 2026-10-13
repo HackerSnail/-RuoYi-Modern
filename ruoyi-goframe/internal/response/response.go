@@ -1,4 +1,4 @@
-// Package api 复刻 Java 侧统一响应封装 AjaxResult 与 HttpStatusResponseAdvice 的传输层状态码收口。
+// Package response 复刻 Java 侧统一响应封装 AjaxResult 与 HttpStatusResponseAdvice 的传输层状态码收口。
 //
 // 关键点（务必与后端一致，否则前端判定错位）：
 //  1. body 恒为对象 {code,msg,data?}；data 为空则不放该键（对应 StringUtils.isNotNull 判定）。
@@ -6,7 +6,7 @@
 //     调用方以 SendRaw 追加顶层键后发出。
 //  3. 传输层 HTTP 状态按 body.code 映射：白名单语义码透传，其余(含业务 500、warn 601)回退 400；
 //     真·系统故障由 SendSystemError 显式置 HTTP 500。
-package api
+package response
 
 import (
 	"net/http"

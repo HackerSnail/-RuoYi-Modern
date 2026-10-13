@@ -8,7 +8,7 @@ import (
 
 	"github.com/gogf/gf/v2/net/ghttp"
 
-	"ruoyi-goframe/internal/api"
+	"ruoyi-goframe/internal/response"
 	"ruoyi-goframe/internal/middleware"
 	"ruoyi-goframe/internal/model"
 	"ruoyi-goframe/internal/service"
@@ -30,10 +30,10 @@ func PostList(r *ghttp.Request) {
 	}
 	rows, total, err := service.SelectPostListPaged(ctx, f, service.ParsePage(r))
 	if err != nil {
-		api.Send(r, api.Err("查询失败"))
+		response.Send(r, response.Err("查询失败"))
 		return
 	}
-	api.Send(r, service.DataTable(total, rows))
+	response.Send(r, service.DataTable(total, rows))
 }
 
 // PostExport POST /system/post/export（system:post:export + @Log EXPORT）：同 list 的过滤入参（岗位无 DataScope），
@@ -48,7 +48,7 @@ func PostExport(r *ghttp.Request) {
 	max := service.GetExportMaxRows(ctx)
 	rows, err := service.SelectPostListLimited(ctx, f, max)
 	if err != nil {
-		api.Send(r, api.Err("导出失败"))
+		response.Send(r, response.Err("导出失败"))
 		return
 	}
 	if exportOverLimit(r, len(rows), max) {
@@ -59,60 +59,60 @@ func PostExport(r *ghttp.Request) {
 
 // PostGetInfo GET /system/post/{postId}（system:post:query）→ data:{post}。
 func PostGetInfo(r *ghttp.Request) {
-	api.Send(r, api.OkData(service.SelectPostById(r.Context(), r.Get("postId").Int64())))
+	response.Send(r, response.OkData(service.SelectPostById(r.Context(), r.Get("postId").Int64())))
 }
 
 // PostOptionSelect GET /system/post/optionselect（Java 无 @PreAuthorize，仅需登录态）→ data:[SysPost...]。
 func PostOptionSelect(r *ghttp.Request) {
-	api.Send(r, api.OkData(service.SelectPostAll(r.Context())))
+	response.Send(r, response.OkData(service.SelectPostAll(r.Context())))
 }
 
 // PostAdd POST /system/post（system:post:add）。@Validated → 名称唯一 → 编码唯一 → insertPost。
 func PostAdd(r *ghttp.Request) {
 	var post model.SysPost
 	if err := r.Parse(&post); err != nil {
-		api.Send(r, api.Err("请求参数有误"))
+		response.Send(r, response.Err("请求参数有误"))
 		return
 	}
 	if vs := validatePost(&post, postSortPresent(r), postStatusPresent(r)); len(vs) > 0 {
-		api.Send(r, validErrBody(vs))
+		response.Send(r, validErrBody(vs))
 		return
 	}
 	ctx := r.Context()
 	lu := middleware.CurrentLoginUser(r)
 	if !service.CheckPostNameUnique(ctx, &post) {
-		api.Send(r, api.Err("新增岗位'"+post.PostName+"'失败，岗位名称已存在"))
+		response.Send(r, response.Err("新增岗位'"+post.PostName+"'失败，岗位名称已存在"))
 		return
 	}
 	if !service.CheckPostCodeUnique(ctx, &post) {
-		api.Send(r, api.Err("新增岗位'"+post.PostName+"'失败，岗位编码已存在"))
+		response.Send(r, response.Err("新增岗位'"+post.PostName+"'失败，岗位编码已存在"))
 		return
 	}
-	api.Send(r, toAjax(service.InsertPost(ctx, &post, lu.Username)))
+	response.Send(r, toAjax(service.InsertPost(ctx, &post, lu.Username)))
 }
 
 // PostEdit PUT /system/post（system:post:edit）。@Validated → 名称唯一（排除自身）→ 编码唯一 → updatePost。
 func PostEdit(r *ghttp.Request) {
 	var post model.SysPost
 	if err := r.Parse(&post); err != nil {
-		api.Send(r, api.Err("请求参数有误"))
+		response.Send(r, response.Err("请求参数有误"))
 		return
 	}
 	if vs := validatePost(&post, postSortPresent(r), postStatusPresent(r)); len(vs) > 0 {
-		api.Send(r, validErrBody(vs))
+		response.Send(r, validErrBody(vs))
 		return
 	}
 	ctx := r.Context()
 	lu := middleware.CurrentLoginUser(r)
 	if !service.CheckPostNameUnique(ctx, &post) {
-		api.Send(r, api.Err("修改岗位'"+post.PostName+"'失败，岗位名称已存在"))
+		response.Send(r, response.Err("修改岗位'"+post.PostName+"'失败，岗位名称已存在"))
 		return
 	}
 	if !service.CheckPostCodeUnique(ctx, &post) {
-		api.Send(r, api.Err("修改岗位'"+post.PostName+"'失败，岗位编码已存在"))
+		response.Send(r, response.Err("修改岗位'"+post.PostName+"'失败，岗位编码已存在"))
 		return
 	}
-	api.Send(r, toAjax(service.UpdatePost(ctx, &post, lu.Username)))
+	response.Send(r, toAjax(service.UpdatePost(ctx, &post, lu.Username)))
 }
 
 // PostRemove DELETE /system/post/{postIds}（system:post:remove）。逐个已分配护栏后批量硬删。
@@ -120,15 +120,15 @@ func PostRemove(r *ghttp.Request) {
 	ctx := r.Context()
 	ids, ok := splitCommaInts(r.Get("postIds").String())
 	if !ok || len(ids) == 0 {
-		api.Send(r, api.Err("岗位 ID 非法"))
+		response.Send(r, response.Err("岗位 ID 非法"))
 		return
 	}
 	rows, msg := service.DeletePostByIds(ctx, ids)
 	if msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
-	api.Send(r, toAjax(rows))
+	response.Send(r, toAjax(rows))
 }
 
 // postSortPresent 判定 body 是否显式携带 postSort（对齐 @NotNull：缺字段即违规，0 仍合法）。

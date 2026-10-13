@@ -7,7 +7,7 @@ import (
 
 	"github.com/gogf/gf/v2/net/ghttp"
 
-	"ruoyi-goframe/internal/api"
+	"ruoyi-goframe/internal/response"
 	"ruoyi-goframe/internal/middleware"
 	"ruoyi-goframe/internal/model"
 	"ruoyi-goframe/internal/service"
@@ -34,30 +34,30 @@ func NoticeList(r *ghttp.Request) {
 	}
 	rows, total, err := service.SelectNoticeListPaged(ctx, f, service.ParsePage(r))
 	if err != nil {
-		api.Send(r, api.Err("查询失败"))
+		response.Send(r, response.Err("查询失败"))
 		return
 	}
-	api.Send(r, service.DataTable(total, rows))
+	response.Send(r, service.DataTable(total, rows))
 }
 
 // NoticeGetInfo GET /system/notice/{noticeId}（无 @PreAuthorize，仅需登录态）→ data:{notice}。
 func NoticeGetInfo(r *ghttp.Request) {
-	api.Send(r, api.OkData(service.SelectNoticeById(r.Context(), r.Get("noticeId").Int64())))
+	response.Send(r, response.OkData(service.SelectNoticeById(r.Context(), r.Get("noticeId").Int64())))
 }
 
 // NoticeAdd POST /system/notice（system:notice:add）。@Validated → insertNotice。
 func NoticeAdd(r *ghttp.Request) {
 	var notice model.SysNotice
 	if err := r.Parse(&notice); err != nil {
-		api.Send(r, api.Err("请求参数有误"))
+		response.Send(r, response.Err("请求参数有误"))
 		return
 	}
 	if vs := validateNotice(&notice); len(vs) > 0 {
-		api.Send(r, validErrBody(vs))
+		response.Send(r, validErrBody(vs))
 		return
 	}
 	lu := middleware.CurrentLoginUser(r)
-	api.Send(r, toAjax(service.InsertNotice(r.Context(), &notice, lu.Username)))
+	response.Send(r, toAjax(service.InsertNotice(r.Context(), &notice, lu.Username)))
 }
 
 // NoticeEdit PUT /system/notice（system:notice:edit）。@Validated → updateNotice（含存在性护栏）。
@@ -65,21 +65,21 @@ func NoticeAdd(r *ghttp.Request) {
 func NoticeEdit(r *ghttp.Request) {
 	var notice model.SysNotice
 	if err := r.Parse(&notice); err != nil {
-		api.Send(r, api.Err("请求参数有误"))
+		response.Send(r, response.Err("请求参数有误"))
 		return
 	}
 	if vs := validateNotice(&notice); len(vs) > 0 {
-		api.Send(r, validErrBody(vs))
+		response.Send(r, validErrBody(vs))
 		return
 	}
 	contentPresent := !r.Get("noticeContent").IsNil()
 	lu := middleware.CurrentLoginUser(r)
 	rows, msg := service.UpdateNotice(r.Context(), &notice, lu.Username, contentPresent)
 	if msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
-	api.Send(r, toAjax(rows))
+	response.Send(r, toAjax(rows))
 }
 
 // NoticeRemove DELETE /system/notice/{noticeIds}（system:notice:remove）。事务内级联清已读后硬删；成功恒回操作成功。
@@ -87,14 +87,14 @@ func NoticeRemove(r *ghttp.Request) {
 	ctx := r.Context()
 	ids, ok := splitCommaInts(r.Get("noticeIds").String())
 	if !ok {
-		api.Send(r, api.Err("公告 ID 非法"))
+		response.Send(r, response.Err("公告 ID 非法"))
 		return
 	}
 	if _, msg := service.DeleteNoticeByIds(ctx, ids); msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
-	api.Send(r, api.Ok())
+	response.Send(r, response.Ok())
 }
 
 // validateNotice 复刻 SysNotice 的 @Validated 约束：

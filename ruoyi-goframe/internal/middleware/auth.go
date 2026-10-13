@@ -5,7 +5,7 @@ package middleware
 import (
 	"github.com/gogf/gf/v2/net/ghttp"
 
-	"ruoyi-goframe/internal/api"
+	"ruoyi-goframe/internal/response"
 	"ruoyi-goframe/internal/model"
 	"ruoyi-goframe/internal/service"
 )
@@ -19,7 +19,7 @@ func Auth(r *ghttp.Request) {
 	authorization := r.GetHeader(header)
 	lu := service.GetLoginUser(r.Context(), authorization)
 	if lu == nil {
-		api.SendAuthError(r)
+		response.SendAuthError(r)
 		r.ExitAll()
 		return
 	}

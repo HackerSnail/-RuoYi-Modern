@@ -4,7 +4,7 @@ package controller
 import (
 	"github.com/gogf/gf/v2/net/ghttp"
 
-	"ruoyi-goframe/internal/api"
+	"ruoyi-goframe/internal/response"
 	"ruoyi-goframe/internal/middleware"
 	"ruoyi-goframe/internal/model"
 	"ruoyi-goframe/internal/service"
@@ -30,7 +30,7 @@ func DeptList(r *ghttp.Request) {
 	if list == nil {
 		list = []*model.SysDept{}
 	}
-	api.Send(r, api.OkData(list))
+	response.Send(r, response.OkData(list))
 }
 
 // DeptExclude GET /system/dept/list/exclude/{deptId}（system:dept:list）→ 排除自身及子孙后的全量列表。
@@ -42,7 +42,7 @@ func DeptExclude(r *ghttp.Request) {
 	if list == nil {
 		list = []*model.SysDept{}
 	}
-	api.Send(r, api.OkData(list))
+	response.Send(r, response.OkData(list))
 }
 
 // DeptGetInfo GET /system/dept/{deptId}（system:dept:query）→ data:{dept}；数据范围外回 code500 文案。
@@ -52,64 +52,64 @@ func DeptGetInfo(r *ghttp.Request) {
 	deptId := r.Get("deptId").Int64()
 	// 对齐 selectDeptById 内部先 checkDeptDataScope
 	if msg := service.CheckDeptDataScope(ctx, lu, deptPermiList, deptId); msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
-	api.Send(r, api.OkData(service.SelectDeptById(ctx, deptId)))
+	response.Send(r, response.OkData(service.SelectDeptById(ctx, deptId)))
 }
 
 // DeptAdd POST /system/dept（system:dept:add）。@Validated → 名称唯一 → insertDept(数据范围/父校验)。
 func DeptAdd(r *ghttp.Request) {
 	var dept model.SysDept
 	if err := r.Parse(&dept); err != nil {
-		api.Send(r, api.Err("请求参数有误"))
+		response.Send(r, response.Err("请求参数有误"))
 		return
 	}
 	if vs := validateDept(&dept); len(vs) > 0 {
-		api.Send(r, validErrBody(vs))
+		response.Send(r, validErrBody(vs))
 		return
 	}
 	ctx := r.Context()
 	lu := middleware.CurrentLoginUser(r)
 	if !service.CheckDeptNameUnique(ctx, &dept) {
-		api.Send(r, api.Err("新增部门'"+dept.DeptName+"'失败，部门名称已存在"))
+		response.Send(r, response.Err("新增部门'"+dept.DeptName+"'失败，部门名称已存在"))
 		return
 	}
 	rows, msg := service.InsertDept(ctx, lu, &dept, lu.Username)
 	if msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
-	api.Send(r, toAjax(rows))
+	response.Send(r, toAjax(rows))
 }
 
 // DeptEdit PUT /system/dept（system:dept:edit）。@Validated → 名称唯一 → 停用含启用子拦截 → updateDept(环/范围)。
 func DeptEdit(r *ghttp.Request) {
 	var dept model.SysDept
 	if err := r.Parse(&dept); err != nil {
-		api.Send(r, api.Err("请求参数有误"))
+		response.Send(r, response.Err("请求参数有误"))
 		return
 	}
 	if vs := validateDept(&dept); len(vs) > 0 {
-		api.Send(r, validErrBody(vs))
+		response.Send(r, validErrBody(vs))
 		return
 	}
 	ctx := r.Context()
 	lu := middleware.CurrentLoginUser(r)
 	if !service.CheckDeptNameUnique(ctx, &dept) {
-		api.Send(r, api.Err("修改部门'"+dept.DeptName+"'失败，部门名称已存在"))
+		response.Send(r, response.Err("修改部门'"+dept.DeptName+"'失败，部门名称已存在"))
 		return
 	}
 	if dept.Status == "1" && service.SelectNormalChildrenDeptById(ctx, dept.DeptId) > 0 {
-		api.Send(r, api.Err("该部门包含未停用的子部门！"))
+		response.Send(r, response.Err("该部门包含未停用的子部门！"))
 		return
 	}
 	rows, msg := service.UpdateDept(ctx, lu, &dept, lu.Username)
 	if msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
-	api.Send(r, toAjax(rows))
+	response.Send(r, toAjax(rows))
 }
 
 // DeptUpdateSort PUT /system/dept/updateSort（system:dept:edit）。入参 {deptIds,orderNums} 逗号串。
@@ -119,7 +119,7 @@ func DeptUpdateSort(r *ghttp.Request) {
 	ids, ok1 := splitCommaInts(r.Get("deptIds").String())
 	orders, ok2 := splitCommaInts(r.Get("orderNums").String())
 	if !ok1 || !ok2 {
-		api.Send(r, api.Err("保存排序失败，部门 ID 非法"))
+		response.Send(r, response.Err("保存排序失败，部门 ID 非法"))
 		return
 	}
 	ordInts := make([]int, 0, len(orders))
@@ -127,10 +127,10 @@ func DeptUpdateSort(r *ghttp.Request) {
 		ordInts = append(ordInts, int(o))
 	}
 	if msg := service.UpdateDeptSort(ctx, lu, ids, ordInts); msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
-	api.Send(r, api.Ok())
+	response.Send(r, response.Ok())
 }
 
 // DeptRemove DELETE /system/dept/{deptId}（system:dept:remove）。有下级/有用户 → warn(601)。
@@ -139,19 +139,19 @@ func DeptRemove(r *ghttp.Request) {
 	lu := middleware.CurrentLoginUser(r)
 	deptId := r.Get("deptId").Int64()
 	if service.HasChildByDeptId(ctx, deptId) {
-		api.Send(r, api.Warn("存在下级部门,不允许删除"))
+		response.Send(r, response.Warn("存在下级部门,不允许删除"))
 		return
 	}
 	if service.CheckDeptExistUser(ctx, deptId) {
-		api.Send(r, api.Warn("部门存在用户,不允许删除"))
+		response.Send(r, response.Warn("部门存在用户,不允许删除"))
 		return
 	}
 	rows, msg := service.DeleteDeptById(ctx, lu, deptId)
 	if msg != "" {
-		api.Send(r, api.Err(msg))
+		response.Send(r, response.Err(msg))
 		return
 	}
-	api.Send(r, toAjax(rows))
+	response.Send(r, toAjax(rows))
 }
 
 // validateDept 复刻 SysDept 的 @Validated 字段约束（NotBlank/Size/Email），返回违规列表。

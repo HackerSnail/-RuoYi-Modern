@@ -12,7 +12,7 @@ import (
 
 	"github.com/gogf/gf/v2/net/ghttp"
 
-	"ruoyi-goframe/internal/api"
+	"ruoyi-goframe/internal/response"
 	"ruoyi-goframe/internal/consts"
 )
 
@@ -25,11 +25,11 @@ func paramRange(r *ghttp.Request, key string) string {
 }
 
 // toAjax 对应 BaseController.toAjax(rows)：>0 回 {code:200,"操作成功"}，否则 {code:500,"操作失败"}。
-func toAjax(rows int) api.M {
+func toAjax(rows int) response.M {
 	if rows > 0 {
-		return api.Ok()
+		return response.Ok()
 	}
-	return api.M{"code": consts.CodeError, "msg": "操作失败"}
+	return response.M{"code": consts.CodeError, "msg": "操作失败"}
 }
 
 // exportOverLimit 判定本次取回行数是否超过单次导出上限（Limited 查询取 max+1 行，>max 即超限）。
@@ -38,7 +38,7 @@ func exportOverLimit(r *ghttp.Request, n, max int) bool {
 	if n <= max {
 		return false
 	}
-	api.Send(r, api.Err(fmt.Sprintf("导出数据量 %d 条，超过单次导出上限 %d 条，请缩小查询条件后重试", n, max)))
+	response.Send(r, response.Err(fmt.Sprintf("导出数据量 %d 条，超过单次导出上限 %d 条，请缩小查询条件后重试", n, max)))
 	return true
 }
 
@@ -47,7 +47,7 @@ func exportOverLimit(r *ghttp.Request, n, max int) bool {
 func writeXlsx(r *ghttp.Request, build func(io.Writer) error) {
 	var buf bytes.Buffer
 	if err := build(&buf); err != nil {
-		api.SendSystemError(r, "导出失败，请联系系统管理员")
+		response.SendSystemError(r, "导出失败，请联系系统管理员")
 		return
 	}
 	r.Response.ClearBuffer()
@@ -63,9 +63,9 @@ type violation struct {
 
 // validErrBody 组装校验失败响应体：msg 为各违规 message 的 "; " 拼接，data 为字段级明细。
 // 对应 AjaxResult.error(msg, details) → {code:500,msg,data}，经收口映射为 HTTP 400。
-func validErrBody(vs []violation) api.M {
+func validErrBody(vs []violation) response.M {
 	if len(vs) == 0 {
-		return api.Err("参数校验失败")
+		return response.Err("参数校验失败")
 	}
 	msgs := make([]string, 0, len(vs))
 	details := make([]interface{}, 0, len(vs))
@@ -73,7 +73,7 @@ func validErrBody(vs []violation) api.M {
 		msgs = append(msgs, v.Message)
 		details = append(details, v)
 	}
-	return api.ErrData(strings.Join(msgs, "; "), details)
+	return response.ErrData(strings.Join(msgs, "; "), details)
 }
 
 // runeLen 字符数（对齐 Java @Size 按字符计）。

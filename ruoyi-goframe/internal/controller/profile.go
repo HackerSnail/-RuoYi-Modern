@@ -11,7 +11,7 @@ import (
 	"github.com/gogf/gf/v2/frame/g"
 	"github.com/gogf/gf/v2/net/ghttp"
 
-	"ruoyi-goframe/internal/api"
+	"ruoyi-goframe/internal/response"
 	"ruoyi-goframe/internal/middleware"
 	"ruoyi-goframe/internal/model"
 	"ruoyi-goframe/internal/service"
@@ -33,26 +33,26 @@ type profileUpdateBody struct {
 func Profile(r *ghttp.Request) {
 	lu := middleware.CurrentLoginUser(r)
 	if lu == nil || lu.User == nil {
-		api.Send(r, api.Err("获取用户信息异常，请联系管理员"))
+		response.Send(r, response.Err("获取用户信息异常，请联系管理员"))
 		return
 	}
 	ctx := r.Context()
-	m := api.OkData(lu.User)
+	m := response.OkData(lu.User)
 	m["roleGroup"] = service.SelectUserRoleGroup(ctx, lu.Username)
 	m["postGroup"] = service.SelectUserPostGroup(ctx, lu.Username)
-	api.Send(r, m)
+	response.Send(r, m)
 }
 
 // UpdateProfile PUT /system/user/profile：以请求四字段覆盖会话快照 → 手机/邮箱唯一性拦截 → 落库 → 刷新缓存会话。
 func UpdateProfile(r *ghttp.Request) {
 	lu := middleware.CurrentLoginUser(r)
 	if lu == nil || lu.User == nil {
-		api.Send(r, api.Err("修改个人信息异常，请联系管理员"))
+		response.Send(r, response.Err("修改个人信息异常，请联系管理员"))
 		return
 	}
 	var b profileUpdateBody
 	if err := r.Parse(&b); err != nil {
-		api.Send(r, api.Err("请求参数有误"))
+		response.Send(r, response.Err("请求参数有误"))
 		return
 	}
 	ctx := r.Context()
@@ -61,13 +61,13 @@ func UpdateProfile(r *ghttp.Request) {
 	// 唯一性：仅当提交值非空才校验（对齐 StringUtils.isNotEmpty 前置）。命中他人占用即拦截。
 	if b.Phonenumber != nil && *b.Phonenumber != "" {
 		if !service.CheckPhoneUnique(ctx, &model.SysUser{UserId: userId, Phonenumber: *b.Phonenumber}) {
-			api.Send(r, api.Err("修改用户'"+lu.Username+"'失败，手机号码已存在"))
+			response.Send(r, response.Err("修改用户'"+lu.Username+"'失败，手机号码已存在"))
 			return
 		}
 	}
 	if b.Email != nil && *b.Email != "" {
 		if !service.CheckEmailUnique(ctx, &model.SysUser{UserId: userId, Email: *b.Email}) {
-			api.Send(r, api.Err("修改用户'"+lu.Username+"'失败，邮箱账号已存在"))
+			response.Send(r, response.Err("修改用户'"+lu.Username+"'失败，邮箱账号已存在"))
 			return
 		}
 	}
@@ -87,10 +87,10 @@ func UpdateProfile(r *ghttp.Request) {
 			lu.User.Sex = *b.Sex
 		}
 		service.RefreshSession(ctx, lu)
-		api.Send(r, api.Ok())
+		response.Send(r, response.Ok())
 		return
 	}
-	api.Send(r, api.Err("修改个人信息异常，请联系管理员"))
+	response.Send(r, response.Err("修改个人信息异常，请联系管理员"))
 }
 
 // updatePwdBody PUT /system/user/profile/updatePwd 请求体。
@@ -103,12 +103,12 @@ type updatePwdBody struct {
 func UpdatePwd(r *ghttp.Request) {
 	lu := middleware.CurrentLoginUser(r)
 	if lu == nil {
-		api.Send(r, api.Err("修改密码异常，请联系管理员"))
+		response.Send(r, response.Err("修改密码异常，请联系管理员"))
 		return
 	}
 	var b updatePwdBody
 	if err := r.Parse(&b); err != nil {
-		api.Send(r, api.Err("请求参数有误"))
+		response.Send(r, response.Err("请求参数有误"))
 		return
 	}
 	ctx := r.Context()
@@ -119,51 +119,51 @@ func UpdatePwd(r *ghttp.Request) {
 	stored := service.SelectUserPasswordById(ctx, userId)
 	// 先校验旧密码（BCrypt），再拦新旧相同（顺序对齐 Java）。
 	if !service.MatchesPassword(b.OldPassword, stored) {
-		api.Send(r, api.Err("修改密码失败，旧密码错误"))
+		response.Send(r, response.Err("修改密码失败，旧密码错误"))
 		return
 	}
 	if service.MatchesPassword(b.NewPassword, stored) {
-		api.Send(r, api.Err("新密码不能与旧密码相同"))
+		response.Send(r, response.Err("新密码不能与旧密码相同"))
 		return
 	}
 	hash := service.EncryptPassword(b.NewPassword)
 	if rows, _ := service.ResetPwd(ctx, &model.SysUser{UserId: userId, Password: hash}); rows > 0 {
 		// 改密成功后强制下线该用户全部在线会话（含当前）：避免旧密码签发的 token 仍可用。
 		service.DelLoginUsers(ctx, userId)
-		api.Send(r, api.OkMsg("密码修改成功，请使用新密码重新登录"))
+		response.Send(r, response.OkMsg("密码修改成功，请使用新密码重新登录"))
 		return
 	}
-	api.Send(r, api.Err("修改密码异常，请联系管理员"))
+	response.Send(r, response.Err("修改密码异常，请联系管理员"))
 }
 
 // Avatar POST /system/user/profile/avatar（multipart 参数名 avatarfile）：非空 + ≤2MB → UUID 命名落盘 → 回写头像 → 删旧文件 → 刷新缓存。
 func Avatar(r *ghttp.Request) {
 	lu := middleware.CurrentLoginUser(r)
 	if lu == nil || lu.User == nil {
-		api.Send(r, api.Err("上传图片异常，请联系管理员"))
+		response.Send(r, response.Err("上传图片异常，请联系管理员"))
 		return
 	}
 	files := r.GetMultipartFiles("avatarfile")
 	if len(files) == 0 || files[0].Size == 0 {
 		// 无文件/空文件（对齐 Java file.isEmpty() 分支）
-		api.Send(r, api.Err("上传图片异常，请联系管理员"))
+		response.Send(r, response.Err("上传图片异常，请联系管理员"))
 		return
 	}
 	fh := files[0]
 	if fh.Size > avatarMaxSize {
-		api.Send(r, api.Err("头像图片不能超过 2MB，请压缩后重试"))
+		response.Send(r, response.Err("头像图片不能超过 2MB，请压缩后重试"))
 		return
 	}
 	ctx := r.Context()
 	avatarUrl, _, err := service.UploadAvatar(ctx, service.GetAvatarPath(ctx), fh)
 	if err != nil {
 		g.Log().Errorf(ctx, "头像上传失败: %v", err)
-		api.Send(r, api.Err(err.Error()))
+		response.Send(r, response.Err(err.Error()))
 		return
 	}
 	userId := lu.User.UserId
 	if !service.UpdateUserAvatar(ctx, userId, avatarUrl) {
-		api.Send(r, api.Err("上传图片异常，请联系管理员"))
+		response.Send(r, response.Err("上传图片异常，请联系管理员"))
 		return
 	}
 	// 新头像保存成功后删除磁盘上的旧头像，避免孤儿文件（对齐 FileUtils.deleteFile(getProfile()+stripPrefix(old))）。
@@ -172,12 +172,12 @@ func Avatar(r *ghttp.Request) {
 			service.DeleteFileIfExists(local)
 		}
 	}
-	m := api.Ok()
+	m := response.Ok()
 	m["imgUrl"] = avatarUrl
 	// 更新缓存用户头像并回写会话。
 	lu.User.Avatar = avatarUrl
 	service.RefreshSession(ctx, lu)
-	api.Send(r, m)
+	response.Send(r, m)
 }
 
 // ProfileResource GET /profile/**：本仓 SecurityConfig 将上传目录改为需鉴权（不再匿名放行），

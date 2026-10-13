@@ -9,7 +9,7 @@ import (
 
 	"github.com/gogf/gf/v2/net/ghttp"
 
-	"ruoyi-goframe/internal/api"
+	"ruoyi-goframe/internal/response"
 	"ruoyi-goframe/internal/middleware"
 	"ruoyi-goframe/internal/model"
 	"ruoyi-goframe/internal/service"
@@ -26,10 +26,10 @@ func JobList(r *ghttp.Request) {
 	}
 	rows, total, err := service.SelectJobListPaged(ctx, f, service.ParsePage(r))
 	if err != nil {
-		api.Send(r, api.Err("查询失败"))
+		response.Send(r, response.Err("查询失败"))
 		return
 	}
-	api.Send(r, service.DataTable(total, rows))
+	response.Send(r, service.DataTable(total, rows))
 }
 
 // JobExport POST /monitor/job/export（monitor:job:export + @Log EXPORT）：同 list 过滤，过 exportLimit 护栏后写 xlsx。
@@ -44,7 +44,7 @@ func JobExport(r *ghttp.Request) {
 	max := service.GetExportMaxRows(ctx)
 	rows, err := service.SelectJobListLimited(ctx, f, max)
 	if err != nil {
-		api.Send(r, api.Err("导出失败"))
+		response.Send(r, response.Err("导出失败"))
 		return
 	}
 	if exportOverLimit(r, len(rows), max) {
@@ -58,17 +58,17 @@ func JobGetInfo(r *ghttp.Request) {
 	ctx := r.Context()
 	id, err := parseInt(r.GetRouter("jobId").String())
 	if err != nil {
-		api.Send(r, api.Err("参数格式有误"))
+		response.Send(r, response.Err("参数格式有误"))
 		return
 	}
-	api.Send(r, api.OkData(service.SelectJobById(ctx, id)))
+	response.Send(r, response.OkData(service.SelectJobById(ctx, id)))
 }
 
 // JobAdd POST /monitor/job（monitor:job:add + @Log INSERT）：补 createBy → validateJob → 入库(默认暂停) → 注册调度。
 func JobAdd(r *ghttp.Request) {
 	var job model.SysJob
 	if err := r.Parse(&job); err != nil {
-		api.Send(r, api.Err("请求参数有误"))
+		response.Send(r, response.Err("请求参数有误"))
 		return
 	}
 	if lu := middleware.CurrentLoginUser(r); lu != nil {
@@ -76,17 +76,17 @@ func JobAdd(r *ghttp.Request) {
 	}
 	rows, err := service.AddJob(r.Context(), &job)
 	if err != nil {
-		api.Send(r, api.Err(err.Error()))
+		response.Send(r, response.Err(err.Error()))
 		return
 	}
-	api.Send(r, toAjax(rows))
+	response.Send(r, toAjax(rows))
 }
 
 // JobEdit PUT /monitor/job（monitor:job:edit + @Log UPDATE）：补 updateBy → validateJob → 更新 → 重建调度。
 func JobEdit(r *ghttp.Request) {
 	var job model.SysJob
 	if err := r.Parse(&job); err != nil {
-		api.Send(r, api.Err("请求参数有误"))
+		response.Send(r, response.Err("请求参数有误"))
 		return
 	}
 	if lu := middleware.CurrentLoginUser(r); lu != nil {
@@ -94,10 +94,10 @@ func JobEdit(r *ghttp.Request) {
 	}
 	rows, err := service.EditJob(r.Context(), &job)
 	if err != nil {
-		api.Send(r, api.Err(err.Error()))
+		response.Send(r, response.Err(err.Error()))
 		return
 	}
-	api.Send(r, toAjax(rows))
+	response.Send(r, toAjax(rows))
 }
 
 // JobChangeStatus PUT /monitor/job/changeStatus（monitor:job:changeStatus + @Log UPDATE）：
@@ -105,26 +105,26 @@ func JobEdit(r *ghttp.Request) {
 func JobChangeStatus(r *ghttp.Request) {
 	var job model.SysJob
 	if err := r.Parse(&job); err != nil {
-		api.Send(r, api.Err("请求参数有误"))
+		response.Send(r, response.Err("请求参数有误"))
 		return
 	}
 	ctx := r.Context()
 	newJob := service.SelectJobById(ctx, job.JobId)
 	if newJob == nil {
-		api.Send(r, api.Err("任务不存在："+strconv.FormatInt(job.JobId, 10)))
+		response.Send(r, response.Err("任务不存在："+strconv.FormatInt(job.JobId, 10)))
 		return
 	}
 	if job.Status == "" {
-		api.Send(r, api.Err("状态不能为空"))
+		response.Send(r, response.Err("状态不能为空"))
 		return
 	}
 	newJob.Status = job.Status
 	rows, err := service.ChangeJobStatus(ctx, newJob)
 	if err != nil {
-		api.Send(r, api.Err(err.Error()))
+		response.Send(r, response.Err(err.Error()))
 		return
 	}
-	api.Send(r, toAjax(rows))
+	response.Send(r, toAjax(rows))
 }
 
 // JobRun PUT /monitor/job/run（monitor:job:changeStatus + @Log UPDATE）：仅取 jobId 触发已注册任务立即执行一次。
@@ -132,14 +132,14 @@ func JobChangeStatus(r *ghttp.Request) {
 func JobRun(r *ghttp.Request) {
 	var job model.SysJob
 	if err := r.Parse(&job); err != nil {
-		api.Send(r, api.Err("请求参数有误"))
+		response.Send(r, response.Err("请求参数有误"))
 		return
 	}
 	if service.RunJob(r.Context(), job.JobId) {
-		api.Send(r, api.Ok())
+		response.Send(r, response.Ok())
 		return
 	}
-	api.Send(r, api.Err("任务不存在或已过期！"))
+	response.Send(r, response.Err("任务不存在或已过期！"))
 }
 
 // JobRemove DELETE /monitor/job/{jobIds}（monitor:job:remove + @Log DELETE）：空选/超 500 守卫收口于 service。
@@ -147,13 +147,13 @@ func JobRemove(r *ghttp.Request) {
 	ctx := r.Context()
 	ids, ok := splitCommaInts(r.GetRouter("jobIds").String())
 	if !ok {
-		api.Send(r, api.Err("参数格式有误"))
+		response.Send(r, response.Err("参数格式有误"))
 		return
 	}
 	rows, err := service.DeleteJobByIds(ctx, ids)
 	if err != nil {
-		api.Send(r, api.Err(err.Error()))
+		response.Send(r, response.Err(err.Error()))
 		return
 	}
-	api.Send(r, toAjax(rows))
+	response.Send(r, toAjax(rows))
 }

@@ -10,7 +10,8 @@
 
 ## 与原版若依的区别
 
-- **单仓三工程并列**：`ruoyi-springboot`（Java 后端）/ `ruoyi-goframe`（Go 后端）/ `ruoyi-vue3`（前端），前端与两套后端同仓、**同库、同响应契约**，不改动前端即可分别对接。
+- **前端**：沿用若依 Vue3 版，仅做接口适配以兼容重构后的后端 API。
+- **后端**：单仓三工程并列（`ruoyi-springboot` / `ruoyi-goframe` / `ruoyi-vue3`），是本仓库架构重构的核心。
 - **安全加固**：真实 HTTP 状态码收口、XSS 净化、账号昵称等敏感字符拦截、会话令牌脱敏、执行点越权白名单、SSRF 多层防护等系统性加固。
 - **技术债清理**：日期统一 `java.time`、字段注入改构造器注入、废弃 static 全局可变配置、分页 `ThreadLocal` 泄漏兜底、异常精确分档等。
 - **Go 版本采用 GoFrame 重写**：对 Java 后端逐模块忠实移植，作为轻量化方案验证（详见 `ruoyi-goframe/`）。

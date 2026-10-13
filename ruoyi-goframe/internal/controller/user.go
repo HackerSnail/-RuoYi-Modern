@@ -268,7 +268,7 @@ func UserAdd(r *ghttp.Request) {
 		api.Send(r, api.Err("请求参数有误"))
 		return
 	}
-	if vs := validateUser(&user); len(vs) > 0 {
+	if vs := validateUserHttp(&user); len(vs) > 0 {
 		api.Send(r, validErrBody(vs))
 		return
 	}
@@ -308,7 +308,7 @@ func UserEdit(r *ghttp.Request) {
 		api.Send(r, api.Err("请求参数有误"))
 		return
 	}
-	if vs := validateUser(&user); len(vs) > 0 {
+	if vs := validateUserHttp(&user); len(vs) > 0 {
 		api.Send(r, validErrBody(vs))
 		return
 	}
@@ -463,8 +463,8 @@ func parseUserBody(r *ghttp.Request) (model.SysUser, error) {
 	return user, nil
 }
 
-// validateUser 复刻 SysUser 的 @Validated 字段约束（userName NotBlank+Size30，nickName Size30，email Email+Size50，phonenumber Size11）。
-// Xss 脚本字符校验按 P1a/P1b-A 先例不在此层复刻（前端与入库前另有处理）。
+// validateUser 复刻 SysUser 的 @Validated 字段结构约束（userName NotBlank+Size30，nickName Size30，email Email+Size50，phonenumber Size11）。
+// 不含 @Xss 脚本字符【拒绝】——该层只在 HTTP 写端点（@Validated）触发，见 validateUserHttp；Excel 导入不走 @Validated，继续用本函数。
 func validateUser(user *model.SysUser) []violation {
 	var vs []violation
 	if strings.TrimSpace(user.UserName) == "" {
@@ -485,6 +485,21 @@ func validateUser(user *model.SysUser) []violation {
 		vs = append(vs, violation{"phonenumber", "手机号码长度不能超过11个字符"})
 	}
 	return vs
+}
+
+// validateUserHttp 复刻 add/edit 端点 @Validated 触发的完整约束：结构校验（validateUser）之外，
+// 追加 SysUser 上 @Xss 对 userName/nickName 的布尔【拒绝】。该拒绝层仅存在于 HTTP 写端点
+// （Excel 导入不走 @Validated），故单独成函数，只在 UserAdd/UserEdit 调用，导入分支继续用 validateUser。
+// 依赖 xssHtmlPattern（同包 notice.go，复刻 XssValidator.HTML_PATTERN 的 find 半匹配）。
+func validateUserHttp(user *model.SysUser) []violation {
+	var vs []violation
+	if xssHtmlPattern.MatchString(user.NickName) {
+		vs = append(vs, violation{"nickName", "用户昵称不能包含脚本字符"})
+	}
+	if xssHtmlPattern.MatchString(user.UserName) {
+		vs = append(vs, violation{"userName", "用户账号不能包含脚本字符"})
+	}
+	return append(vs, validateUser(user)...)
 }
 
 // isEmailFormat 轻量邮箱格式校验（对齐 jakarta @Email 的常见接受面：本地@域名.顶级）。
